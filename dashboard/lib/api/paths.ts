@@ -1,0 +1,12 @@
+export const API_V1 = {
+  status: "/api/v1/status",
+  account: "/api/v1/account",
+  overview: "/api/v1/overview",
+  positions: "/api/v1/positions",
+  trades: "/api/v1/trades",
+  strategy: "/api/v1/strategy",
+  risk: "/api/v1/risk",
+  settings: "/api/v1/settings",
+  backtests: "/api/v1/backtests",
+  backtest: (id: string) => `/api/v1/backtests/${encodeURIComponent(id)}`,
+} as const;
