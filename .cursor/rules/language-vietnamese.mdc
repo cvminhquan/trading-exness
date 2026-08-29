@@ -1,0 +1,522 @@
+---
+alwaysApply: true
+---
+# 2. Technical Identifiers MUST NOT Be Translated
+
+Do NOT translate technical identifiers.
+
+Keep:
+
+* variable names
+* function names
+* class names
+* type names
+* interface names
+* enum values
+* route paths
+* API endpoints
+* JSON keys
+* database fields
+* environment variables
+* CLI commands
+* file names
+* directory names
+* Python module names
+* package names
+* Git branch names
+
+Examples:
+
+Keep:
+
+AccountSnapshot
+BacktestReport
+TradingRepository
+MockTradingRepository
+ema_rsi_atr_v1
+XAUUSD
+M15
+HISTORICAL_SYMBOL
+
+Do NOT translate them.
+
+---
+
+# 3. Trading Terminology
+
+Use natural Vietnamese trading terminology.
+
+Preferred terminology:
+
+* BUY → Mua
+* SELL → Bán
+* HOLD → Giữ / Không giao dịch
+* Position → Vị thế
+* Open Position → Vị thế đang mở
+* Trade → Giao dịch
+* Entry → Giá vào lệnh
+* Exit → Giá thoát lệnh
+* Stop Loss → Cắt lỗ (SL)
+* Take Profit → Chốt lời (TP)
+* Spread → Spread
+* Slippage → Trượt giá
+* Commission → Phí hoa hồng
+* Swap → Phí qua đêm
+* Equity → Vốn chủ sở hữu
+* Balance → Số dư
+* Drawdown → Mức sụt giảm vốn (Drawdown)
+* Exposure → Mức độ phơi nhiễm / Giá trị đang chịu rủi ro
+* Risk → Rủi ro
+* Risk per Trade → Rủi ro mỗi giao dịch
+* Win Rate → Tỷ lệ thắng
+* Profit Factor → Hệ số lợi nhuận
+* Expectancy → Kỳ vọng lợi nhuận
+* Net Profit → Lợi nhuận ròng
+* Gross Profit → Lợi nhuận gộp
+* Gross Loss → Khoản lỗ gộp
+* R Multiple → Hệ số R
+* Equity Curve → Đường cong vốn
+* Drawdown Curve → Đường Drawdown
+* Backtest → Backtest / Kiểm thử lịch sử
+* Strategy → Chiến lược
+* Signal → Tín hiệu
+* Dataset → Bộ dữ liệu
+* Historical Data → Dữ liệu lịch sử
+* Execution → Khớp lệnh / Thực thi lệnh
+* Slippage → Trượt giá
+* Latency → Độ trễ
+* Requote → Báo giá lại
+* Partial Fill → Khớp lệnh một phần
+
+Do not translate technical market symbols such as:
+
+XAUUSD
+EURUSD
+BTCUSD
+M15
+H1
+EMA
+RSI
+ATR
+MT5
+
+---
+
+# 4. Status Values
+
+Technical enum values remain unchanged internally:
+
+RUNNING
+STOPPED
+ERROR
+DISCONNECTED
+COMPLETED
+INSUFFICIENT_DATA
+
+But their UI labels MUST be Vietnamese.
+
+Examples:
+
+RUNNING → Đang chạy
+
+STOPPED → Đã dừng
+
+ERROR → Lỗi
+
+DISCONNECTED → Mất kết nối
+
+COMPLETED → Hoàn tất
+
+INSUFFICIENT_DATA → Dữ liệu chưa đủ
+
+Do not change the underlying enum/string value.
+
+---
+
+# 5. Navigation
+
+Use Vietnamese labels.
+
+Examples:
+
+Overview → Tổng quan
+
+Positions → Vị thế
+
+Trades → Giao dịch
+
+Strategy → Chiến lược
+
+Risk → Rủi ro
+
+Backtest → Backtest
+
+Settings → Cài đặt
+
+---
+
+# 6. Dashboard Labels
+
+Use Vietnamese.
+
+Examples:
+
+Balance → Số dư
+
+Equity → Vốn chủ sở hữu
+
+Today PnL → PnL hôm nay
+
+Total PnL → Tổng PnL
+
+Drawdown → Drawdown
+
+Open Positions → Vị thế đang mở
+
+Recent Trades → Giao dịch gần đây
+
+Current Signal → Tín hiệu hiện tại
+
+Bot Status → Trạng thái Bot
+
+Connection Status → Trạng thái kết nối
+
+---
+
+# 7. Backtest UI
+
+All explanatory text must be Vietnamese.
+
+Examples:
+
+Backtest Summary → Tổng quan Backtest
+
+Dataset → Bộ dữ liệu
+
+Performance → Hiệu suất
+
+Trade Statistics → Thống kê giao dịch
+
+Execution Assumptions → Giả định khớp lệnh
+
+Data Quality → Chất lượng dữ liệu
+
+Interpretation → Diễn giải
+
+Historical Simulation → Mô phỏng lịch sử
+
+Insufficient Data → Dữ liệu chưa đủ
+
+Research Only → Chỉ dùng cho mục đích nghiên cứu
+
+---
+
+# 8. Error Messages
+
+Human-readable errors must be Vietnamese.
+
+Example:
+
+Bad:
+
+"Failed to load positions."
+
+Good:
+
+"Không thể tải danh sách vị thế."
+
+Bad:
+
+"No backtest reports found."
+
+Good:
+
+"Chưa có báo cáo Backtest nào."
+
+Bad:
+
+"Invalid date range."
+
+Good:
+
+"Khoảng thời gian không hợp lệ."
+
+Technical error details may remain in English when they are intended for developers/logging.
+
+---
+
+# 9. Logs
+
+Separate:
+
+## Operator-facing logs
+
+Vietnamese.
+
+Example:
+
+"Đã kết nối thành công với MT5."
+
+"Không tìm thấy dữ liệu XAUUSD M15."
+
+## Developer/debug logs
+
+Technical English is allowed.
+
+Example:
+
+"Failed to initialize MT5 client"
+
+Do not force Vietnamese into stack traces, exception names, library errors, or technical diagnostics.
+
+---
+
+# 10. Documentation
+
+Human-readable project documentation should be written in Vietnamese by default.
+
+This includes:
+
+docs/
+
+and:
+
+trading-engine/docs/
+
+Technical identifiers, code snippets, API fields, commands, configuration keys, and library names remain unchanged.
+
+English terminology may be retained when it is the standard technical term and translating it would reduce clarity.
+
+Example:
+
+"Backtest sử dụng dữ liệu XAUUSD M15."
+
+is preferred over forcing an unnatural translation of "Backtest".
+
+---
+
+# 11. Code Comments
+
+Prefer Vietnamese for explanatory comments written for project maintainers.
+
+Example:
+
+Good:
+
+// Không kiểm tra SL/TP trên candle vào lệnh để tránh sai lệch backtest.
+
+Avoid unnecessary comments.
+
+Do not translate:
+
+* third-party comments
+* generated code
+* library code
+* copied protocol specifications
+
+---
+
+# 12. SEO / Metadata
+
+For the Dashboard, use Vietnamese for:
+
+* page titles
+* descriptions
+* metadata
+* accessible labels
+* aria-label
+* tooltips
+
+Example:
+
+title:
+"Bảng điều khiển giao dịch"
+
+description:
+"Theo dõi trạng thái Bot, vị thế, rủi ro và hiệu suất Backtest."
+
+---
+
+# 13. Accessibility
+
+Accessibility text must also be Vietnamese.
+
+Examples:
+
+"Đóng menu"
+
+"Mở bộ lọc"
+
+"Đang tải dữ liệu"
+
+"Biểu đồ vốn theo thời gian"
+
+"Không có vị thế đang mở"
+
+Do not leave English accessibility labels unless they are technical identifiers.
+
+---
+
+# 14. Mock Data
+
+Mock data intended for UI display must use Vietnamese text.
+
+Example:
+
+Good:
+
+{
+exitReasonLabel: "Chốt lời"
+}
+
+Technical value may remain:
+
+{
+exitReason: "TAKE_PROFIT"
+}
+
+Keep domain values stable.
+
+Translate only presentation labels.
+
+---
+
+# 15. Separation of Technical Value and Display Label
+
+Prefer this pattern:
+
+const STATUS_LABELS = {
+RUNNING: "Đang chạy",
+STOPPED: "Đã dừng",
+ERROR: "Lỗi",
+DISCONNECTED: "Mất kết nối",
+}
+
+Do NOT change:
+
+RUNNING
+
+to:
+
+DANG_CHAY
+
+The internal value remains English/technical.
+
+Only the presentation layer translates it.
+
+---
+
+# 16. No Mixed-Language UI
+
+Avoid unnecessary mixed-language UI.
+
+Bad:
+
+"Open Positions"
+
+"Today PnL"
+
+"Risk Limit"
+
+Good:
+
+"Vị thế đang mở"
+
+"PnL hôm nay"
+
+"Giới hạn rủi ro"
+
+Technical trading terms that are commonly used in Vietnamese may remain:
+
+* PnL
+* Backtest
+* EMA
+* RSI
+* ATR
+* MT5
+* XAUUSD
+* Spread
+* Swap
+* Slippage
+
+---
+
+# 17. Existing Code
+
+Before modifying existing UI text:
+
+1. Search the entire dashboard for user-facing English strings.
+2. Translate them into Vietnamese.
+3. Preserve technical identifiers.
+4. Preserve API/domain values.
+5. Preserve route paths.
+6. Preserve CLI commands.
+7. Preserve environment variable names.
+
+Do not perform a blind global replacement.
+
+Review each occurrence based on context.
+
+---
+
+# 18. Future Internationalization
+
+Do not implement a full i18n system in this phase unless the existing project already has one.
+
+However, structure presentation labels so that introducing i18n later is straightforward.
+
+Avoid scattering duplicated user-facing strings across many components.
+
+Where appropriate, centralize:
+
+* status labels
+* trading direction labels
+* exit reason labels
+* navigation labels
+* common UI labels
+
+---
+
+# 19. Source Code Language
+
+Source code itself may remain English.
+
+Examples:
+
+Keep:
+
+getBacktestReports()
+formatCurrency()
+BacktestSummary
+RiskCard
+PositionTable
+
+Do NOT translate code identifiers into Vietnamese.
+
+---
+
+# 20. Final Rule
+
+Vietnamese is the default language for humans.
+
+English is allowed and preferred for:
+
+* code
+* identifiers
+* protocols
+* APIs
+* technical values
+* library names
+* market symbols
+* standard technical terminology
+* developer diagnostics
+
+The rule can be summarized as:
+
+HUMAN-FACING CONTENT → VIETNAMESE
+
+TECHNICAL IDENTIFIERS → KEEP ORIGINAL
+
+DOMAIN VALUES → KEEP STABLE
+
+PRESENTATION LABELS → VIETNAMESE
