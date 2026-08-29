@@ -1,9 +1,11 @@
 import type { TradingRepository } from "./trading-repository";
 import {
   accountSnapshotSchema,
+  accountSwitchStateSchema,
   backtestReportSchema,
   dashboardOverviewSchema,
   positionSchema,
+  quoteSchema,
   riskSnapshotSchema,
   sessionContextSchema,
   strategySnapshotSchema,
@@ -70,7 +72,19 @@ export class ApiTradingRepository implements TradingRepository {
     return this.client.get(API_V1.settings, systemSettingsSchema);
   }
 
+  getAccountSwitchState() {
+    return this.client.get(API_V1.accounts, accountSwitchStateSchema);
+  }
+
+  setActiveAccount(profile: Parameters<TradingRepository["setActiveAccount"]>[0]) {
+    return this.client.post(API_V1.activeAccount, accountSwitchStateSchema, { profile });
+  }
+
   getSessionContext() {
     return this.client.get(API_V1.status, sessionContextSchema);
+  }
+
+  getQuotes() {
+    return this.client.get(API_V1.quotes, quoteSchema.array());
   }
 }

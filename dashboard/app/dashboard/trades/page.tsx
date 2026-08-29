@@ -51,9 +51,9 @@ export default function TradesPage() {
 
       <section
         aria-label={A11Y.tradeFilters}
-        className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+        className="rounded-xl border border-slate-200 bg-white p-4"
       >
-        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-300">
+        <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-700">
           <Search className="h-4 w-4" aria-hidden />
           {UI.filterJournal}
         </div>

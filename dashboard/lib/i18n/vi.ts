@@ -7,6 +7,7 @@ export const UI = {
   navigationSubtitle: "Giám sát & phân tích",
   menu: "Menu",
   mockData: "Dữ liệu mẫu",
+  liveData: "Dữ liệu API",
   readOnly: "Chỉ đọc",
   retry: "Thử lại",
   loading: "Đang tải...",
@@ -36,7 +37,7 @@ export const UI = {
   winners: "Thắng",
   losers: "Thua",
   showingTrades: (filtered: number, total: number) =>
-    `Hiển thị ${filtered} / ${total} giao dịch · lọc phía client (dữ liệu mẫu)`,
+    `Hiển thị ${filtered} / ${total} giao dịch · lọc phía client`,
   activeStrategy: "Chiến lược đang hoạt động",
   indicatorSnapshot: "Ảnh chụp chỉ báo",
   recentSignals: "Tín hiệu gần đây",
@@ -47,6 +48,12 @@ export const UI = {
   entry: "Giá vào lệnh",
   exit: "Giá thoát lệnh",
   currentPrice: "Giá hiện tại",
+  bid: "Bid",
+  ask: "Ask",
+  last: "Last",
+  spread: "Spread",
+  live: "Realtime",
+  quoteUnavailable: "Không có trên broker",
   volume: "Khối lượng",
   gross: "PnL gộp",
   costs: "Chi phí",
@@ -68,7 +75,30 @@ export const UI = {
   riskWarnCrit: (warn: number, crit: number) => `cảnh báo ${warn}% / nguy hiểm ${crit}%`,
   riskUtilizationAria: (label: string, pct: string) => `Mức sử dụng ${label}: ${pct}%`,
   settingsConfigDisabled:
-    "Thay đổi cấu hình bị vô hiệu hóa trong MVP này. Giá trị phản ánh cài đặt mock engine.",
+    "Thay đổi cấu hình bị vô hiệu hóa trong MVP này. Giá trị phản ánh cấu hình hiện tại của trading engine.",
+} as const;
+
+export const ACCOUNT_SWITCH = {
+  title: "Tài khoản MT5",
+  description:
+    "Chọn tài khoản demo hoặc thật để xem số dư và vị thế. Bot vẫn không được phép đặt lệnh.",
+  demo: "Demo",
+  live: "Thật",
+  demoFull: "Tài khoản demo",
+  liveFull: "Tài khoản thật (chỉ đọc)",
+  switching: "Đang chuyển tài khoản...",
+  confirmTitle: "Chuyển sang tài khoản thật?",
+  confirmBody:
+    "Dashboard sẽ đăng nhập MT5 vào tài khoản thật để xem dữ liệu. Bot không đặt lệnh. Terminal MT5 trên máy cũng sẽ chuyển sang tài khoản này.",
+  confirm: "Chuyển sang tài khoản thật",
+  cancel: "Giữ tài khoản demo",
+  liveNotConfigured:
+    "Chưa cấu hình tài khoản thật. Thêm MT5_LIVE_LOGIN, MT5_LIVE_PASSWORD và MT5_LIVE_SERVER vào file .env của trading-engine, rồi khởi động lại API.",
+  demoNotConfigured: "Chưa cấu hình tài khoản demo.",
+  login: "Login",
+  server: "Server",
+  notConfigured: "Chưa cấu hình",
+  switchFailed: "Không thể chuyển tài khoản.",
 } as const;
 
 export const EMPTY = {
@@ -92,6 +122,7 @@ export const SETTINGS = {
     market: "Thị trường",
     strategy: "Chiến lược",
     risk: "Rủi ro",
+    account: "Tài khoản MT5",
   },
   labels: {
     tradingMode: "Chế độ giao dịch",
@@ -108,6 +139,7 @@ export const SETTINGS = {
 
 export const SECTION_LABELS = {
   overview: "tổng quan",
+  quotes: "giá thị trường",
   positions: "vị thế",
   trades: "giao dịch",
   strategy: "chiến lược",
@@ -205,6 +237,7 @@ export const METRICS = {
   botStatus: "Trạng thái Bot",
   connectionStatus: "Trạng thái kết nối",
   openPositions: "Vị thế đang mở",
+  liveQuotes: "Giá thị trường",
   recentTrades: "Giao dịch gần đây",
   currentSignal: "Tín hiệu hiện tại",
   netProfit: "Lợi nhuận ròng",
@@ -239,6 +272,9 @@ export const A11Y = {
   drawdownChart: "Biểu đồ Drawdown theo thời gian",
   monthlyPnlChart: "Biểu đồ PnL theo tháng",
   rDistributionChart: "Biểu đồ phân phối hệ số R",
+  liveQuotes: "Bảng giá thị trường realtime",
+  accountSwitch: "Chuyển tài khoản demo hoặc thật",
+  closeAccountConfirm: "Đóng hộp thoại xác nhận chuyển tài khoản",
 } as const;
 
 export const formatExitReason = (reason: keyof typeof EXIT_REASON_LABELS): string =>

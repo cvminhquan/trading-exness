@@ -43,8 +43,8 @@ export const RiskCard = ({ limit }: RiskCardProps) => {
   return (
     <Card
       className={cn(
-        level === "critical" && "border-rose-900/70",
-        level === "warning" && "border-amber-900/60",
+        level === "critical" && "border-rose-300",
+        level === "warning" && "border-amber-300",
       )}
     >
       <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
@@ -56,7 +56,7 @@ export const RiskCard = ({ limit }: RiskCardProps) => {
       <CardContent className="space-y-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-slate-500">{UI.currentLimit}</p>
-          <p className="mt-1 text-xl font-semibold tabular-nums text-slate-50">
+          <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
             {formatLimitValue(limit, limit.currentValue)}
             <span className="mx-2 text-slate-600">/</span>
             {formatLimitValue(limit, limit.configuredLimit)}
@@ -70,7 +70,7 @@ export const RiskCard = ({ limit }: RiskCardProps) => {
               {formatNumber(usagePct, 0)}% · {UI.riskWarnCrit(RISK_THRESHOLDS.normalMax, RISK_THRESHOLDS.warningMax)}
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
             <div
               className={cn(
                 "h-full rounded-full transition-all",

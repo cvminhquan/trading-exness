@@ -21,7 +21,7 @@ export const BacktestRunSelector = ({
   onSelect,
 }: BacktestRunSelectorProps) => (
   <section aria-label={A11Y.backtestRuns}>
-    <h3 className="mb-3 text-sm font-medium text-slate-300">Các lần Backtest</h3>
+    <h3 className="mb-3 text-sm font-medium text-slate-700">Các lần Backtest</h3>
     <div className="flex flex-col gap-2">
       {runs.map((run) => {
         const isSelected = run.id === selectedId;
@@ -34,12 +34,12 @@ export const BacktestRunSelector = ({
             className={cn(
               "rounded-lg border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500",
               isSelected
-                ? "border-amber-700/60 bg-amber-950/25"
-                : "border-slate-800 bg-slate-900/40 hover:border-slate-700",
+                ? "border-amber-300 bg-amber-50"
+                : "border-slate-200 bg-slate-50 hover:border-slate-300",
             )}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-medium text-slate-100">
+              <span className="font-medium text-slate-900">
                 {run.strategy} · {run.symbol} {run.timeframe}
               </span>
               <span className="text-xs uppercase text-slate-500">
@@ -53,7 +53,7 @@ export const BacktestRunSelector = ({
               · {formatDateTime(run.generatedAt)}
             </p>
             {run.netProfit !== null ? (
-              <p className="mt-1 text-sm tabular-nums text-slate-400">
+              <p className="mt-1 text-sm tabular-nums text-slate-600">
                 {formatSignedCurrency(run.netProfit)}
                 {run.returnPct !== null ? ` · ${formatPercent(run.returnPct)}` : ""}
                 {run.maxDrawdownPct !== null

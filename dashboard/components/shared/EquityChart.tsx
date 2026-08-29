@@ -55,7 +55,7 @@ export const EquityChart = ({
   }
 
   return (
-    <Card className={variant === "backtest" ? "border-amber-900/30 bg-amber-950/10" : undefined}>
+    <Card className={variant === "backtest" ? "border-amber-200 bg-amber-50" : undefined}>
       <CardHeader className="flex flex-row items-start justify-between gap-4">
         <div>
           <CardTitle>{title}</CardTitle>
@@ -71,7 +71,7 @@ export const EquityChart = ({
         <div className="h-72 w-full" role="img" aria-label={A11Y.equityChart}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
-              <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
+              <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
               <XAxis
                 dataKey="timestamp"
                 tickFormatter={(v: string) => formatDateTime(v).split(",")[0] ?? v}
@@ -86,7 +86,7 @@ export const EquityChart = ({
                 width={56}
               />
               <Tooltip
-                contentStyle={{ background: "#0f172a", border: "1px solid #1e293b" }}
+                contentStyle={{ background: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}
                 labelFormatter={(label) => formatDateTime(String(label))}
                 formatter={(value) => {
                   const equity = Number(value);
@@ -108,7 +108,7 @@ export const EquityChart = ({
               <Line
                 type="monotone"
                 dataKey="equity"
-                stroke={variant === "backtest" ? "#fbbf24" : "#38bdf8"}
+                stroke={variant === "backtest" ? "#d97706" : "#0284c7"}
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={data.length < 500}

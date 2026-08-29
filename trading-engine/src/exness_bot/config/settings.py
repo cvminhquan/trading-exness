@@ -6,6 +6,8 @@ from functools import lru_cache
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from exness_bot.config.account_profiles import AccountProfile, Mt5AccountCredentials
+
 
 class TradingMode(StrEnum):
     """Trading environment mode."""
@@ -55,6 +57,16 @@ class Settings(BaseSettings):
     mt5_path: str | None = Field(default=None, alias="MT5_PATH")
     mt5_timeout: int = Field(default=30, alias="MT5_TIMEOUT", ge=5, le=120)
     mt5_symbol: str | None = Field(default=None, alias="MT5_SYMBOL")
+    mt5_demo_login: int | None = Field(default=None, alias="MT5_DEMO_LOGIN")
+    mt5_demo_password: str = Field(default="", alias="MT5_DEMO_PASSWORD")
+    mt5_demo_server: str = Field(default="", alias="MT5_DEMO_SERVER")
+    mt5_live_login: int | None = Field(default=None, alias="MT5_LIVE_LOGIN")
+    mt5_live_password: str = Field(default="", alias="MT5_LIVE_PASSWORD")
+    mt5_live_server: str = Field(default="", alias="MT5_LIVE_SERVER")
+    mt5_active_account: AccountProfile = Field(
+        default=AccountProfile.DEMO,
+        alias="MT5_ACTIVE_ACCOUNT",
+    )
 
     # --- Runtime data source (Phase 10.6) ---
     data_source: DataSource = Field(default=DataSource.MOCK, alias="DATA_SOURCE")
@@ -62,6 +74,10 @@ class Settings(BaseSettings):
     # --- Trading scope ---
     symbol: str = Field(default="XAUUSD", alias="SYMBOL")
     timeframe: str = Field(default="M15", alias="TIMEFRAME")
+    watchlist_symbols: str = Field(
+        default="XAUUSD,EURUSD,GBPUSD,USDJPY,XAGUSD,BTCUSD,ETHUSD",
+        alias="WATCHLIST_SYMBOLS",
+    )
 
     # --- Risk ---
     risk_per_trade_pct: float = Field(default=0.5, alias="RISK_PER_TRADE_PCT", gt=0, le=5)
@@ -117,6 +133,16 @@ class Settings(BaseSettings):
             return value.lower()
         return value
 
+    @field_validator("mt5_active_account", mode="before")
+    @classmethod
+    def parse_mt5_active_account(cls, value: object) -> object:
+        if isinstance(value, str):
+            lowered = value.lower()
+            if lowered in {AccountProfile.DEMO.value, AccountProfile.LIVE.value}:
+                return lowered
+            return AccountProfile.DEMO.value
+        return value
+
     @model_validator(mode="after")
     def validate_data_source_mt5(self) -> "Settings":
         if self.data_source == DataSource.MT5:
@@ -157,6 +183,48 @@ class Settings(BaseSettings):
     def resolved_symbol(self) -> str:
         """Canonical symbol exposed to Dashboard."""
         return self.symbol
+
+    def demo_credentials(self) -> Mt5AccountCredentials:
+        login = self.mt5_demo_login if self.mt5_demo_login is not None else self.mt5_login
+        password = self.mt5_demo_password or self.mt5_password
+        server = self.mt5_demo_server or self.mt5_server
+        return Mt5AccountCredentials(login=login, password=password, server=server)
+
+    def live_credentials(self) -> Mt5AccountCredentials:
+        return Mt5AccountCredentials(
+            login=self.mt5_live_login,
+            password=self.mt5_live_password,
+            server=self.mt5_live_server,
+        )
+
+    def credentials_for(self, profile: AccountProfile) -> Mt5AccountCredentials:
+        if profile == AccountProfile.LIVE:
+            return self.live_credentials()
+        return self.demo_credentials()
+
+    @property
+    def has_demo_credentials(self) -> bool:
+        return self.demo_credentials().configured
+
+    @property
+    def has_live_credentials(self) -> bool:
+        return self.live_credentials().configured
+
+    @property
+    def watchlist_symbol_list(self) -> list[str]:
+        """Canonical symbols for the live quotes watchlist."""
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for raw in self.watchlist_symbols.split(","):
+            symbol = raw.strip().upper()
+            if not symbol or symbol in seen:
+                continue
+            seen.add(symbol)
+            ordered.append(symbol)
+        primary = self.symbol.strip().upper()
+        if primary and primary not in seen:
+            ordered.insert(0, primary)
+        return ordered or [self.symbol]
 
 
 @lru_cache

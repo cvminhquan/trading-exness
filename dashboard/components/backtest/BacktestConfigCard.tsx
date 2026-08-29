@@ -28,9 +28,9 @@ export const BacktestConfigCard = ({ execution, strategy }: BacktestConfigCardPr
           ["Khối lượng vị thế tối đa", formatVolume(execution.maxPositionLots)],
           ["Số nến khởi động", String(execution.warmupBars)],
         ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-lg border border-slate-800 p-3">
+          <div key={String(label)} className="rounded-lg border border-slate-200 p-3">
             <dt className="text-xs uppercase text-slate-500">{label}</dt>
-            <dd className="mt-1 text-sm font-medium tabular-nums text-slate-100">{value}</dd>
+            <dd className="mt-1 text-sm font-medium tabular-nums text-slate-900">{value}</dd>
           </div>
         ))}
       </dl>

@@ -53,7 +53,7 @@ export default function StrategyPage() {
               <CardHeader className="flex flex-row items-start justify-between gap-4">
                 <div>
                   <CardTitle>{data.name}</CardTitle>
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-slate-600">
                     {data.symbol} · {data.timeframe}
                   </p>
                 </div>
@@ -83,7 +83,7 @@ export default function StrategyPage() {
                   {INDICATOR_DEFS.map((ind) => (
                     <div key={ind.key}>
                       <dt className="text-xs uppercase text-slate-500">{ind.label}</dt>
-                      <dd className="mt-1 tabular-nums text-lg font-medium text-slate-100">
+                      <dd className="mt-1 tabular-nums text-lg font-medium text-slate-900">
                         {formatPrice(data.currentSignal.indicators[ind.key])}
                       </dd>
                     </div>
@@ -114,7 +114,7 @@ export default function StrategyPage() {
                           <DirectionIndicator direction={signal.action} />
                         </TableCell>
                         <TableCell>{signal.direction}</TableCell>
-                        <TableCell className="max-w-xl text-slate-400">{signal.summary}</TableCell>
+                        <TableCell className="max-w-xl text-slate-600">{signal.summary}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

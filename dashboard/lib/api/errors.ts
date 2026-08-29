@@ -44,6 +44,10 @@ export const KNOWN_API_ERROR_CODES: Record<string, string> = {
   NETWORK_ERROR: "Không thể kết nối tới API.",
   TIMEOUT: "Yêu cầu API quá thời gian chờ.",
   PARSE_ERROR: "Không thể đọc phản hồi từ API.",
+  LIVE_ACCOUNT_NOT_CONFIGURED:
+    "Chưa cấu hình tài khoản thật. Thêm MT5_LIVE_LOGIN, MT5_LIVE_PASSWORD và MT5_LIVE_SERVER vào .env của trading-engine.",
+  DEMO_ACCOUNT_NOT_CONFIGURED: "Chưa cấu hình tài khoản demo.",
+  ACCOUNT_SWITCH_FAILED: "Không thể chuyển tài khoản MT5.",
 };
 
 export const resolveApiErrorMessage = (code: string, fallback: string): string =>

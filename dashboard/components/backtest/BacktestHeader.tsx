@@ -17,14 +17,14 @@ type BacktestHeaderProps = {
 };
 
 export const BacktestHeader = ({ report }: BacktestHeaderProps) => (
-  <header className="space-y-4 rounded-xl border border-amber-900/30 bg-amber-950/10 p-5">
+  <header className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-5">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-400/90">
+        <p className="text-xs font-medium uppercase tracking-[0.14em] text-amber-700">
           {UI.historicalSimulation}
         </p>
-        <h2 className="mt-1 text-2xl font-semibold text-slate-50">{NAV.backtest.label}</h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <h2 className="mt-1 text-2xl font-semibold text-slate-900">{NAV.backtest.label}</h2>
+        <p className="mt-1 text-sm text-slate-600">
           Tạo lúc {formatDateTime(report.generatedAt)}
         </p>
       </div>
@@ -44,7 +44,7 @@ export const BacktestHeader = ({ report }: BacktestHeaderProps) => (
       ].map(([label, value]) => (
         <div key={String(label)}>
           <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
-          <dd className="mt-1 font-medium tabular-nums text-slate-100">{value}</dd>
+          <dd className="mt-1 font-medium tabular-nums text-slate-900">{value}</dd>
         </div>
       ))}
     </dl>

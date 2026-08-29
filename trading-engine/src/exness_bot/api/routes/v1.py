@@ -10,9 +10,12 @@ from exness_bot.api.dependencies import get_read_service
 from exness_bot.api.schemas.common import DataEnvelope, PaginatedEnvelope
 from exness_bot.api.schemas.dashboard import (
     AccountSnapshotDTO,
+    AccountSwitchStateDTO,
+    ActivateAccountRequest,
     BacktestReportDTO,
     DashboardOverviewDTO,
     PositionDTO,
+    QuoteDTO,
     RiskSnapshotDTO,
     SessionContextDTO,
     StrategySnapshotDTO,
@@ -64,6 +67,25 @@ def get_account(service: Annotated[ReadService, Depends(get_read_service)]) -> d
 )
 def get_overview(service: Annotated[ReadService, Depends(get_read_service)]) -> dict[str, object]:
     return _envelope(service.get_dashboard_overview().model_dump(by_alias=True))
+
+
+@router.get(
+    "/quotes",
+    summary="Giá thị trường realtime",
+    description="Tick bid/ask cho watchlist. Chiến lược V1 vẫn chỉ giao dịch SYMBOL đã cấu hình.",
+    response_model=DataEnvelope[list[QuoteDTO]],
+    response_model_by_alias=True,
+)
+def get_quotes(
+    service: Annotated[ReadService, Depends(get_read_service)],
+    symbols: Annotated[
+        str | None,
+        Query(description="Danh sách symbol cách nhau bởi dấu phẩy. Mặc định dùng WATCHLIST_SYMBOLS."),
+    ] = None,
+) -> dict[str, object]:
+    requested = [item.strip() for item in symbols.split(",")] if symbols else None
+    quotes = service.get_quotes(requested)
+    return _envelope([item.model_dump(by_alias=True) for item in quotes])
 
 
 @router.get(
@@ -142,6 +164,34 @@ def get_settings_route(
     service: Annotated[ReadService, Depends(get_read_service)],
 ) -> dict[str, object]:
     return _envelope(service.get_system_settings().model_dump(by_alias=True))
+
+
+@router.get(
+    "/accounts",
+    summary="Danh sách tài khoản MT5 demo / thật",
+    description="Không trả về mật khẩu. Chuyển tài khoản không bật đặt lệnh live.",
+    response_model=DataEnvelope[AccountSwitchStateDTO],
+    response_model_by_alias=True,
+)
+def get_accounts(service: Annotated[ReadService, Depends(get_read_service)]) -> dict[str, object]:
+    return _envelope(service.get_account_switch_state().model_dump(by_alias=True))
+
+
+@router.post(
+    "/accounts/active",
+    summary="Chuyển tài khoản MT5 đang xem",
+    description=(
+        "Đăng nhập lại MT5 với profile demo hoặc live. "
+        "Không thay đổi TRADING_MODE và không bật ALLOW_LIVE_TRADING."
+    ),
+    response_model=DataEnvelope[AccountSwitchStateDTO],
+    response_model_by_alias=True,
+)
+def set_active_account(
+    body: ActivateAccountRequest,
+    service: Annotated[ReadService, Depends(get_read_service)],
+) -> dict[str, object]:
+    return _envelope(service.set_active_account(body.profile).model_dump(by_alias=True))
 
 
 @router.get(

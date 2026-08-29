@@ -16,6 +16,17 @@ from exness_bot.data.models import (
 from exness_bot.domain.models import ClosedTrade, Tick
 
 
+_MOCK_LAST: dict[str, float] = {
+    "XAUUSD": 4456.40,
+    "XAGUSD": 38.25,
+    "EURUSD": 1.16820,
+    "GBPUSD": 1.34210,
+    "USDJPY": 147.852,
+    "BTCUSD": 108450.0,
+    "ETHUSD": 4280.0,
+}
+
+
 class MockTradingDataProvider:
     """In-memory mock data — no MT5 required."""
 
@@ -43,14 +54,17 @@ class MockTradingDataProvider:
         )
 
     def get_tick(self, symbol: str | None = None) -> Tick | None:
-        target = symbol or self._settings.symbol
-        positions = mock_positions()
-        price = positions[0].current_price if positions else 2350.0
+        target = (symbol or self._settings.symbol).strip().upper()
+        last = _MOCK_LAST.get(target)
+        if last is None:
+            positions = mock_positions()
+            last = positions[0].current_price if positions else 2350.0
+        spread = max(last * 0.00008, 0.0001 if last < 10 else 0.02)
         return Tick(
             symbol=target,
-            bid=round(price - 0.1, 2),
-            ask=round(price + 0.1, 2),
-            last=price,
+            bid=round(last - spread / 2, 8),
+            ask=round(last + spread / 2, 8),
+            last=last,
             volume=100.0,
             timestamp=datetime.now(tz=UTC),
         )

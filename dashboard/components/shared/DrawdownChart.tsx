@@ -50,7 +50,7 @@ export const DrawdownChart = ({
   }
 
   return (
-    <Card className={variant === "backtest" ? "border-amber-900/30 bg-amber-950/10" : undefined}>
+    <Card className={variant === "backtest" ? "border-amber-200 bg-amber-50" : undefined}>
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {stats ? (
@@ -63,7 +63,7 @@ export const DrawdownChart = ({
         <div className="h-64 w-full" role="img" aria-label={A11Y.drawdownChart}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data}>
-              <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
+              <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
               <XAxis
                 dataKey="timestamp"
                 tickFormatter={(v: string) => formatDateTime(v).split(",")[0] ?? v}
@@ -78,16 +78,16 @@ export const DrawdownChart = ({
                 width={48}
               />
               <Tooltip
-                contentStyle={{ background: "#0f172a", border: "1px solid #1e293b" }}
+                contentStyle={{ background: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}
                 labelFormatter={(label) => formatDateTime(String(label))}
                 formatter={(value) => [formatPercent(Number(value)), METRICS.drawdown]}
               />
               <Area
                 type="monotone"
                 dataKey="equity"
-                stroke="#fb7185"
-                fill="#881337"
-                fillOpacity={0.35}
+                stroke="#e11d48"
+                fill="#fecdd3"
+                fillOpacity={0.55}
                 isAnimationActive={data.length < 500}
               />
             </AreaChart>

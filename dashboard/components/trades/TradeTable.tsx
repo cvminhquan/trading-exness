@@ -33,7 +33,7 @@ export const TradeTable = ({ trades, compact = false, isLoading = false }: Trade
       <CardContent className={compact ? "p-0 pt-0" : undefined}>
         <div className="max-h-[480px] overflow-auto">
           <Table>
-            <TableHeader className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur">
+            <TableHeader className="sticky top-0 z-10 bg-white/95 backdrop-blur">
               <TableRow>
                 <TableHead>{UI.time}</TableHead>
                 <TableHead>{UI.symbol}</TableHead>
@@ -52,7 +52,7 @@ export const TradeTable = ({ trades, compact = false, isLoading = false }: Trade
             <TableBody>
               {trades.map((trade) => (
                 <TableRow key={trade.id}>
-                  <TableCell className="whitespace-nowrap text-slate-300">
+                  <TableCell className="whitespace-nowrap text-slate-700">
                     {formatDateTime(trade.closedAt)}
                   </TableCell>
                   <TableCell className="font-medium">{trade.symbol}</TableCell>
@@ -86,7 +86,7 @@ export const TradeTable = ({ trades, compact = false, isLoading = false }: Trade
                     </TableCell>
                   ) : null}
                   {!compact ? (
-                    <TableCell className="hidden text-right text-slate-400 xl:table-cell">
+                    <TableCell className="hidden text-right text-slate-600 xl:table-cell">
                       {formatExitReason(trade.exitReason)}
                     </TableCell>
                   ) : null}

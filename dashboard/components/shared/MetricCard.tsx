@@ -27,8 +27,8 @@ export const MetricCard = ({
 }: MetricCardProps) => (
   <Card
     className={cn(
-      status === "warning" && "border-amber-900/60",
-      status === "critical" && "border-rose-900/60",
+      status === "warning" && "border-amber-300",
+      status === "critical" && "border-rose-300",
       className,
     )}
   >
@@ -44,9 +44,9 @@ export const MetricCard = ({
       <div className="flex items-baseline gap-2">
         <p
           className={cn(
-            "text-2xl font-semibold tabular-nums tracking-tight text-slate-50",
-            trend === "up" && "text-emerald-400",
-            trend === "down" && "text-rose-400",
+            "text-2xl font-semibold tabular-nums tracking-tight text-slate-900",
+            trend === "up" && "text-emerald-600",
+            trend === "down" && "text-rose-600",
             valueClassName,
           )}
         >

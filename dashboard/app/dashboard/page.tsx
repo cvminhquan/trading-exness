@@ -7,15 +7,17 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { QueryState, EmptyState } from "@/components/shared/States";
 import { OverviewSkeleton } from "@/components/shared/Skeletons";
 import { SignalCard } from "@/components/strategy/SignalCard";
+import { WatchlistTable } from "@/components/market/WatchlistTable";
 import { PositionTable } from "@/components/positions/PositionTable";
 import { TradeTable } from "@/components/trades/TradeTable";
 import { getRiskLevel } from "@/lib/constants/risk";
 import { formatCurrency, formatPercent, formatSignedCurrency } from "@/lib/format";
 import { EMPTY, METRICS, NAV, SECTION_LABELS, UI } from "@/lib/i18n/vi";
-import { useDashboardOverview } from "@/queries/use-trading-queries";
+import { useDashboardOverview, useQuotes } from "@/queries/use-trading-queries";
 
 export default function DashboardPage() {
   const { data, isLoading, isError, error, refetch } = useDashboardOverview();
+  const quotesQuery = useQuotes();
 
   const unrealizedPnl = data?.positions.reduce((sum, p) => sum + p.unrealizedPnl, 0) ?? 0;
   const drawdownUsage = data ? (data.account.drawdownPct / 5) * 100 : 0;
@@ -27,6 +29,14 @@ export default function DashboardPage() {
         title={NAV.overview.label}
         description={NAV.overview.description}
         badge={data ? <BotStatusIndicator status={data.botStatus} /> : undefined}
+      />
+
+      <WatchlistTable
+        quotes={quotesQuery.data ?? []}
+        isLoading={quotesQuery.isLoading}
+        isError={quotesQuery.isError}
+        errorMessage={quotesQuery.error?.message}
+        onRetry={() => void quotesQuery.refetch()}
       />
 
       <QueryState

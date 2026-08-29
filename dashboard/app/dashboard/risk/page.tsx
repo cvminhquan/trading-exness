@@ -50,7 +50,7 @@ export default function RiskPage() {
 
             {groupLimits(data.limits).map((group) => (
               <section key={group.category} aria-label={group.label} className="space-y-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
                   {group.label}
                 </h2>
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

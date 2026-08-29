@@ -19,7 +19,7 @@ export type ApiErrorEnvelope = z.infer<typeof apiErrorEnvelopeSchema>;
 export const createDataEnvelopeSchema = <T extends z.ZodType>(dataSchema: T) =>
   z.object({
     data: dataSchema,
-    meta: z.record(z.string(), z.unknown()).optional(),
+    meta: z.record(z.string(), z.unknown()).nullish(),
   });
 
 export const createPaginatedEnvelopeSchema = <T extends z.ZodType>(itemSchema: T) =>

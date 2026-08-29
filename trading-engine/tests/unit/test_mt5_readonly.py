@@ -77,3 +77,26 @@ class TestMT5ConnectionManager:
         status = manager.connect()
         assert status.state == ConnectionState.CONNECTED
         assert mock_mt5_module.initialize_calls
+
+    def test_reconnect_after_credential_change(
+        self,
+        mock_mt5_module: MockMT5Module,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr("exness_bot.broker.mt5.connection_manager.sys.platform", "win32")
+        settings = Settings(
+            TRADING_MODE="demo",
+            DATA_SOURCE="mt5",
+            MT5_ENABLED=True,
+            MT5_LOGIN=111,
+            MT5_PASSWORD="demo-password",
+            MT5_SERVER="Exness-MT5Trial",
+        )
+        client = MT5ReadOnlyClient(settings, mt5_module=mock_mt5_module)
+        manager = MT5ConnectionManager(settings, client=client)
+        first = manager.connect()
+        assert first.state == ConnectionState.CONNECTED
+        client.set_credentials(222, "live-password", "Exness-MT5Real")
+        second = manager.reconnect()
+        assert second.state == ConnectionState.CONNECTED
+        assert mock_mt5_module.login_calls[-1] == (222, "live-password", "Exness-MT5Real")

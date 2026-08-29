@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { AccountProfileId } from "@/domain";
 import { tradingRepository } from "@/repositories";
 import { tradingKeys } from "./keys";
 
@@ -16,10 +17,25 @@ export const useAccountSnapshot = () =>
     queryFn: () => tradingRepository.getAccountSnapshot(),
   });
 
+export const useSessionContext = () =>
+  useQuery({
+    queryKey: tradingKeys.session(),
+    queryFn: () => tradingRepository.getSessionContext(),
+  });
+
+export const useQuotes = () =>
+  useQuery({
+    queryKey: tradingKeys.quotes(),
+    queryFn: () => tradingRepository.getQuotes(),
+    refetchInterval: 2_000,
+    staleTime: 1_000,
+  });
+
 export const useDashboardOverview = () =>
   useQuery({
     queryKey: tradingKeys.overview(),
     queryFn: () => tradingRepository.getDashboardOverview(),
+    refetchInterval: 5_000,
   });
 
 export const usePositions = () =>
@@ -68,8 +84,19 @@ export const useSystemSettings = () =>
     queryFn: () => tradingRepository.getSystemSettings(),
   });
 
-export const useSessionContext = () =>
+export const useAccountSwitchState = () =>
   useQuery({
-    queryKey: tradingKeys.session(),
-    queryFn: () => tradingRepository.getSessionContext(),
+    queryKey: tradingKeys.accounts(),
+    queryFn: () => tradingRepository.getAccountSwitchState(),
   });
+
+export const useSetActiveAccount = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (profile: AccountProfileId) => tradingRepository.setActiveAccount(profile),
+    onSuccess: async (data) => {
+      queryClient.setQueryData(tradingKeys.accounts(), data);
+      await queryClient.invalidateQueries({ queryKey: tradingKeys.all });
+    },
+  });
+};

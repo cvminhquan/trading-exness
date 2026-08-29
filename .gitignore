@@ -37,6 +37,7 @@ ENV/
 .env.*.local
 *.pem
 credentials.json
+.mt5_active_account
 
 # Testing (Python)
 .pytest_cache/

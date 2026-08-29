@@ -33,7 +33,7 @@ export const PositionTable = ({ positions, compact = false, isLoading = false }:
       <CardContent className={compact ? "p-0 pt-0" : undefined}>
         <div className="max-h-[420px] overflow-auto">
           <Table>
-            <TableHeader className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur">
+            <TableHeader className="sticky top-0 z-10 bg-white/95 backdrop-blur">
               <TableRow>
                 <TableHead>{UI.symbol}</TableHead>
                 <TableHead>{UI.direction}</TableHead>
@@ -75,7 +75,7 @@ export const PositionTable = ({ positions, compact = false, isLoading = false }:
                       {formatRMultiple(position.rMultiple)}
                     </TableCell>
                   ) : null}
-                  <TableCell className="text-right tabular-nums text-slate-400">
+                  <TableCell className="text-right tabular-nums text-slate-600">
                     {formatDuration(position.openedAt)}
                   </TableCell>
                 </TableRow>

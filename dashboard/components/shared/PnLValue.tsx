@@ -34,9 +34,9 @@ export const PnLValue = ({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 tabular-nums font-medium",
-        sentiment === "profit" && "text-emerald-400",
-        sentiment === "loss" && "text-rose-400",
-        sentiment === "flat" && "text-slate-400",
+        sentiment === "profit" && "text-emerald-600",
+        sentiment === "loss" && "text-rose-600",
+        sentiment === "flat" && "text-slate-600",
         size === "sm" ? "text-sm" : "text-base",
         className,
       )}

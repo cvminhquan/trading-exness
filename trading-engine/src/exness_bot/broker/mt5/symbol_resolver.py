@@ -43,6 +43,22 @@ def find_matching_symbols(client: MT5ReadOnlyClient, query: str) -> list[str]:
     return contains
 
 
+def select_broker_symbol(requested: str, matches: list[str]) -> str | None:
+    """Pick a broker symbol from matches. Prefer exact, then Exness `m` suffix."""
+    if not matches:
+        return None
+    upper = requested.strip().upper()
+    by_upper = {name.upper(): name for name in matches}
+    if upper in by_upper:
+        return by_upper[upper]
+    suffixed = f"{upper}M"
+    if suffixed in by_upper:
+        return by_upper[suffixed]
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
 def resolve_broker_symbol(client: MT5ReadOnlyClient, requested: str) -> str:
     """Resolve canonical symbol to a broker-visible MT5 symbol name."""
     requested = requested.strip()
@@ -55,9 +71,10 @@ def resolve_broker_symbol(client: MT5ReadOnlyClient, requested: str) -> str:
         return requested
 
     matches = find_matching_symbols(client, requested)
-    if len(matches) == 1:
-        client.ensure_symbol_selected(matches[0])
-        return matches[0]
+    selected = select_broker_symbol(requested, matches)
+    if selected is not None:
+        client.ensure_symbol_selected(selected)
+        return selected
 
     raise SymbolResolutionError(requested, matches)
 

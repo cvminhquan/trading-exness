@@ -10,6 +10,7 @@ import type {
   StrategySnapshot,
   SystemSettings,
   Trade,
+  Quote,
 } from "@/domain";
 
 const now = new Date();
@@ -23,6 +24,7 @@ export const mockSession: SessionContext = {
   connectionStatus: "CONNECTED",
   accountLabel: "Demo #12345678",
   botStatus: mockBotStatus,
+  accountProfile: "demo",
 };
 
 export const mockAccount: AccountSnapshot = {
@@ -353,6 +355,16 @@ export const mockDashboardOverview: DashboardOverview = {
   recentTrades: mockTrades.slice(0, 5),
   currentSignal: mockCurrentSignal,
 };
+
+export const mockQuotes: Quote[] = [
+  { symbol: "XAUUSD", bid: 4456.32, ask: 4456.48, last: 4456.40, spread: 0.16, digits: 2, available: true, updatedAt: iso(0) },
+  { symbol: "EURUSD", bid: 1.16814, ask: 1.16826, last: 1.16820, spread: 0.00012, digits: 5, available: true, updatedAt: iso(0) },
+  { symbol: "GBPUSD", bid: 1.34204, ask: 1.34216, last: 1.34210, spread: 0.00012, digits: 5, available: true, updatedAt: iso(0) },
+  { symbol: "USDJPY", bid: 147.845, ask: 147.859, last: 147.852, spread: 0.014, digits: 3, available: true, updatedAt: iso(0) },
+  { symbol: "XAGUSD", bid: 38.24, ask: 38.26, last: 38.25, spread: 0.02, digits: 3, available: true, updatedAt: iso(0) },
+  { symbol: "BTCUSD", bid: 108440, ask: 108460, last: 108450, spread: 20, digits: 2, available: true, updatedAt: iso(0) },
+  { symbol: "ETHUSD", bid: 4279.2, ask: 4280.8, last: 4280.0, spread: 1.6, digits: 2, available: true, updatedAt: iso(0) },
+];
 
 export const simulateDelay = (ms = 350): Promise<void> =>
   new Promise((resolve) => {

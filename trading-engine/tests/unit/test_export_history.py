@@ -121,6 +121,24 @@ class TestSymbolResolver:
         client = MT5Client(default_settings, mt5_module=mock_mt5_module)
         assert resolve_broker_symbol(client, "XAUUSD") == "XAUUSDm"
 
+    def test_prefers_exness_m_suffix(
+        self,
+        default_settings: Settings,
+        mock_mt5_module: MockMT5Module,
+    ) -> None:
+        def symbol_info(symbol: str) -> SimpleNamespace | None:
+            if symbol == "EURUSDm":
+                return SimpleNamespace(name="EURUSDm", visible=True)
+            return None
+
+        mock_mt5_module.symbol_info = symbol_info  # type: ignore[method-assign]
+        mock_mt5_module.symbols_get_value = [
+            SimpleNamespace(name="EURUSDm"),
+            SimpleNamespace(name="EURUSDmicro"),
+        ]
+        client = MT5Client(default_settings, mt5_module=mock_mt5_module)
+        assert resolve_broker_symbol(client, "EURUSD") == "EURUSDm"
+
     def test_invalid_symbol_lists_matches(
         self,
         default_settings: Settings,

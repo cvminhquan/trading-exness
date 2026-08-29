@@ -8,7 +8,7 @@ export const Table = ({ className, ...props }: HTMLAttributes<HTMLTableElement>)
 );
 
 export const TableHeader = ({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) => (
-  <thead className={cn("[&_tr]:border-b [&_tr]:border-slate-800", className)} {...props} />
+  <thead className={cn("[&_tr]:border-b [&_tr]:border-slate-200", className)} {...props} />
 );
 
 export const TableBody = ({ className, ...props }: HTMLAttributes<HTMLTableSectionElement>) => (
@@ -17,7 +17,7 @@ export const TableBody = ({ className, ...props }: HTMLAttributes<HTMLTableSecti
 
 export const TableRow = ({ className, ...props }: HTMLAttributes<HTMLTableRowElement>) => (
   <tr
-    className={cn("border-b border-slate-800/80 transition-colors hover:bg-slate-800/30", className)}
+    className={cn("border-b border-slate-200 transition-colors hover:bg-slate-50", className)}
     {...props}
   />
 );
@@ -25,7 +25,7 @@ export const TableRow = ({ className, ...props }: HTMLAttributes<HTMLTableRowEle
 export const TableHead = ({ className, ...props }: ThHTMLAttributes<HTMLTableCellElement>) => (
   <th
     className={cn(
-      "h-10 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-slate-400",
+      "h-10 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-slate-600",
       className,
     )}
     {...props}
@@ -33,5 +33,5 @@ export const TableHead = ({ className, ...props }: ThHTMLAttributes<HTMLTableCel
 );
 
 export const TableCell = ({ className, ...props }: TdHTMLAttributes<HTMLTableCellElement>) => (
-  <td className={cn("px-3 py-3 align-middle text-slate-200", className)} {...props} />
+  <td className={cn("px-3 py-3 align-middle text-slate-800", className)} {...props} />
 );

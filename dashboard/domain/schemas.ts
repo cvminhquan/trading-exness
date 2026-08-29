@@ -316,8 +316,34 @@ export const sessionContextSchema = z.object({
   connectionStatus: connectionStatusSchema,
   accountLabel: z.string(),
   botStatus: botStatusSchema,
+  accountProfile: z.enum(["demo", "live"]),
 });
 export type SessionContext = z.infer<typeof sessionContextSchema>;
+
+export const accountProfileIdSchema = z.enum(["demo", "live"]);
+export type AccountProfileId = z.infer<typeof accountProfileIdSchema>;
+
+export const accountProfileSchema = z.object({
+  id: accountProfileIdSchema,
+  kind: accountProfileIdSchema,
+  label: z.string(),
+  configured: z.boolean(),
+  login: z.number().nullable(),
+  server: z.string().nullable(),
+  active: z.boolean(),
+});
+export type AccountProfile = z.infer<typeof accountProfileSchema>;
+
+export const accountSwitchStateSchema = z.object({
+  activeProfile: accountProfileIdSchema,
+  tradingMode: z.string(),
+  allowLiveTrading: z.boolean(),
+  readOnly: z.boolean(),
+  liveOrdersEnabled: z.boolean(),
+  profiles: z.array(accountProfileSchema),
+  note: z.string(),
+});
+export type AccountSwitchState = z.infer<typeof accountSwitchStateSchema>;
 
 export const systemSettingsSchema = z.object({
   tradingMode: z.string(),
@@ -341,3 +367,15 @@ export const dashboardOverviewSchema = z.object({
   currentSignal: strategySignalSchema,
 });
 export type DashboardOverview = z.infer<typeof dashboardOverviewSchema>;
+
+export const quoteSchema = z.object({
+  symbol: z.string(),
+  bid: z.number().nullable(),
+  ask: z.number().nullable(),
+  last: z.number().nullable(),
+  spread: z.number().nullable(),
+  digits: z.number().int().nonnegative(),
+  available: z.boolean(),
+  updatedAt: z.string().datetime(),
+});
+export type Quote = z.infer<typeof quoteSchema>;

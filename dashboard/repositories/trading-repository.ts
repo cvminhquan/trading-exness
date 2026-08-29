@@ -1,5 +1,7 @@
 import type {
   AccountSnapshot,
+  AccountProfileId,
+  AccountSwitchState,
   BacktestReport,
   BotStatus,
   DashboardOverview,
@@ -9,6 +11,7 @@ import type {
   StrategySnapshot,
   SystemSettings,
   Trade,
+  Quote,
 } from "@/domain";
 import type { BacktestListParams, TradeListParams } from "@/domain/api/params";
 
@@ -23,5 +26,8 @@ export interface TradingRepository {
   getBacktestReports(params?: BacktestListParams): Promise<BacktestReport[]>;
   getBacktestReport(id: string): Promise<BacktestReport | null>;
   getSystemSettings(): Promise<SystemSettings>;
+  getAccountSwitchState(): Promise<AccountSwitchState>;
+  setActiveAccount(profile: AccountProfileId): Promise<AccountSwitchState>;
   getSessionContext(): Promise<SessionContext>;
+  getQuotes(): Promise<Quote[]>;
 }

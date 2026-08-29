@@ -46,6 +46,11 @@ export const formatPrice = (
   return value.toFixed(digits);
 };
 
+export const formatMarketPrice = (
+  value: number | null | undefined,
+  digits = 5,
+): string => formatPrice(value, digits);
+
 export const formatVolume = (value: number | null | undefined): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
   return `${compactNumberFormatter.format(value)} lots`;

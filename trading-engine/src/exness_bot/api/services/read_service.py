@@ -11,11 +11,13 @@ from exness_bot.api.errors import ApiAppError
 from exness_bot.api.schemas.common import PaginationMeta
 from exness_bot.api.schemas.dashboard import (
     AccountSnapshotDTO,
+    AccountSwitchStateDTO,
     BacktestReportDTO,
     DashboardOverviewDTO,
     EquityPointDTO,
     IndicatorSnapshotDTO,
     PositionDTO,
+    QuoteDTO,
     RiskLimitDTO,
     RiskSnapshotDTO,
     SessionContextDTO,
@@ -25,9 +27,11 @@ from exness_bot.api.schemas.dashboard import (
     SystemSettingsDTO,
     TradeDTO,
 )
+from exness_bot.api.services.account_runtime import AccountRuntime
 from exness_bot.api.services.backtest_loader import load_all_baselines, load_baseline_by_id
 from exness_bot.api.services.backtest_mapper import map_baseline_to_report, to_iso_utc
 from exness_bot.backtest.config import BacktestConfig
+from exness_bot.config.account_profiles import AccountProfile, AccountProfileStore
 from exness_bot.config.settings import Settings, TradingMode
 from exness_bot.data.models import ProviderConnectionStatus, ProviderSnapshot, TradeHistoryQuery
 from exness_bot.data.provider import TradingDataProvider
@@ -36,6 +40,18 @@ from exness_bot.persistence.sqlite_repository import SQLiteTradingRepository, pa
 from exness_bot.risk.models import RiskState
 
 T = TypeVar("T")
+
+
+def _quote_digits(symbol: str, price: float | None) -> int:
+    if symbol.endswith("JPY"):
+        return 3
+    if price is None:
+        return 5
+    if price >= 100:
+        return 2
+    if price >= 10:
+        return 3
+    return 5
 
 
 @dataclass(frozen=True)
@@ -69,12 +85,22 @@ class ReadService:
         *,
         project_root: Path | None = None,
         repository: SQLiteTradingRepository | None = None,
+        account_runtime: AccountRuntime | None = None,
     ) -> None:
         self._settings = settings
         self._provider = data_provider
         self._project_root = project_root
         self._repository = repository
         self._default_equity = BacktestConfig.from_settings(settings).initial_equity
+        if account_runtime is None:
+            self._account_runtime = AccountRuntime(
+                settings,
+                AccountProfileStore(path=None, default=settings.mt5_active_account),
+                data_provider,
+            )
+            self._account_runtime.apply_startup_credentials()
+        else:
+            self._account_runtime = account_runtime
 
     def _now_iso(self) -> str:
         return to_iso_utc(datetime.now(tz=UTC)) or ""
@@ -133,7 +159,7 @@ class ReadService:
             account_label = snapshot.broker_server
 
         connection = snapshot.connection_status.value
-        if connection == "UNAVAILABLE":
+        if connection in {"UNAVAILABLE", "ERROR"}:
             connection = "DISCONNECTED"
 
         return SessionContextDTO(
@@ -141,7 +167,48 @@ class ReadService:
             connection_status=connection,
             account_label=account_label,
             bot_status=self._bot_status(snapshot),
+            account_profile=self._account_runtime.active_profile.value,
         )
+
+    def get_quotes(self, symbols: list[str] | None = None) -> list[QuoteDTO]:
+        requested = symbols or self._settings.watchlist_symbol_list
+        updated_at = self._now_iso()
+        quotes: list[QuoteDTO] = []
+        for raw_symbol in requested:
+            symbol = raw_symbol.strip().upper()
+            if not symbol:
+                continue
+            tick = self._provider.get_tick(symbol)
+            if tick is None or (tick.bid <= 0 and tick.ask <= 0):
+                quotes.append(
+                    QuoteDTO(
+                        symbol=symbol,
+                        bid=None,
+                        ask=None,
+                        last=None,
+                        spread=None,
+                        digits=_quote_digits(symbol, None),
+                        available=False,
+                        updated_at=updated_at,
+                    )
+                )
+                continue
+            bid = tick.bid
+            ask = tick.ask
+            last = tick.last if tick.last > 0 else round((bid + ask) / 2, 8)
+            quotes.append(
+                QuoteDTO(
+                    symbol=symbol,
+                    bid=bid,
+                    ask=ask,
+                    last=tick.last,
+                    spread=round(ask - bid, 8) if ask and bid else None,
+                    digits=_quote_digits(symbol, bid or ask or tick.last),
+                    available=True,
+                    updated_at=to_iso_utc(tick.timestamp) or updated_at,
+                )
+            )
+        return quotes
 
     def _resolve_equity(self, snapshot: ProviderSnapshot) -> float:
         if snapshot.account is not None:
@@ -402,6 +469,21 @@ class ReadService:
             max_drawdown_pct=self._settings.max_drawdown_pct,
             max_open_positions=self._settings.max_open_positions,
         )
+
+    def get_account_switch_state(self) -> AccountSwitchStateDTO:
+        return self._account_runtime.snapshot()
+
+    def set_active_account(self, profile: str) -> AccountSwitchStateDTO:
+        try:
+            parsed = AccountProfile(profile.strip().lower())
+        except ValueError as exc:
+            raise ApiAppError(
+                code="INVALID_PARAMETER",
+                message="Tham số yêu cầu không hợp lệ.",
+                status_code=400,
+                details={"profile": profile},
+            ) from exc
+        return self._account_runtime.switch(parsed)
 
     def get_dashboard_overview(self) -> DashboardOverviewDTO:
         session = self.get_session_context()

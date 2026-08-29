@@ -65,7 +65,7 @@ export const RDistribution = ({ rAnalysis }: RDistributionProps) => {
           ].map(([label, value]) => (
             <div key={String(label)}>
               <dt>{label}</dt>
-              <dd className="font-medium tabular-nums text-slate-300">{value}</dd>
+              <dd className="font-medium tabular-nums text-slate-700">{value}</dd>
             </div>
           ))}
         </dl>
@@ -74,17 +74,17 @@ export const RDistribution = ({ rAnalysis }: RDistributionProps) => {
         <div className="h-56 w-full" role="img" aria-label={A11Y.rDistributionChart}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
-              <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
+              <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
               <XAxis dataKey="bucket" stroke="#64748b" fontSize={11} />
               <YAxis stroke="#64748b" fontSize={11} width={32} />
               <Tooltip
-                contentStyle={{ background: "#0f172a", border: "1px solid #1e293b" }}
+                contentStyle={{ background: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {chartData.map((entry) => (
                   <Cell
                     key={entry.bucket}
-                    fill={entry.bucket.startsWith("+") || entry.bucket.startsWith("0") ? "#34d399" : "#fb7185"}
+                    fill={entry.bucket.startsWith("+") || entry.bucket.startsWith("0") ? "#059669" : "#e11d48"}
                   />
                 ))}
               </Bar>

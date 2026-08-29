@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountSwitcher } from "@/components/layout/AccountSwitcher";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -63,6 +64,8 @@ export default function SettingsPage() {
         }
       />
 
+      <AccountSwitcher variant="card" />
+
       <QueryState
         isLoading={isLoading}
         isError={isError}
@@ -78,7 +81,7 @@ export default function SettingsPage() {
                 <CardTitle>{group.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <dl className="divide-y divide-slate-800">
+                <dl className="divide-y divide-slate-200">
                   {rows
                     .filter((row) => group.keys.includes(row.key))
                     .map((row) => (
@@ -86,8 +89,8 @@ export default function SettingsPage() {
                         key={row.key}
                         className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <dt className="text-sm text-slate-400">{SETTINGS.labels[row.key]}</dt>
-                        <dd className="font-medium tabular-nums text-slate-100">{row.value}</dd>
+                        <dt className="text-sm text-slate-600">{SETTINGS.labels[row.key]}</dt>
+                        <dd className="font-medium tabular-nums text-slate-900">{row.value}</dd>
                       </div>
                     ))}
                 </dl>

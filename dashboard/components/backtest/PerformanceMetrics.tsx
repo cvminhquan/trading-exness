@@ -14,7 +14,7 @@ type PerformanceMetricsProps = {
 
 export const PerformanceMetrics = ({ performance }: PerformanceMetricsProps) => (
   <section aria-label={A11Y.performanceSummary}>
-    <h3 className="mb-3 text-sm font-medium uppercase tracking-wide text-slate-400">
+    <h3 className="mb-3 text-sm font-medium uppercase tracking-wide text-slate-600">
       Tổng quan hiệu suất
     </h3>
     <MetricStrip className="mb-3">
@@ -22,7 +22,7 @@ export const PerformanceMetrics = ({ performance }: PerformanceMetricsProps) => 
         label={METRICS.netProfit}
         value={formatSignedCurrency(performance.netProfit)}
         trend={performance.netProfit >= 0 ? "up" : "down"}
-        className="border-amber-900/20"
+        className="border-amber-200"
         valueClassName="text-3xl"
       />
       <MetricCard
@@ -30,7 +30,7 @@ export const PerformanceMetrics = ({ performance }: PerformanceMetricsProps) => 
         value={formatPercent(performance.returnPct)}
         hint={`Cuối kỳ ${formatCurrency(performance.finalBalance)}`}
         trend={performance.returnPct >= 0 ? "up" : "down"}
-        className="border-amber-900/20"
+        className="border-amber-200"
         valueClassName="text-3xl"
       />
       <MetricCard
@@ -40,7 +40,7 @@ export const PerformanceMetrics = ({ performance }: PerformanceMetricsProps) => 
             ? formatNumber(performance.profitFactor, 2)
             : "—"
         }
-        className="border-amber-900/20"
+        className="border-amber-200"
         valueClassName="text-3xl"
       />
       <MetricCard
@@ -48,7 +48,7 @@ export const PerformanceMetrics = ({ performance }: PerformanceMetricsProps) => 
         value={formatPercent(performance.maxDrawdownPct)}
         hint={formatCurrency(performance.maxDrawdownUsd)}
         trend="down"
-        className="border-amber-900/20"
+        className="border-amber-200"
         valueClassName="text-3xl"
       />
     </MetricStrip>

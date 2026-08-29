@@ -7,7 +7,7 @@ type ExecutionAssumptionsProps = {
 };
 
 export const ExecutionAssumptions = ({ assumptions }: ExecutionAssumptionsProps) => (
-  <Card className="border-amber-900/30">
+  <Card className="border-amber-200">
     <CardHeader>
       <CardTitle>Giả định khớp lệnh</CardTitle>
       <p className="text-sm text-slate-500">
@@ -29,9 +29,9 @@ export const ExecutionAssumptions = ({ assumptions }: ExecutionAssumptionsProps)
           ["Quy tắc thoát cùng nến", assumptions.sameBarExitRule],
           ["Hết dữ liệu", assumptions.endOfData],
         ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-lg border border-slate-800 p-3">
+          <div key={String(label)} className="rounded-lg border border-slate-200 p-3">
             <dt className="text-xs uppercase text-slate-500">{label}</dt>
-            <dd className="mt-1 text-sm leading-relaxed text-slate-200">{value}</dd>
+            <dd className="mt-1 text-sm leading-relaxed text-slate-800">{value}</dd>
           </div>
         ))}
       </dl>

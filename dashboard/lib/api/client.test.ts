@@ -97,6 +97,8 @@ describe("repository interface compatibility", () => {
     expect(typeof repo.getBacktestReports).toBe("function");
     expect(typeof repo.getBacktestReport).toBe("function");
     expect(typeof repo.getSystemSettings).toBe("function");
+    expect(typeof repo.getAccountSwitchState).toBe("function");
+    expect(typeof repo.setActiveAccount).toBe("function");
     expect(typeof repo.getSessionContext).toBe("function");
   };
 

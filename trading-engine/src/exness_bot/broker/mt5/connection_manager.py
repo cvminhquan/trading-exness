@@ -140,6 +140,11 @@ class MT5ConnectionManager:
                 message="Đã ngắt kết nối MT5.",
             )
 
+    def reconnect(self) -> MT5ConnectionStatus:
+        """Force a fresh login, used when switching demo / live accounts."""
+        self.disconnect()
+        return self.connect()
+
     def _safe_shutdown(self) -> None:
         try:
             self._client.shutdown()

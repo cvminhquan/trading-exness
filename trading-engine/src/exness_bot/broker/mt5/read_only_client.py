@@ -94,6 +94,7 @@ class MT5ReadOnlyClient:
         self._mt5 = mt5_module
         self._initialized = False
         self._logged_in = False
+        self._login_override: tuple[int, str, str] | None = None
 
     @property
     def mt5(self) -> MT5ReadOnlyModule:
@@ -121,10 +122,18 @@ class MT5ReadOnlyClient:
         self._initialized = True
         logger.info("mt5_readonly_initialized", path=path)
 
+    def set_credentials(self, login: int, password: str, server: str) -> None:
+        """Override login used on the next connect. Does not persist secrets."""
+        self._login_override = (login, password, server)
+        self._logged_in = False
+
     def login(self) -> None:
-        login = self._settings.mt5_login
-        password = self._settings.mt5_password
-        server = self._settings.mt5_server
+        if self._login_override is not None:
+            login, password, server = self._login_override
+        else:
+            login = self._settings.mt5_login
+            password = self._settings.mt5_password
+            server = self._settings.mt5_server
 
         if login is None or not password:
             msg = "MT5_LOGIN and MT5_PASSWORD must be configured"

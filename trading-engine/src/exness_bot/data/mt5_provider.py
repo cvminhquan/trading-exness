@@ -47,6 +47,7 @@ class MT5TradingDataProvider:
         self._connection = connection_manager or MT5ConnectionManager(settings)
         self._canonical_symbol = settings.resolved_symbol
         self._broker_symbol: str | None = None
+        self._symbol_cache: dict[str, str] = {}
         self._last_snapshot_at: datetime | None = None
 
     @property
@@ -56,21 +57,39 @@ class MT5TradingDataProvider:
     def requires_live_broker(self) -> bool:
         return True
 
+    def apply_account_credentials(self, login: int, password: str, server: str) -> None:
+        self._symbol_cache.clear()
+        self._broker_symbol = None
+        self._connection.client.set_credentials(login, password, server)
+
+    def reconnect(self) -> None:
+        self._symbol_cache.clear()
+        self._broker_symbol = None
+        self._connection.reconnect()
+
     def _provider_status(self) -> ProviderConnectionStatus:
         return _CONNECTION_TO_PROVIDER[self._connection.status.state]
 
-    def _ensure_broker_symbol(self) -> str | None:
+    def _ensure_broker_symbol(self, canonical: str | None = None) -> str | None:
         status = self._connection.connect()
         if status.state != ConnectionState.CONNECTED:
             return None
-        if self._broker_symbol is not None:
+        target = (canonical or self._canonical_symbol).strip().upper()
+        cached = self._symbol_cache.get(target)
+        if cached is not None:
+            return cached
+        if target == self._canonical_symbol.upper() and self._broker_symbol is not None:
+            self._symbol_cache[target] = self._broker_symbol
             return self._broker_symbol
         try:
-            requested = self._settings.mt5_symbol or self._canonical_symbol
-            self._broker_symbol = resolve_broker_symbol(self._connection.client, requested)
-            return self._broker_symbol
+            requested = self._settings.mt5_symbol if target == self._canonical_symbol.upper() else target
+            resolved = resolve_broker_symbol(self._connection.client, requested or target)
+            self._symbol_cache[target] = resolved
+            if target == self._canonical_symbol.upper():
+                self._broker_symbol = resolved
+            return resolved
         except Exception as exc:
-            logger.warning("mt5_symbol_resolution_failed", error=str(exc))
+            logger.warning("mt5_symbol_resolution_failed", symbol=target, error=str(exc))
             return None
 
     def get_snapshot(self) -> ProviderSnapshot:
@@ -129,21 +148,16 @@ class MT5TradingDataProvider:
         status = self._connection.connect()
         if status.state != ConnectionState.CONNECTED:
             return None
-        broker_symbol = self._ensure_broker_symbol()
+        canonical = (symbol or self._canonical_symbol).strip().upper()
+        broker_symbol = self._ensure_broker_symbol(canonical)
         if broker_symbol is None:
             return None
-        raw_tick = self._connection.client.symbol_info_tick(broker_symbol)
+        client = self._connection.client
+        raw_tick = client.symbol_info_tick(broker_symbol)
         if raw_tick is None:
             return None
-        tick = map_tick(broker_symbol, raw_tick)
-        return Tick(
-            symbol=symbol or self._canonical_symbol,
-            bid=tick.bid,
-            ask=tick.ask,
-            last=tick.last,
-            volume=tick.volume,
-            timestamp=tick.timestamp,
-        )
+        tick = map_tick(canonical, raw_tick)
+        return tick
 
     def get_trade_history(self, query: TradeHistoryQuery) -> TradeHistoryResult:
         now = datetime.now(tz=UTC)

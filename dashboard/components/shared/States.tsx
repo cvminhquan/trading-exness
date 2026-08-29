@@ -13,7 +13,7 @@ export const EmptyState = ({ title, description }: EmptyStateProps) => (
     <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
       <Inbox className="h-10 w-10 text-slate-600" aria-hidden />
       <div>
-        <p className="font-medium text-slate-200">{title}</p>
+        <p className="font-medium text-slate-800">{title}</p>
         <p className="mt-1 max-w-md text-sm leading-relaxed text-slate-500">{description}</p>
       </div>
     </CardContent>
@@ -27,11 +27,11 @@ type ErrorStateProps = {
 };
 
 export const ErrorState = ({ message, section, onRetry }: ErrorStateProps) => (
-  <Card className="border-rose-900/40">
+  <Card className="border-rose-200">
     <CardContent className="flex flex-col items-center justify-center gap-3 py-14 text-center">
-      <AlertCircle className="h-10 w-10 text-rose-400" aria-hidden />
+      <AlertCircle className="h-10 w-10 text-rose-600" aria-hidden />
       <div>
-        <p className="font-medium text-slate-200">
+        <p className="font-medium text-slate-800">
           {section ? UI.errorLoadSection(section) : UI.errorLoad}
         </p>
         <p className="mt-1 max-w-md text-sm text-slate-500">{message}</p>

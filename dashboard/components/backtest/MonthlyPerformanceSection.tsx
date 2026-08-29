@@ -45,7 +45,7 @@ export const MonthlyPerformanceSection = ({ data }: MonthlyPerformanceSectionPro
   }
 
   return (
-    <Card className="border-amber-900/30">
+    <Card className="border-amber-200">
       <CardHeader>
         <CardTitle>Hiệu suất theo tháng</CardTitle>
       </CardHeader>
@@ -83,7 +83,7 @@ export const MonthlyPerformanceSection = ({ data }: MonthlyPerformanceSectionPro
         <div className="h-56 w-full" role="img" aria-label={A11Y.monthlyPnlChart}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data}>
-              <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
+              <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
               <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
               <YAxis
                 tickFormatter={(v: number) => formatCurrency(v)}
@@ -92,7 +92,7 @@ export const MonthlyPerformanceSection = ({ data }: MonthlyPerformanceSectionPro
                 width={72}
               />
               <Tooltip
-                contentStyle={{ background: "#0f172a", border: "1px solid #1e293b" }}
+                contentStyle={{ background: "#ffffff", border: "1px solid #e2e8f0", color: "#0f172a" }}
                 formatter={(value, name) => [
                   name === "netPnl" ? formatCurrency(Number(value)) : value,
                   name === "netPnl" ? "PnL ròng" : "Giao dịch",
@@ -102,7 +102,7 @@ export const MonthlyPerformanceSection = ({ data }: MonthlyPerformanceSectionPro
                 {data.map((entry) => (
                   <Cell
                     key={entry.month}
-                    fill={entry.netPnl >= 0 ? "#34d399" : "#fb7185"}
+                    fill={entry.netPnl >= 0 ? "#059669" : "#e11d48"}
                   />
                 ))}
               </Bar>

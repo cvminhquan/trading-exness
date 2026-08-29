@@ -16,4 +16,6 @@ export const tradingKeys = {
   backtest: (id: string) => [...tradingKeys.backtests(), id] as const,
   settings: () => [...tradingKeys.all, "settings"] as const,
   session: () => [...tradingKeys.all, "session"] as const,
+  quotes: () => [...tradingKeys.all, "quotes"] as const,
+  accounts: () => [...tradingKeys.all, "accounts"] as const,
 };

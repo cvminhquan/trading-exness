@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
 
 export const Skeleton = ({ className }: { className?: string }) => (
-  <div className={cn("animate-pulse rounded-md bg-slate-800/80", className)} aria-hidden />
+  <div className={cn("animate-pulse rounded-md bg-slate-200", className)} aria-hidden />
 );
 
 export const MetricCardSkeleton = () => (
-  <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
+  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
     <Skeleton className="mb-3 h-3 w-24" />
     <Skeleton className="h-8 w-32" />
     <Skeleton className="mt-2 h-3 w-20" />
@@ -21,14 +21,14 @@ export const MetricGridSkeleton = ({ count = 4 }: { count?: number }) => (
 );
 
 export const ChartSkeleton = ({ height = "h-72" }: { height?: string }) => (
-  <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
+  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
     <Skeleton className="mb-4 h-4 w-36" />
     <Skeleton className={cn("w-full", height)} />
   </div>
 );
 
 export const TableSkeleton = ({ rows = 5 }: { rows?: number }) => (
-  <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-5">
+  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
     <Skeleton className="mb-4 h-4 w-40" />
     <div className="space-y-3">
       <Skeleton className="h-8 w-full" />

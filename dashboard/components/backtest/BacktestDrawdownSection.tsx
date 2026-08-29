@@ -39,7 +39,7 @@ export const BacktestDrawdownSection = ({
             <Card key={s.label}>
               <CardContent className="py-4">
                 <p className="text-xs uppercase text-slate-500">{s.label}</p>
-                <p className="mt-1 text-xl font-semibold tabular-nums text-slate-100">{s.value}</p>
+                <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">{s.value}</p>
               </CardContent>
             </Card>
           ))}

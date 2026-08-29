@@ -48,14 +48,14 @@ export const BacktestDatasetCard = ({
           ["OHLC hợp lệ", dataset.isValidOhlc ? "Có" : "Không"],
           ["Mẫu có ý nghĩa", dataset.isMeaningful ? "Có" : "Không"],
         ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-lg border border-slate-800 p-3">
+          <div key={String(label)} className="rounded-lg border border-slate-200 p-3">
             <dt className="text-xs uppercase text-slate-500">{label}</dt>
-            <dd className="mt-1 text-sm text-slate-200">{value}</dd>
+            <dd className="mt-1 text-sm text-slate-800">{value}</dd>
           </div>
         ))}
       </dl>
       {!dataset.isMeaningful ? (
-        <p className="mt-4 rounded-lg border border-amber-900/40 bg-amber-950/20 px-4 py-3 text-sm text-amber-100/90">
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Tối thiểu yêu cầu: {formatInteger(BACKTEST_DATASET.minMeaningfulCandles)} nến.
           Khuyến nghị: {formatInteger(BACKTEST_DATASET.recommendedCandles)}+ nến.
         </p>

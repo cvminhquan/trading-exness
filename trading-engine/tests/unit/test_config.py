@@ -60,6 +60,20 @@ class TestSettingsLiveSafety:
         assert settings.is_live_trading_enabled is False
 
 
+class TestLiveAccountDoesNotEnableOrders:
+    def test_live_credentials_do_not_enable_live_trading(self) -> None:
+        settings = Settings(
+            TRADING_MODE="dry_run",
+            DRY_RUN=True,
+            ALLOW_LIVE_TRADING=False,
+            MT5_LIVE_LOGIN=222,
+            MT5_LIVE_PASSWORD="x",
+            MT5_LIVE_SERVER="Exness-MT5Real",
+        )
+        assert settings.has_live_credentials is True
+        assert settings.is_live_trading_enabled is False
+
+
 class TestGetSettings:
     def test_get_settings_returns_cached_instance(self) -> None:
         get_settings.cache_clear()

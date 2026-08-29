@@ -17,18 +17,40 @@ export type ApiGetOptions = {
 
 type FetchLike = typeof fetch;
 
+const nativeFetch: FetchLike = globalThis.fetch.bind(globalThis);
+
+const isAbortError = (error: unknown): boolean =>
+  typeof error === "object" && error !== null && "name" in error && error.name === "AbortError";
+
 export class ApiClient {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly fetchFn: FetchLike;
 
-  constructor(config: ApiClientConfig, fetchFn: FetchLike = fetch) {
+  constructor(config: ApiClientConfig, fetchFn: FetchLike = nativeFetch) {
     this.baseUrl = config.apiBaseUrl.replace(/\/$/, "");
     this.timeoutMs = config.apiTimeoutMs;
     this.fetchFn = fetchFn;
   }
 
   async get<T>(path: string, schema: z.ZodType<T>, options: ApiGetOptions = {}): Promise<T> {
+    return this.requestData(path, schema, { method: "GET", ...options });
+  }
+
+  async post<T>(
+    path: string,
+    schema: z.ZodType<T>,
+    body: unknown,
+    options: ApiGetOptions = {},
+  ): Promise<T> {
+    return this.requestData(path, schema, { method: "POST", body, ...options });
+  }
+
+  private async requestData<T>(
+    path: string,
+    schema: z.ZodType<T>,
+    options: ApiGetOptions & { method: "GET" | "POST"; body?: unknown },
+  ): Promise<T> {
     const url = `${this.baseUrl}${path}${options.query ?? ""}`;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
@@ -36,14 +58,18 @@ export class ApiClient {
 
     let response: Response;
     try {
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (options.body !== undefined) {
+        headers["Content-Type"] = "application/json";
+      }
       response = await this.fetchFn(url, {
-        method: "GET",
-        headers: { Accept: "application/json" },
+        method: options.method,
+        headers,
         signal,
-        cache: "no-store",
+        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       });
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+      if (isAbortError(error)) {
         throw createTimeoutError();
       }
       throw createNetworkError(error);
@@ -84,10 +110,9 @@ export class ApiClient {
         method: "GET",
         headers: { Accept: "application/json" },
         signal,
-        cache: "no-store",
       });
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+      if (isAbortError(error)) {
         throw createTimeoutError();
       }
       throw createNetworkError(error);
@@ -117,5 +142,5 @@ export class ApiClient {
   }
 }
 
-export const createApiClient = (config: ApiClientConfig, fetchFn?: FetchLike): ApiClient =>
+export const createApiClient = (config: ApiClientConfig, fetchFn: FetchLike = nativeFetch): ApiClient =>
   new ApiClient(config, fetchFn);

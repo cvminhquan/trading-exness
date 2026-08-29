@@ -12,6 +12,18 @@ class SessionContextDTO(ApiModel):
     connection_status: str = Field(alias="connectionStatus")
     account_label: str = Field(alias="accountLabel")
     bot_status: str = Field(alias="botStatus")
+    account_profile: str = Field(alias="accountProfile")
+
+
+class QuoteDTO(ApiModel):
+    symbol: str
+    bid: float | None = None
+    ask: float | None = None
+    last: float | None = None
+    spread: float | None = None
+    digits: int = 5
+    available: bool = True
+    updated_at: str = Field(alias="updatedAt")
 
 
 class AccountSnapshotDTO(ApiModel):
@@ -124,6 +136,30 @@ class SystemSettingsDTO(ApiModel):
     max_daily_loss_pct: float = Field(alias="maxDailyLossPct")
     max_drawdown_pct: float = Field(alias="maxDrawdownPct")
     max_open_positions: int = Field(alias="maxOpenPositions")
+
+
+class AccountProfileDTO(ApiModel):
+    id: str
+    kind: str
+    label: str
+    configured: bool
+    login: int | None = None
+    server: str | None = None
+    active: bool
+
+
+class AccountSwitchStateDTO(ApiModel):
+    active_profile: str = Field(alias="activeProfile")
+    trading_mode: str = Field(alias="tradingMode")
+    allow_live_trading: bool = Field(alias="allowLiveTrading")
+    read_only: bool = Field(alias="readOnly")
+    live_orders_enabled: bool = Field(alias="liveOrdersEnabled")
+    profiles: list[AccountProfileDTO]
+    note: str
+
+
+class ActivateAccountRequest(ApiModel):
+    profile: str
 
 
 class DashboardOverviewDTO(ApiModel):
