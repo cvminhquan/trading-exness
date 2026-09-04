@@ -1,9 +1,10 @@
-import type { BotStatus, ConnectionStatus } from "@/domain";
+import type { BotStatus, ConnectionStatus, QuoteFreshness } from "@/domain";
 import { Badge } from "@/components/ui/badge";
 import {
   BOT_STATUS_DESCRIPTIONS,
   BOT_STATUS_LABELS,
   CONNECTION_LABELS,
+  QUOTE_FRESHNESS_LABELS,
 } from "@/lib/i18n/vi";
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,28 @@ export const ConnectionIndicator = ({ status, className }: ConnectionIndicatorPr
     </Badge>
   );
 };
+
+const FRESHNESS_VARIANT: Record<QuoteFreshness, "success" | "warning" | "danger"> = {
+  LIVE: "success",
+  STALE: "warning",
+  UNAVAILABLE: "danger",
+};
+
+type FreshnessIndicatorProps = {
+  freshness: QuoteFreshness;
+  className?: string;
+};
+
+export const FreshnessIndicator = ({ freshness, className }: FreshnessIndicatorProps) => (
+  <Badge variant={FRESHNESS_VARIANT[freshness]} className={cn("normal-case", className)}>
+    {freshness === "LIVE" ? (
+      <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-current" aria-hidden />
+    ) : (
+      <span className="mr-1.5 inline-block h-2 w-2 rounded-full bg-current" aria-hidden />
+    )}
+    {QUOTE_FRESHNESS_LABELS[freshness]}
+  </Badge>
+);
 
 /** @deprecated Use BotStatusIndicator */
 export const StatusBadge = ({ status }: { status: BotStatus; label?: string }) => (

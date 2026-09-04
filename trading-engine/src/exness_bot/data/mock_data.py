@@ -27,6 +27,8 @@ def mock_account() -> AccountInfo:
         name="Demo Account",
         server="Exness-MT5Trial",
         trade_mode="demo",
+        profit=113.8,
+        margin_level=round(10_956.3 / 412.0 * 100, 2),
     )
 
 

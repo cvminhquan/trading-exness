@@ -103,18 +103,89 @@ Mặc định development: `http://localhost:8000`
     "tradingMode": "DEMO",
     "connectionStatus": "CONNECTED",
     "accountLabel": "Demo #12345678",
-    "botStatus": "RUNNING"
+    "botStatus": "RUNNING",
+    "accountProfile": "demo",
+    "candleEngine": {
+      "status": "RUNNING",
+      "lastProcessedAt": "2026-08-29T10:15:00Z",
+      "lastClosedAt": "2026-08-29T10:15:00Z",
+      "lastUpdateAt": "2026-08-29T10:15:04Z",
+      "dataSource": "MT5"
+    },
+    "signalEngine": {
+      "status": "STOPPED",
+      "strategy": "ema_rsi_atr_v1",
+      "lastProcessedCandle": null,
+      "lastSignal": null,
+      "lastSignalAt": null,
+      "dataSource": "MT5"
+    },
+    "paperExecution": {
+      "status": "STOPPED",
+      "mode": "paper",
+      "balance": 10000.0,
+      "equity": 10000.0,
+      "openPositions": 0,
+      "lastExecution": null,
+      "lastExecutionAt": null,
+      "sessionId": null,
+      "accountKind": "paper"
+    }
   }
 }
 ```
+
+`candleEngine` / `signalEngine` / `paperExecution` là read-only. `paperExecution.accountKind` luôn là `paper` — **không** nhầm với `GET /api/v1/account` (tài khoản broker). Khi `PAPER_EXECUTION_ENABLED=true`, API chạy **một** worker paper (candle + signal + paper); không bật thêm `SIGNAL_ENGINE_ENABLED` / `CANDLE_ENGINE_ENABLED` trên cùng process.
 
 **Lỗi có thể gặp:** `BOT_NOT_CONNECTED`, `503`
 
 ---
 
+### GET `/api/v1/paper`
+
+**Mục đích:** Snapshot tài khoản giấy (PAPER ACCOUNT). Không phải vị thế Exness.
+
+**Response `data`:** `PaperTrading`
+
+Các field quan trọng: `accountKind=paper`, `sessionId`, `startedAt`, `initialBalance`, `balance`, `equity`, `realizedPnl`, `unrealizedPnl`, `dailyPnl`, `drawdownPct`, `openPositions`, `executionCount`, `signalCount`, `candlesProcessed`, `rejectedCount`, `lastExecution`, `lastSignal`, `positions[]` (PAPER POSITION), `trades[]`.
+
+Không có `POST /paper`, `POST /trade`, `POST /order`.
+
+---
+
+### GET `/api/v1/quotes`
+
+**Mục đích:** Giá thị trường read-only (bid/ask/last/spread) theo symbol **canonical**. Dashboard không xử lý suffix broker (`XAUUSDm`).
+
+**Query:** `symbols` (optional, CSV). Mặc định: watchlist server.
+
+**Response `data`:** `Quote[]`
+
+```json
+{
+  "data": [
+    {
+      "symbol": "XAUUSD",
+      "bid": 2350.10,
+      "ask": 2350.30,
+      "last": 2350.20,
+      "spread": 0.20,
+      "digits": 2,
+      "available": true,
+      "updatedAt": "2026-08-29T10:30:00Z",
+      "freshness": "LIVE"
+    }
+  ]
+}
+```
+
+`freshness`: `LIVE` | `STALE` | `UNAVAILABLE`. Ngưỡng stale cấu hình `LIVE_DATA_STALE_SECONDS` (mặc định 10 giây). Tick không có hoặc broker down → `UNAVAILABLE`, **không** fallback mock.
+
+---
+
 ### GET `/api/v1/account`
 
-**Mục đích:** Snapshot tài khoản hiện tại.
+**Mục đích:** Snapshot tài khoản **broker** hiện tại (BROKER ACCOUNT). Không gồm số dư giấy.
 
 **Response `data`:** `AccountSnapshot`
 
@@ -129,7 +200,10 @@ Mặc định development: `http://localhost:8000`
     "margin": 412.0,
     "freeMargin": 10544.3,
     "currency": "USD",
-    "updatedAt": "2026-08-29T10:30:00Z"
+    "updatedAt": "2026-08-29T10:30:00Z",
+    "profit": 113.8,
+    "leverage": 500,
+    "marginLevel": 2659.3
   }
 }
 ```
@@ -148,7 +222,7 @@ Gồm: `botStatus`, `account`, `equityCurve`, `positions`, `recentTrades`, `curr
 
 ### GET `/api/v1/positions`
 
-**Mục đích:** Vị thế đang mở.
+**Mục đích:** Vị thế đang mở trên **broker Exness**. Không gồm PAPER POSITION.
 
 **Response:** danh sách phân trang `Position[]`
 
@@ -166,7 +240,8 @@ Gồm: `botStatus`, `account`, `equityCurve`, `positions`, `recentTrades`, `curr
       "takeProfit": 2373.0,
       "unrealizedPnl": 68.4,
       "rMultiple": 0.48,
-      "openedAt": "2026-08-29T08:00:00Z"
+      "openedAt": "2026-08-29T08:00:00Z",
+      "swap": -0.5
     }
   ],
   "meta": { "page": 1, "pageSize": 50, "total": 1 }
@@ -193,6 +268,8 @@ Gồm: `botStatus`, `account`, `equityCurve`, `positions`, `recentTrades`, `curr
 | `end` | ISO date | Lọc đến ngày |
 
 **Response:** danh sách phân trang `Trade[]`
+
+Các field bổ sung (tương thích schema Dashboard): `commission`, `swap`. Timestamp `closedAt` là UTC (`...Z`).
 
 ---
 
@@ -258,6 +335,7 @@ Các object chính:
 
 - `SessionContext`
 - `AccountSnapshot`
+- `Quote` (`freshness`: LIVE / STALE / UNAVAILABLE)
 - `DashboardOverview`
 - `Position`
 - `Trade`
@@ -275,6 +353,7 @@ Không tạo duplicate type (`ApiPosition`, `DashboardPosition`, …).
 | code | message (VI) |
 |------|----------------|
 | `BOT_NOT_CONNECTED` | Bot hiện chưa kết nối. |
+| `BROKER_UNAVAILABLE` | Không thể kết nối với MT5. |
 | `NOT_FOUND` | Không tìm thấy tài nguyên yêu cầu. |
 | `VALIDATION_FAILED` | Dữ liệu phản hồi không hợp lệ. |
 | `RATE_LIMITED` | Quá nhiều yêu cầu. Vui lòng thử lại sau. |
@@ -308,11 +387,13 @@ Factory: `createTradingRepository()` — **một** điểm chọn implementation
 
 ## 10. Không thuộc scope phase này
 
-- POST/PUT/PATCH/DELETE (mutation)
+- PUT/PATCH/DELETE và POST đặt lệnh / sửa SL-TP / start-stop bot
 - WebSocket streaming
 - Authentication implementation (contract 401/403 đã chuẩn bị)
 
-**Đã triển khai (Phase 10.5):** Python FastAPI read-only server tại `trading-engine/src/exness_bot/api/`.
+**Ngoại lệ hẹp:** `POST /api/v1/accounts/active` chỉ đổi login MT5 để **xem** (demo ↔ thật). Không đặt lệnh.
+
+**Đã triển khai (Phase 10.5+):** Python FastAPI read-only server tại `trading-engine/src/exness_bot/api/`.
 
 Khởi chạy:
 
@@ -325,3 +406,12 @@ exness-bot-api
 
 Health: `GET http://localhost:8000/health`  
 OpenAPI: `http://localhost:8000/docs`
+
+### Polling Dashboard (không WebSocket)
+
+| Endpoint | Interval |
+|----------|----------|
+| `/quotes` | 2s |
+| `/positions` | 3s |
+| `/account`, `/status`, `/overview` | 5s |
+| `/trades` | 15s |

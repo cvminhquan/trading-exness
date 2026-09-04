@@ -111,6 +111,7 @@ def mt5_position_raw() -> SimpleNamespace:
         tp=2374.0,
         profit=2.0,
         time=1_700_000_000,
+        swap=-0.25,
     )
 
 
@@ -148,13 +149,15 @@ class MockMT5Module:
         self.symbols_get_value: list[SimpleNamespace] = []
         self.symbol_select_result = True
         self.initialize_calls: list[str | None] = []
+        self.initialize_kwargs: dict[str, object] = {}
         self.login_calls: list[tuple[int, str, str]] = []
         self.shutdown_called = False
         self.history_deals_get_value: list[SimpleNamespace] | None = None
         self.history_orders_get_value: list[SimpleNamespace] | None = None
 
-    def initialize(self, path: str | None = None) -> bool:
+    def initialize(self, path: str | None = None, **kwargs: object) -> bool:
         self.initialize_calls.append(path)
+        self.initialize_kwargs = dict(kwargs)
         return self.initialize_result
 
     def shutdown(self) -> None:

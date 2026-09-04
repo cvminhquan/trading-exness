@@ -24,6 +24,15 @@ const resolveMeta = (direction: Direction | SignalAction) => {
       Icon: ArrowDownRight,
     };
   }
+  if (direction === "NO_SIGNAL") {
+    return { label: DIRECTION_LABELS.NO_SIGNAL, variant: "default" as const, Icon: Minus };
+  }
+  if (direction === "INVALID") {
+    return { label: DIRECTION_LABELS.INVALID, variant: "warning" as const, Icon: Minus };
+  }
+  if (direction === "FLAT") {
+    return { label: DIRECTION_LABELS.FLAT, variant: "default" as const, Icon: Minus };
+  }
   return { label: DIRECTION_LABELS.HOLD, variant: "default" as const, Icon: Minus };
 };
 

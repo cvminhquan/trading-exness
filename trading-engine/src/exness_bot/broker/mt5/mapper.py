@@ -111,6 +111,7 @@ def _direction_from_mt5_position_type(position_type: int) -> SignalDirection:
 def map_account_info(raw: Any) -> AccountInfo:
     """Map MT5 AccountInfo namedtuple to domain model."""
     trade_mode = "demo" if getattr(raw, "trade_mode", 0) == 0 else "live"
+    margin_level_raw = float(getattr(raw, "margin_level", 0.0) or 0.0)
     return AccountInfo(
         login=int(raw.login),
         balance=float(raw.balance),
@@ -122,11 +123,21 @@ def map_account_info(raw: Any) -> AccountInfo:
         name=str(getattr(raw, "name", "")),
         server=str(getattr(raw, "server", "")),
         trade_mode=trade_mode,
+        profit=float(getattr(raw, "profit", 0.0) or 0.0),
+        margin_level=margin_level_raw if margin_level_raw > 0 else None,
     )
 
 
 def map_symbol_info(raw: Any) -> SymbolInfo:
     """Map MT5 SymbolInfo namedtuple to domain model."""
+    stops_raw = getattr(raw, "trade_stops_level", None)
+    if stops_raw is None:
+        stops_raw = getattr(raw, "stops_level", None)
+    freeze_raw = getattr(raw, "trade_freeze_level", None)
+    if freeze_raw is None:
+        freeze_raw = getattr(raw, "freeze_level", None)
+    stops_level = int(stops_raw) if stops_raw is not None else None
+    freeze_level = int(freeze_raw) if freeze_raw is not None else None
     return SymbolInfo(
         symbol=str(raw.name),
         bid=float(raw.bid),
@@ -140,6 +151,8 @@ def map_symbol_info(raw: Any) -> SymbolInfo:
         spread=int(raw.spread),
         trade_mode=int(raw.trade_mode),
         visible=bool(raw.visible),
+        stops_level=stops_level,
+        freeze_level=freeze_level,
     )
 
 
@@ -207,7 +220,9 @@ def map_rates_to_candles(
     dtype_names = rates.dtype.names or ()
     for row in rates:
         spread_value = int(row["spread"]) if "spread" in dtype_names else None
-        volume_field = "real_volume" if "real_volume" in dtype_names else "tick_volume"
+        volume_field = "tick_volume" if "tick_volume" in dtype_names else "real_volume"
+        tick_volume = float(row[volume_field]) if volume_field in dtype_names else 0.0
+        real_volume = float(row["real_volume"]) if "real_volume" in dtype_names else None
         candles.append(
             Candle(
                 symbol=symbol,
@@ -217,8 +232,10 @@ def map_rates_to_candles(
                 high=float(row["high"]),
                 low=float(row["low"]),
                 close=float(row["close"]),
-                volume=float(row[volume_field]),
+                volume=tick_volume,
                 spread=spread_value,
+                tick_volume=tick_volume,
+                real_volume=real_volume,
             )
         )
     return candles

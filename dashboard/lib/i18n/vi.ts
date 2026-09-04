@@ -7,7 +7,7 @@ export const UI = {
   navigationSubtitle: "Giám sát & phân tích",
   menu: "Menu",
   mockData: "Dữ liệu mẫu",
-  liveData: "Dữ liệu API",
+  liveData: "Nguồn API",
   readOnly: "Chỉ đọc",
   retry: "Thử lại",
   loading: "Đang tải...",
@@ -54,6 +54,9 @@ export const UI = {
   spread: "Spread",
   live: "Realtime",
   quoteUnavailable: "Không có trên broker",
+  dataLive: "Dữ liệu live",
+  dataStale: "Dữ liệu cũ",
+  dataUnavailable: "Không khả dụng",
   volume: "Khối lượng",
   gross: "PnL gộp",
   costs: "Chi phí",
@@ -145,15 +148,23 @@ export const SECTION_LABELS = {
   strategy: "chiến lược",
   risk: "rủi ro",
   settings: "cài đặt",
+  paper: "paper trading",
 } as const;
 
 export const NAV = {
   overview: { label: "Tổng quan", description: "Theo dõi sức khỏe Bot, hiệu suất tài khoản và mức phơi nhiễm hiện tại." },
-  positions: { label: "Vị thế", description: "Theo dõi mức phơi nhiễm thị trường đang mở." },
+  positions: {
+    label: "Vị thế",
+    description: "Vị thế thật trên Exness (BROKER ACCOUNT). Không gồm vị thế giấy.",
+  },
   trades: { label: "Giao dịch", description: "Xem lại các giao dịch đã thực hiện và hiệu suất giao dịch." },
   strategy: { label: "Chiến lược", description: "Kiểm tra trạng thái chiến lược và tín hiệu hiện tại." },
   risk: { label: "Rủi ro", description: "Theo dõi giới hạn rủi ro và mức phơi nhiễm tài khoản." },
   backtest: { label: "Backtest", description: "Phân tích mô phỏng chiến lược trên dữ liệu lịch sử." },
+  paper: {
+    label: "Paper Trading",
+    description: "Khớp lệnh ảo PAPER ONLY — không gửi lệnh tới Exness.",
+  },
   settings: { label: "Cài đặt", description: "Xem cấu hình hệ thống giao dịch." },
 } as const;
 
@@ -177,10 +188,18 @@ export const CONNECTION_LABELS = {
   DISCONNECTED: "MT5 mất kết nối",
 } as const;
 
+export const QUOTE_FRESHNESS_LABELS = {
+  LIVE: "Dữ liệu live",
+  STALE: "Dữ liệu cũ",
+  UNAVAILABLE: "Không khả dụng",
+} as const;
+
 export const DIRECTION_LABELS = {
   BUY: "Mua",
   SELL: "Bán",
   HOLD: "Giữ",
+  NO_SIGNAL: "Không có tín hiệu",
+  INVALID: "Không hợp lệ",
   LONG: "Long",
   SHORT: "Short",
   FLAT: "Không giao dịch",
@@ -255,6 +274,9 @@ export const METRICS = {
   swap: "Phí qua đêm",
   riskPerTrade: "Rủi ro mỗi giao dịch",
   accountEquity: "Vốn tài khoản",
+  floatingPnl: "PnL thả nổi",
+  leverage: "Đòn bẩy",
+  marginLevel: "Mức ký quỹ",
 } as const;
 
 export const A11Y = {
@@ -273,8 +295,75 @@ export const A11Y = {
   monthlyPnlChart: "Biểu đồ PnL theo tháng",
   rDistributionChart: "Biểu đồ phân phối hệ số R",
   liveQuotes: "Bảng giá thị trường realtime",
+  quoteFreshness: "Độ tươi của giá thị trường",
   accountSwitch: "Chuyển tài khoản demo hoặc thật",
   closeAccountConfirm: "Đóng hộp thoại xác nhận chuyển tài khoản",
+  liveCandleEngine: "Trạng thái Live Candle Engine",
+  researchSignalEngine: "Trạng thái Signal Engine nghiên cứu",
+  paperTrading: "Paper Trading — khớp lệnh ảo, không phải vị thế Exness",
+} as const;
+
+export const CANDLE_ENGINE = {
+  label: "Live Candle Engine",
+  lastClosed: "Nến đóng gần nhất",
+  dataSource: "Nguồn dữ liệu",
+  none: "Chưa có nến đóng",
+} as const;
+
+export const SIGNAL_ENGINE = {
+  label: "Signal Engine",
+  researchBadge: "TÍN HIỆU NGHIÊN CỨU — KHÔNG PHẢI LỆNH",
+  lastSignal: "Tín hiệu gần nhất",
+  lastCandle: "Nến đóng gần nhất",
+  none: "Chưa có tín hiệu",
+  strategy: "Chiến lược",
+} as const;
+
+export const PAPER_TRADING = {
+  title: "PAPER TRADING",
+  mode: "PAPER ONLY",
+  researchBadge: "PAPER / RESEARCH — KHÔNG PHẢI VỊ THẾ EXNESS",
+  warning: "PAPER ONLY — KHÔNG PHẢI VỊ THẾ THẬT TRÊN EXNESS",
+  banner:
+    "Đây là khớp lệnh ảo trên tài khoản giấy $10,000. Không có lệnh nào được gửi tới Exness.",
+  paperAccount: "Tài khoản giấy (PAPER ACCOUNT)",
+  brokerAccount: "Tài khoản broker Exness — xem ở Tổng quan / Vị thế",
+  brokerAccountTitle: "Tài khoản broker (BROKER ACCOUNT)",
+  paperPosition: "PAPER POSITION",
+  lastExecution: "Khớp lệnh gần nhất",
+  lastSignal: "Tín hiệu gần nhất",
+  openPositions: "Vị thế giấy đang mở",
+  session: "Phiên paper",
+  none: "Chưa có",
+  tableTitle: "Nhật ký paper",
+  status: "Trạng thái",
+  reason: "Lý do",
+  emptyTitle: "Chưa có giao dịch giấy",
+  emptyDescription:
+    "Khi Signal Engine phát tín hiệu BUY/SELL actionable, Paper Executor sẽ mô phỏng khớp lệnh tại đây.",
+} as const;
+
+export const PAPER_STATUS_LABELS = {
+  OPEN: "Đang mở",
+  CLOSED: "Đã đóng",
+  REJECTED: "Từ chối",
+  FILLED: "Đã khớp ảo",
+  IGNORED: "Bỏ qua",
+  DUPLICATE: "Trùng",
+} as const;
+
+export const PAPER_REASON_LABELS = {
+  SL: "Cắt lỗ (SL)",
+  TP: "Chốt lời (TP)",
+  MANUAL: "Thủ công",
+  END_OF_SESSION: "Hết phiên",
+  RISK_LIMIT: "Giới hạn rủi ro",
+  MAX_DAILY_LOSS: "Lỗ tối đa trong ngày",
+  MAX_DRAWDOWN: "Drawdown tối đa",
+  MAX_OPEN_POSITIONS: "Số vị thế mở tối đa",
+  POSITION_SIZE_LIMIT: "Giới hạn khối lượng",
+  INVALID_RISK: "Rủi ro không hợp lệ",
+  INVALID_SL: "SL không hợp lệ",
 } as const;
 
 export const formatExitReason = (reason: keyof typeof EXIT_REASON_LABELS): string =>

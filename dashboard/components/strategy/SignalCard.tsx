@@ -1,7 +1,8 @@
 import type { StrategySignal } from "@/domain";
 import { formatDateTime, formatPrice } from "@/lib/format";
-import { METRICS, UI } from "@/lib/i18n/vi";
+import { METRICS, SIGNAL_ENGINE, UI } from "@/lib/i18n/vi";
 import { DirectionIndicator } from "@/components/shared/DirectionIndicator";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle } from "lucide-react";
 
@@ -17,6 +18,9 @@ export const SignalCard = ({ signal }: SignalCardProps) => (
         <p className="text-sm text-slate-600">
           {signal.strategy} · {signal.symbol} · {formatDateTime(signal.timestamp)}
         </p>
+        <Badge variant="warning" className="mt-2 normal-case">
+          {SIGNAL_ENGINE.researchBadge}
+        </Badge>
       </div>
       <DirectionIndicator direction={signal.action} />
     </CardHeader>

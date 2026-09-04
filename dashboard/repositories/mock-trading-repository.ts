@@ -11,6 +11,7 @@ import {
   mockStrategy,
   mockTrades,
   mockQuotes,
+  mockPaperTrading,
   simulateDelay,
 } from "@/mocks/data";
 import { mockBacktestReports } from "@/mocks/backtest-data";
@@ -126,5 +127,10 @@ export class MockTradingRepository implements TradingRepository {
   async getQuotes() {
     await simulateDelay(80);
     return mockQuotes;
+  }
+
+  async getPaperTrading() {
+    await simulateDelay(80);
+    return mockPaperTrading;
   }
 }

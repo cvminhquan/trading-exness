@@ -28,6 +28,16 @@ class TestSettingsDefaults:
         settings = Settings()
         assert settings.timeframe == "M15"
 
+    def test_candle_engine_defaults(self) -> None:
+        settings = Settings()
+        assert settings.candle_engine_enabled is False
+        assert settings.candle_timeframe == "M15"
+        assert settings.candle_poll_interval_seconds == 3
+        assert settings.resolved_candle_symbol == "XAUUSD"
+        assert settings.signal_engine_enabled is False
+        assert settings.execution_mode.value == "paper"
+        assert settings.paper_execution_enabled is False
+
     def test_default_risk_per_trade(self) -> None:
         settings = Settings()
         assert settings.risk_per_trade_pct == 0.5

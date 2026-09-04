@@ -12,7 +12,8 @@ from exness_bot.data.models import (
     TradeHistoryQuery,
     TradeHistoryResult,
 )
-from exness_bot.domain.models import Tick
+from exness_bot.domain.enums import Timeframe
+from exness_bot.domain.models import Candle, Tick
 
 
 class BacktestTradingDataProvider:
@@ -47,3 +48,11 @@ class BacktestTradingDataProvider:
             total=0,
             updated_at=datetime.now(tz=UTC),
         )
+
+    def get_candles(
+        self,
+        symbol: str,
+        timeframe: Timeframe,
+        count: int,
+    ) -> list[Candle] | None:
+        return []

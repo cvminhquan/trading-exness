@@ -11,6 +11,7 @@ import type {
   SystemSettings,
   Trade,
   Quote,
+  PaperTrading,
 } from "@/domain";
 
 const now = new Date();
@@ -25,6 +26,30 @@ export const mockSession: SessionContext = {
   accountLabel: "Demo #12345678",
   botStatus: mockBotStatus,
   accountProfile: "demo",
+  candleEngine: {
+    status: "STOPPED",
+    lastProcessedAt: null,
+    lastClosedAt: null,
+    lastUpdateAt: null,
+    dataSource: "MOCK",
+  },
+  signalEngine: {
+    status: "STOPPED",
+    strategy: "ema_rsi_atr_v1",
+    lastProcessedCandle: null,
+    lastSignal: null,
+    lastSignalAt: null,
+    dataSource: "MOCK",
+  },
+  paperExecution: {
+    status: "STOPPED",
+    mode: "paper",
+    balance: 10_000,
+    equity: 10_000,
+    openPositions: 0,
+    lastExecution: null,
+    lastExecutionAt: null,
+  },
 };
 
 export const mockAccount: AccountSnapshot = {
@@ -37,6 +62,9 @@ export const mockAccount: AccountSnapshot = {
   freeMargin: 10_544.3,
   currency: "USD",
   updatedAt: iso(0),
+  profit: 113.8,
+  leverage: 500,
+  marginLevel: 2659.3,
 };
 
 const buildEquityCurve = (points = 90): EquityPoint[] => {
@@ -67,6 +95,7 @@ export const mockPositions: Position[] = [
     unrealizedPnl: 68.4,
     rMultiple: 0.48,
     openedAt: iso(18),
+    swap: -0.12,
   },
 ];
 
@@ -84,6 +113,8 @@ export const mockTrades: Trade[] = [
     costs: 4.2,
     netPnl: 121.8,
     rMultiple: 1.85,
+    commission: 0,
+    swap: 0,
     exitReason: "take_profit",
   },
   {
@@ -99,6 +130,8 @@ export const mockTrades: Trade[] = [
     costs: 3.6,
     netPnl: 46.8,
     rMultiple: 0.92,
+    commission: 0,
+    swap: 0,
     exitReason: "take_profit",
   },
   {
@@ -114,6 +147,8 @@ export const mockTrades: Trade[] = [
     costs: 3.8,
     netPnl: -55.0,
     rMultiple: -1.02,
+    commission: 0,
+    swap: 0,
     exitReason: "stop_loss",
   },
   {
@@ -129,6 +164,8 @@ export const mockTrades: Trade[] = [
     costs: 2.1,
     netPnl: -2.1,
     rMultiple: 0,
+    commission: 0,
+    swap: 0,
     exitReason: "manual",
   },
   {
@@ -144,6 +181,8 @@ export const mockTrades: Trade[] = [
     costs: 4.0,
     netPnl: 108.0,
     rMultiple: 1.42,
+    commission: 0,
+    swap: 0,
     exitReason: "take_profit",
   },
   {
@@ -159,6 +198,8 @@ export const mockTrades: Trade[] = [
     costs: 3.5,
     netPnl: -37.7,
     rMultiple: -0.76,
+    commission: 0,
+    swap: 0,
     exitReason: "stop_loss",
   },
   {
@@ -174,6 +215,8 @@ export const mockTrades: Trade[] = [
     costs: 3.2,
     netPnl: 43.0,
     rMultiple: 0.88,
+    commission: 0,
+    swap: 0,
     exitReason: "take_profit",
   },
   {
@@ -189,6 +232,8 @@ export const mockTrades: Trade[] = [
     costs: 4.0,
     netPnl: -69.0,
     rMultiple: -1.15,
+    commission: 0,
+    swap: 0,
     exitReason: "stop_loss",
   },
 ];
@@ -229,7 +274,7 @@ export const mockCurrentSignal: StrategySignal = {
   },
   reason: "Điều kiện xu hướng và momentum thỏa mãn khi nến M15 đóng.",
   conditions: buyConditions,
-  summary: "Các điều kiện tín hiệu đã thỏa mãn.",
+  summary: "Tín hiệu nghiên cứu — không phải lệnh đã khớp.",
 };
 
 export const mockRecentSignals: StrategySignal[] = [
@@ -357,16 +402,83 @@ export const mockDashboardOverview: DashboardOverview = {
 };
 
 export const mockQuotes: Quote[] = [
-  { symbol: "XAUUSD", bid: 4456.32, ask: 4456.48, last: 4456.40, spread: 0.16, digits: 2, available: true, updatedAt: iso(0) },
-  { symbol: "EURUSD", bid: 1.16814, ask: 1.16826, last: 1.16820, spread: 0.00012, digits: 5, available: true, updatedAt: iso(0) },
-  { symbol: "GBPUSD", bid: 1.34204, ask: 1.34216, last: 1.34210, spread: 0.00012, digits: 5, available: true, updatedAt: iso(0) },
-  { symbol: "USDJPY", bid: 147.845, ask: 147.859, last: 147.852, spread: 0.014, digits: 3, available: true, updatedAt: iso(0) },
-  { symbol: "XAGUSD", bid: 38.24, ask: 38.26, last: 38.25, spread: 0.02, digits: 3, available: true, updatedAt: iso(0) },
-  { symbol: "BTCUSD", bid: 108440, ask: 108460, last: 108450, spread: 20, digits: 2, available: true, updatedAt: iso(0) },
-  { symbol: "ETHUSD", bid: 4279.2, ask: 4280.8, last: 4280.0, spread: 1.6, digits: 2, available: true, updatedAt: iso(0) },
+  { symbol: "XAUUSD", bid: 4456.32, ask: 4456.48, last: 4456.40, spread: 0.16, digits: 2, available: true, updatedAt: iso(0), freshness: "LIVE" },
+  { symbol: "EURUSD", bid: 1.16814, ask: 1.16826, last: 1.16820, spread: 0.00012, digits: 5, available: true, updatedAt: iso(0), freshness: "LIVE" },
+  { symbol: "GBPUSD", bid: 1.34204, ask: 1.34216, last: 1.34210, spread: 0.00012, digits: 5, available: true, updatedAt: iso(0), freshness: "LIVE" },
+  { symbol: "USDJPY", bid: 147.845, ask: 147.859, last: 147.852, spread: 0.014, digits: 3, available: true, updatedAt: iso(0), freshness: "LIVE" },
+  { symbol: "XAGUSD", bid: 38.24, ask: 38.26, last: 38.25, spread: 0.02, digits: 3, available: true, updatedAt: iso(0), freshness: "LIVE" },
+  { symbol: "BTCUSD", bid: 108440, ask: 108460, last: 108450, spread: 20, digits: 2, available: true, updatedAt: iso(0), freshness: "LIVE" },
+  { symbol: "ETHUSD", bid: 4279.2, ask: 4280.8, last: 4280.0, spread: 1.6, digits: 2, available: true, updatedAt: iso(0), freshness: "LIVE" },
 ];
 
 export const simulateDelay = (ms = 350): Promise<void> =>
   new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+
+export const mockPaperTrading: PaperTrading = {
+  status: "STOPPED",
+  mode: "paper",
+  researchOnly: true,
+  accountKind: "paper",
+  sessionId: "paper-mock-session",
+  startedAt: iso(24),
+  initialBalance: 10_000,
+  balance: 10_094.4,
+  equity: 10_106.9,
+  realizedPnl: 94.4,
+  unrealizedPnl: 12.5,
+  dailyPnl: 106.9,
+  drawdownPct: 0,
+  openPositions: 1,
+  executionCount: 2,
+  signalCount: 2,
+  candlesProcessed: 3,
+  rejectedCount: 0,
+  lastExecution: "FILLED",
+  lastExecutionAt: iso(6),
+  lastSignal: "BUY",
+  positions: [
+    {
+      positionId: "paper-pos-2",
+      symbol: "XAUUSD",
+      side: "LONG",
+      volume: 0.16,
+      entryPrice: 2350.31,
+      currentPrice: 2351.1,
+      stopLoss: 2347.31,
+      takeProfit: 2356.31,
+      unrealizedPnl: 12.5,
+      openedAt: iso(2),
+      status: "OPEN",
+    },
+  ],
+  trades: [
+    {
+      time: iso(6),
+      symbol: "XAUUSD",
+      side: "LONG",
+      volume: 0.16,
+      entry: 2350.31,
+      stopLoss: 2347.31,
+      takeProfit: 2356.31,
+      exit: 2356.2,
+      pnl: 94.4,
+      status: "CLOSED",
+      reason: "TP",
+    },
+    {
+      time: iso(2),
+      symbol: "XAUUSD",
+      side: "LONG",
+      volume: 0.16,
+      entry: 2350.31,
+      stopLoss: 2347.31,
+      takeProfit: 2356.31,
+      exit: null,
+      pnl: 12.5,
+      status: "OPEN",
+      reason: null,
+    },
+  ],
+};

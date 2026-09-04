@@ -1,18 +1,16 @@
-"""Broker read gateway with MT5-independent fallback."""
+"""Broker read gateway with MT5-independent fallback — read-only only."""
 
 from __future__ import annotations
 
 import sys
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import Protocol
 
 import structlog
 
+from exness_bot.broker.mt5.mapper import map_account_info, map_position
 from exness_bot.config.settings import Settings
 from exness_bot.domain.models import AccountInfo, Position
-
-if TYPE_CHECKING:
-    from exness_bot.broker.mt5.adapter import MT5Adapter
 
 logger = structlog.get_logger(__name__)
 
@@ -51,11 +49,15 @@ class DisconnectedBrokerGateway:
 
 
 class MT5BrokerReadGateway:
-    """Optional MT5-backed read gateway (Windows + terminal only)."""
+    """
+    MT5-backed read gateway using the read-only connection manager only.
+
+    Must never construct the legacy trading adapter or trading client.
+    """
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
-        self._adapter: MT5Adapter | None = None
+        self._connection: object | None = None
         self._init_error: str | None = None
         self._try_initialize()
 
@@ -64,19 +66,19 @@ class MT5BrokerReadGateway:
             self._init_error = "MT5 chỉ hỗ trợ trên Windows."
             return
         try:
-            from exness_bot.broker.mt5.adapter import MT5Adapter as Adapter
+            from exness_bot.broker.mt5.connection_manager import MT5ConnectionManager
 
-            adapter = Adapter(self._settings)
-            if adapter.connect():
-                self._adapter = adapter
+            connection = MT5ConnectionManager(self._settings)
+            if connection.connect():
+                self._connection = connection
                 return
             self._init_error = "Không thể kết nối MT5."
         except Exception as exc:
             logger.warning("mt5_read_gateway_init_failed", error=str(exc))
-            self._init_error = "Không thể khởi tạo MT5."
+            self._init_error = "Không thể khởi tạo MT5 read-only."
 
     def get_snapshot(self) -> BrokerReadSnapshot:
-        if self._adapter is None:
+        if self._connection is None:
             return BrokerReadSnapshot(
                 connected=False,
                 account=None,
@@ -84,9 +86,23 @@ class MT5BrokerReadGateway:
                 unavailable_reason=self._init_error,
             )
         try:
-            adapter = cast(Any, self._adapter)
-            account = adapter.get_account_info()
-            positions = adapter.get_open_positions(self._settings.symbol)
+            from exness_bot.broker.mt5.connection_manager import MT5ConnectionManager
+
+            assert isinstance(self._connection, MT5ConnectionManager)
+            client = self._connection.client
+            raw_account = client.account_info()
+            if raw_account is None:
+                return BrokerReadSnapshot(
+                    connected=False,
+                    account=None,
+                    positions=(),
+                    unavailable_reason="Không đọc được account_info.",
+                )
+            account = map_account_info(raw_account)
+            raw_positions = client.positions_get(symbol=self._settings.symbol)
+            positions: list[Position] = []
+            if raw_positions:
+                positions = [map_position(item) for item in raw_positions]
             return BrokerReadSnapshot(
                 connected=True,
                 account=account,

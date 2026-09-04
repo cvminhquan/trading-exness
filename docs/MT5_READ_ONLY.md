@@ -192,14 +192,14 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 
 Chưa có WebSocket. Dashboard dùng React Query polling:
 
-| Dữ liệu | Interval gợi ý |
-|---------|-----------------|
-| status | 5–10s |
-| account | 5–10s |
-| positions | 2–5s |
-| trades | 10–30s |
+| Dữ liệu | Interval |
+|---------|----------|
+| quotes | 2s |
+| positions | 3s |
+| status / account / overview | 5s |
+| trades | 15s |
 
-Cấu hình interval trong Dashboard queries (phase sau có thể centralize).
+Ngưỡng giá cũ: `LIVE_DATA_STALE_SECONDS` (mặc định 10). Dashboard hiển thị `LIVE` / `STALE` / `UNAVAILABLE` — không gắn nhãn live cho dữ liệu cũ.
 
 ---
 

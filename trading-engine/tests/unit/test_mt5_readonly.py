@@ -27,8 +27,19 @@ class TestMT5ReadOnlyClientSafety:
             root / "broker/mt5/connection_manager.py",
             root / "broker/mt5/symbol_resolver.py",
             root / "data/mt5_provider.py",
+            root / "data/freshness.py",
+            root / "api/services/account_runtime.py",
+            root / "api/routes/v1.py",
         ]
-        forbidden_patterns = ("def order_send", ".order_send(")
+        forbidden_patterns = (
+            "def order_send",
+            ".order_send(",
+            "order_check",
+            "TRADE_ACTION_DEAL",
+            "TRADE_ACTION_PENDING",
+            "TRADE_ACTION_SLTP",
+            "TRADE_ACTION_REMOVE",
+        )
         for path in readonly_paths:
             source = path.read_text(encoding="utf-8")
             for pattern in forbidden_patterns:
@@ -41,6 +52,9 @@ class TestMT5ReadOnlyClientSafety:
         client.login()
         assert client.is_logged_in is True
         assert module.shutdown_called is False
+        assert module.initialize_kwargs["login"] == 12345678
+        assert "password" in module.initialize_kwargs
+        assert module.initialize_kwargs["server"] == "Exness-MT5Trial"
 
 
 class TestMT5ConnectionManager:
@@ -99,4 +113,25 @@ class TestMT5ConnectionManager:
         client.set_credentials(222, "live-password", "Exness-MT5Real")
         second = manager.reconnect()
         assert second.state == ConnectionState.CONNECTED
-        assert mock_mt5_module.login_calls[-1] == (222, "live-password", "Exness-MT5Real")
+        assert mock_mt5_module.initialize_kwargs["login"] == 222
+        assert mock_mt5_module.initialize_kwargs["password"] == "live-password"
+        assert mock_mt5_module.initialize_kwargs["server"] == "Exness-MT5Real"
+
+    def test_retries_connect_after_disconnect(
+        self,
+        mock_mt5_module: MockMT5Module,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr("exness_bot.broker.mt5.connection_manager.sys.platform", "win32")
+        settings = Settings(
+            DATA_SOURCE="mt5",
+            MT5_ENABLED=True,
+            MT5_LOGIN=111,
+            MT5_PASSWORD="demo-password",
+        )
+        client = MT5ReadOnlyClient(settings, mt5_module=mock_mt5_module)
+        manager = MT5ConnectionManager(settings, client=client)
+        assert manager.connect().state == ConnectionState.CONNECTED
+        manager.disconnect()
+        assert manager.status.state == ConnectionState.DISCONNECTED
+        assert manager.connect().state == ConnectionState.CONNECTED

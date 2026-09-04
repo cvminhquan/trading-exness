@@ -51,18 +51,18 @@ class TestMT5AdapterConnect:
         assert adapter.connect() is False
         assert adapter.is_connected() is False
 
-    def test_connect_login_failure_returns_false(
+    def test_connect_succeeds_when_auth_happens_in_initialize(
         self,
         default_settings: Settings,
         mock_mt5_module: MockMT5Module,
     ) -> None:
         mock_mt5_module.login_result = False
-        mock_mt5_module.last_error_value = (2, "Login failed")
         adapter = MT5Adapter(
             default_settings,
             client=MT5Client(default_settings, mt5_module=mock_mt5_module),
         )
-        assert adapter.connect() is False
+        assert adapter.connect() is True
+        assert mock_mt5_module.initialize_kwargs["login"] == 12345678
 
     def test_connect_missing_credentials_returns_false(
         self,

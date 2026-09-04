@@ -21,7 +21,7 @@ logger = structlog.get_logger(__name__)
 class MT5ReadOnlyModule(Protocol):
     """Subset of MetaTrader5 module API allowed for read-only operations."""
 
-    def initialize(self, path: str | None = None) -> bool: ...
+    def initialize(self, path: str | None = None, **kwargs: Any) -> bool: ...
     def shutdown(self) -> None: ...
     def login(self, login: int, password: str, server: str) -> bool: ...
     def last_error(self) -> tuple[int, str]: ...
@@ -113,13 +113,31 @@ class MT5ReadOnlyClient:
     def _last_error(self) -> tuple[int, str]:
         return self.mt5.last_error()
 
+    def _resolve_credentials(self) -> tuple[int | None, str, str]:
+        if self._login_override is not None:
+            return self._login_override
+        return self._settings.mt5_login, self._settings.mt5_password, self._settings.mt5_server
+
     def initialize(self) -> None:
+        """Attach to MT5. Pass login in the same initialize() call.
+
+        Exness terminals often return IPC error -6 if initialize(path) runs
+        without credentials and login() is a second step.
+        """
         path = self._settings.mt5_path
-        if not self.mt5.initialize(path):
+        login, password, server = self._resolve_credentials()
+        init_kwargs: dict[str, Any] = {"timeout": 60_000}
+        if login is not None and password:
+            init_kwargs["login"] = int(login)
+            init_kwargs["password"] = password
+            init_kwargs["server"] = server
+        if not self.mt5.initialize(path, **init_kwargs):
             code, description = self._last_error()
             msg = f"MT5 initialize failed: [{code}] {description}"
             raise MT5ConnectionError(msg, mt5_error=(code, description))
         self._initialized = True
+        if login is not None and password:
+            self._logged_in = True
         logger.info("mt5_readonly_initialized", path=path)
 
     def set_credentials(self, login: int, password: str, server: str) -> None:
@@ -128,13 +146,9 @@ class MT5ReadOnlyClient:
         self._logged_in = False
 
     def login(self) -> None:
-        if self._login_override is not None:
-            login, password, server = self._login_override
-        else:
-            login = self._settings.mt5_login
-            password = self._settings.mt5_password
-            server = self._settings.mt5_server
-
+        if self._logged_in:
+            return
+        login, password, server = self._resolve_credentials()
         if login is None or not password:
             msg = "MT5_LOGIN and MT5_PASSWORD must be configured"
             raise MT5AuthenticationError(msg)

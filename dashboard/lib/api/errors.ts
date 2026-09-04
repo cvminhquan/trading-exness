@@ -40,6 +40,7 @@ const HTTP_FALLBACK_MESSAGES: Record<number, ApiErrorBody> = {
 
 export const KNOWN_API_ERROR_CODES: Record<string, string> = {
   BOT_NOT_CONNECTED: "Bot hiện chưa kết nối.",
+  BROKER_UNAVAILABLE: "Không thể kết nối với MT5.",
   VALIDATION_FAILED: "Dữ liệu phản hồi không hợp lệ.",
   NETWORK_ERROR: "Không thể kết nối tới API.",
   TIMEOUT: "Yêu cầu API quá thời gian chờ.",

@@ -7,12 +7,98 @@ from pydantic import Field
 from exness_bot.api.schemas.common import ApiModel
 
 
+class CandleEngineStatusDTO(ApiModel):
+    status: str
+    last_processed_at: str | None = Field(default=None, alias="lastProcessedAt")
+    last_closed_at: str | None = Field(default=None, alias="lastClosedAt")
+    last_update_at: str | None = Field(default=None, alias="lastUpdateAt")
+    data_source: str = Field(alias="dataSource")
+
+
+class SignalEngineStatusDTO(ApiModel):
+    status: str
+    strategy: str
+    last_processed_candle: str | None = Field(default=None, alias="lastProcessedCandle")
+    last_signal: str | None = Field(default=None, alias="lastSignal")
+    last_signal_at: str | None = Field(default=None, alias="lastSignalAt")
+    data_source: str = Field(alias="dataSource")
+
+
+class PaperExecutionStatusDTO(ApiModel):
+    status: str
+    mode: str
+    balance: float
+    equity: float
+    open_positions: int = Field(alias="openPositions")
+    last_execution: str | None = Field(default=None, alias="lastExecution")
+    last_execution_at: str | None = Field(default=None, alias="lastExecutionAt")
+    session_id: str | None = Field(default=None, alias="sessionId")
+    account_kind: str = Field(default="paper", alias="accountKind")
+
+
+class PaperPositionDTO(ApiModel):
+    position_id: str = Field(alias="positionId")
+    symbol: str
+    side: str
+    volume: float
+    entry_price: float = Field(alias="entryPrice")
+    current_price: float = Field(alias="currentPrice")
+    stop_loss: float | None = Field(default=None, alias="stopLoss")
+    take_profit: float | None = Field(default=None, alias="takeProfit")
+    unrealized_pnl: float = Field(alias="unrealizedPnl")
+    opened_at: str = Field(alias="openedAt")
+    status: str
+
+
+class PaperTradeRowDTO(ApiModel):
+    time: str
+    symbol: str
+    side: str
+    volume: float
+    entry: float | None = None
+    stop_loss: float | None = Field(default=None, alias="stopLoss")
+    take_profit: float | None = Field(default=None, alias="takeProfit")
+    exit_price: float | None = Field(default=None, alias="exit")
+    pnl: float | None = None
+    status: str
+    reason: str | None = None
+
+
+class PaperTradingDTO(ApiModel):
+    status: str
+    mode: str
+    research_only: bool = Field(alias="researchOnly")
+    account_kind: str = Field(default="paper", alias="accountKind")
+    session_id: str | None = Field(default=None, alias="sessionId")
+    started_at: str | None = Field(default=None, alias="startedAt")
+    initial_balance: float = Field(alias="initialBalance")
+    balance: float
+    equity: float
+    realized_pnl: float = Field(alias="realizedPnl")
+    unrealized_pnl: float = Field(alias="unrealizedPnl")
+    daily_pnl: float = Field(alias="dailyPnl")
+    drawdown_pct: float = Field(alias="drawdownPct")
+    open_positions: int = Field(alias="openPositions")
+    execution_count: int = Field(default=0, alias="executionCount")
+    signal_count: int = Field(default=0, alias="signalCount")
+    candles_processed: int = Field(default=0, alias="candlesProcessed")
+    rejected_count: int = Field(default=0, alias="rejectedCount")
+    last_execution: str | None = Field(default=None, alias="lastExecution")
+    last_execution_at: str | None = Field(default=None, alias="lastExecutionAt")
+    last_signal: str | None = Field(default=None, alias="lastSignal")
+    positions: list[PaperPositionDTO] = Field(default_factory=list)
+    trades: list[PaperTradeRowDTO]
+
+
 class SessionContextDTO(ApiModel):
     trading_mode: str = Field(alias="tradingMode")
     connection_status: str = Field(alias="connectionStatus")
     account_label: str = Field(alias="accountLabel")
     bot_status: str = Field(alias="botStatus")
     account_profile: str = Field(alias="accountProfile")
+    candle_engine: CandleEngineStatusDTO | None = Field(default=None, alias="candleEngine")
+    signal_engine: SignalEngineStatusDTO | None = Field(default=None, alias="signalEngine")
+    paper_execution: PaperExecutionStatusDTO | None = Field(default=None, alias="paperExecution")
 
 
 class QuoteDTO(ApiModel):
@@ -24,6 +110,7 @@ class QuoteDTO(ApiModel):
     digits: int = 5
     available: bool = True
     updated_at: str = Field(alias="updatedAt")
+    freshness: str = "LIVE"
 
 
 class AccountSnapshotDTO(ApiModel):
@@ -36,6 +123,9 @@ class AccountSnapshotDTO(ApiModel):
     free_margin: float = Field(alias="freeMargin")
     currency: str = "USD"
     updated_at: str = Field(alias="updatedAt")
+    profit: float = 0.0
+    leverage: int = 0
+    margin_level: float | None = Field(default=None, alias="marginLevel")
 
 
 class EquityPointDTO(ApiModel):
@@ -55,6 +145,7 @@ class PositionDTO(ApiModel):
     unrealized_pnl: float = Field(alias="unrealizedPnl")
     r_multiple: float | None = Field(alias="rMultiple")
     opened_at: str = Field(alias="openedAt")
+    swap: float = 0.0
 
 
 class TradeDTO(ApiModel):
@@ -71,6 +162,8 @@ class TradeDTO(ApiModel):
     net_pnl: float = Field(alias="netPnl")
     r_multiple: float | None = Field(alias="rMultiple")
     exit_reason: str = Field(alias="exitReason")
+    commission: float = 0.0
+    swap: float = 0.0
 
 
 class IndicatorSnapshotDTO(ApiModel):
@@ -124,6 +217,30 @@ class RiskSnapshotDTO(ApiModel):
     risk_per_trade_pct: float = Field(alias="riskPerTradePct")
     limits: list[RiskLimitDTO]
     updated_at: str = Field(alias="updatedAt")
+
+
+class LiveGateResultDTO(ApiModel):
+    name: str
+    allowed: bool
+    reason: str
+    severity: str
+
+
+class LiveReadinessDTO(ApiModel):
+    """Read-only live enablement preflight — never means orders are executable."""
+
+    allowed: bool
+    configuration_preflight_ready: bool = Field(alias="configurationPreflightReady")
+    execution_capability: bool = Field(alias="executionCapability")
+    readiness_status: str = Field(alias="readinessStatus")
+    message: str
+    evaluated_at: str = Field(alias="evaluatedAt")
+    unresolved_unknown_count: int = Field(alias="unresolvedUnknownCount")
+    kill_switch_enabled: bool = Field(alias="killSwitchEnabled")
+    legacy_run_allowed: bool = Field(alias="legacyRunAllowed")
+    mt5_executor_implemented: bool = Field(alias="mt5ExecutorImplemented")
+    blocking_reasons: list[str] = Field(alias="blockingReasons")
+    gates: list[LiveGateResultDTO]
 
 
 class SystemSettingsDTO(ApiModel):

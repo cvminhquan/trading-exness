@@ -12,4 +12,5 @@ export const API_V1 = {
   activeAccount: "/api/v1/accounts/active",
   backtests: "/api/v1/backtests",
   backtest: (id: string) => `/api/v1/backtests/${encodeURIComponent(id)}`,
+  paper: "/api/v1/paper",
 } as const;

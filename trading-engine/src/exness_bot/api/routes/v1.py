@@ -14,6 +14,8 @@ from exness_bot.api.schemas.dashboard import (
     ActivateAccountRequest,
     BacktestReportDTO,
     DashboardOverviewDTO,
+    LiveReadinessDTO,
+    PaperTradingDTO,
     PositionDTO,
     QuoteDTO,
     RiskSnapshotDTO,
@@ -50,6 +52,33 @@ def get_status(service: Annotated[ReadService, Depends(get_read_service)]) -> di
 
 
 @router.get(
+    "/live-readiness",
+    summary="Preflight live enablement (chỉ đọc)",
+    description=(
+        "Đánh giá cổng an toàn live. Không kích hoạt live, không đặt lệnh. "
+        "PREFLIGHT_READY ≠ LIVE READY khi MT5Executor chưa tồn tại."
+    ),
+    response_model=DataEnvelope[LiveReadinessDTO],
+    response_model_by_alias=True,
+)
+def get_live_readiness(
+    service: Annotated[ReadService, Depends(get_read_service)],
+) -> dict[str, object]:
+    return _envelope(service.get_live_readiness().model_dump(by_alias=True))
+
+
+@router.get(
+    "/paper",
+    summary="Paper trading (ảo, chỉ đọc)",
+    description="Trạng thái khớp lệnh giấy. Không có endpoint đặt lệnh.",
+    response_model=DataEnvelope[PaperTradingDTO],
+    response_model_by_alias=True,
+)
+def get_paper(service: Annotated[ReadService, Depends(get_read_service)]) -> dict[str, object]:
+    return _envelope(service.get_paper_trading().model_dump(by_alias=True))
+
+
+@router.get(
     "/account",
     summary="Snapshot tài khoản",
     response_model=DataEnvelope[AccountSnapshotDTO],
@@ -72,7 +101,10 @@ def get_overview(service: Annotated[ReadService, Depends(get_read_service)]) -> 
 @router.get(
     "/quotes",
     summary="Giá thị trường realtime",
-    description="Tick bid/ask cho watchlist. Chiến lược V1 vẫn chỉ giao dịch SYMBOL đã cấu hình.",
+    description=(
+        "Tick bid/ask/last, spread và freshness LIVE/STALE/UNAVAILABLE. "
+        "Symbol trên Dashboard luôn canonical (XAUUSD)."
+    ),
     response_model=DataEnvelope[list[QuoteDTO]],
     response_model_by_alias=True,
 )
@@ -80,7 +112,9 @@ def get_quotes(
     service: Annotated[ReadService, Depends(get_read_service)],
     symbols: Annotated[
         str | None,
-        Query(description="Danh sách symbol cách nhau bởi dấu phẩy. Mặc định dùng WATCHLIST_SYMBOLS."),
+        Query(
+            description="Danh sách symbol cách nhau bởi dấu phẩy. Mặc định dùng WATCHLIST_SYMBOLS."
+        ),
     ] = None,
 ) -> dict[str, object]:
     requested = [item.strip() for item in symbols.split(",")] if symbols else None

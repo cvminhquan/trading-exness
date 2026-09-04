@@ -2,17 +2,54 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from exness_bot.api.dependencies import get_cached_settings
+from exness_bot.api.dependencies import get_cached_settings, get_read_service
 from exness_bot.api.errors import ApiAppError
 from exness_bot.api.routes.v1 import router as v1_router
 
 logger = structlog.get_logger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    from exness_bot.candle_engine.runtime import (
+        start_candle_engine_runtime,
+        stop_candle_engine_runtime,
+    )
+
+    settings = get_cached_settings()
+    if settings.paper_execution_enabled:
+        from exness_bot.paper_execution.runtime import (
+            start_paper_execution_runtime,
+            stop_paper_execution_runtime,
+        )
+
+        start_paper_execution_runtime(settings, get_read_service())
+        yield
+        stop_paper_execution_runtime()
+        return
+    if settings.signal_engine_enabled:
+        from exness_bot.signal_engine.runtime import (
+            start_signal_engine_runtime,
+            stop_signal_engine_runtime,
+        )
+
+        start_signal_engine_runtime(settings, get_read_service())
+        yield
+        stop_signal_engine_runtime()
+        return
+    if settings.candle_engine_enabled:
+        start_candle_engine_runtime(settings, get_read_service())
+    yield
+    stop_candle_engine_runtime()
 
 
 def create_app() -> FastAPI:
@@ -26,6 +63,7 @@ def create_app() -> FastAPI:
         version="1.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        lifespan=lifespan,
     )
 
     app.add_middleware(

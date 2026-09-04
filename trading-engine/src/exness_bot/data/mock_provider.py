@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from exness_bot.config.settings import Settings
 from exness_bot.data.mock_data import mock_account, mock_closed_trades, mock_positions
@@ -13,8 +13,9 @@ from exness_bot.data.models import (
     TradeHistoryQuery,
     TradeHistoryResult,
 )
-from exness_bot.domain.models import ClosedTrade, Tick
-
+from exness_bot.domain.enums import Timeframe
+from exness_bot.domain.models import Candle, ClosedTrade, Tick
+from exness_bot.market_data.candles import timeframe_duration
 
 _MOCK_LAST: dict[str, float] = {
     "XAUUSD": 4456.40,
@@ -99,3 +100,42 @@ class MockTradingDataProvider:
         if query.end:
             filtered = [t for t in filtered if t.closed_at <= query.end]
         return filtered
+
+    def get_candles(
+        self,
+        symbol: str,
+        timeframe: Timeframe,
+        count: int,
+    ) -> list[Candle] | None:
+        target = (symbol or self._settings.symbol).strip().upper()
+        last = _MOCK_LAST.get(target, 2350.0)
+        now = datetime.now(tz=UTC)
+        step_minutes = max(1, int(timeframe_duration(timeframe).total_seconds() // 60))
+        forming_open = now.replace(
+            minute=(now.minute // step_minutes) * step_minutes,
+            second=0,
+            microsecond=0,
+        )
+        candles: list[Candle] = []
+        for index in range(count):
+            offset = count - 1 - index
+            open_ts = forming_open - timedelta(minutes=step_minutes * offset)
+            drift = (index - count / 2) * 0.05
+            close = round(last + drift, 2)
+            open_px = round(close - 0.12, 2)
+            candles.append(
+                Candle(
+                    symbol=target,
+                    timeframe=timeframe,
+                    timestamp=open_ts,
+                    open=open_px,
+                    high=round(max(open_px, close) + 0.4, 2),
+                    low=round(min(open_px, close) - 0.4, 2),
+                    close=close,
+                    volume=100.0,
+                    spread=20,
+                    tick_volume=100.0,
+                    real_volume=0.0,
+                )
+            )
+        return candles

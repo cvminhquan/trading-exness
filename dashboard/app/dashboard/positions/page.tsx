@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { QueryState } from "@/components/shared/States";
 import { TableSkeleton } from "@/components/shared/Skeletons";
 import { PositionTable } from "@/components/positions/PositionTable";
+import { Badge } from "@/components/ui/badge";
 import { EMPTY, NAV, SECTION_LABELS } from "@/lib/i18n/vi";
 import { usePositions } from "@/queries/use-trading-queries";
 
@@ -15,6 +16,11 @@ export default function PositionsPage() {
       <PageHeader
         title={NAV.positions.label}
         description={NAV.positions.description}
+        badge={
+          <Badge variant="info" className="normal-case">
+            BROKER ACCOUNT
+          </Badge>
+        }
       />
 
       <QueryState

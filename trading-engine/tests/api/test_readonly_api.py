@@ -10,13 +10,16 @@ from fastapi.testclient import TestClient
 from exness_bot.api.app import create_app
 from exness_bot.api.dependencies import get_read_service
 from exness_bot.api.services.read_service import ReadService
+from exness_bot.backtest.baseline_runner import baseline_paths, run_baseline, write_baseline_outputs
 from exness_bot.config.settings import Settings
 from exness_bot.data.mock_provider import MockTradingDataProvider
 
 
 @pytest.fixture
-def project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+def project_root(tmp_path: Path) -> Path:
+    result = run_baseline(Settings(), project_root=tmp_path)
+    write_baseline_outputs(result, baseline_paths(tmp_path))
+    return tmp_path
 
 
 @pytest.fixture
@@ -50,6 +53,36 @@ class TestStatus:
         assert data["botStatus"] == "RUNNING"
         assert "tradingMode" in data
         assert data["accountProfile"] == "demo"
+        assert data["candleEngine"]["status"] == "STOPPED"
+        assert data["candleEngine"]["dataSource"] == "MOCK"
+        assert data["signalEngine"]["status"] == "STOPPED"
+        assert data["signalEngine"]["strategy"] == "ema_rsi_atr_v1"
+        assert data["signalEngine"]["dataSource"] == "MOCK"
+        assert data["signalEngine"]["lastSignal"] is None
+        assert data["paperExecution"]["status"] == "STOPPED"
+        assert data["paperExecution"]["mode"] == "paper"
+        assert data["paperExecution"]["openPositions"] == 0
+        assert data["paperExecution"]["lastExecution"] is None
+
+
+class TestPaper:
+    def test_paper_readonly_snapshot(self, api_client: TestClient) -> None:
+        response = api_client.get("/api/v1/paper")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["mode"] == "paper"
+        assert data["researchOnly"] is True
+        assert data["status"] == "STOPPED"
+        assert data["openPositions"] == 0
+        assert data["trades"] == []
+        assert data["accountKind"] == "paper"
+        assert data["positions"] == []
+
+    def test_paper_has_no_mutation_routes(self, api_client: TestClient) -> None:
+        assert api_client.post("/api/v1/paper").status_code in {405, 422}
+        assert api_client.post("/api/v1/trade").status_code == 404
+        assert api_client.post("/api/v1/order").status_code == 404
+        assert api_client.post("/api/v1/execute").status_code == 404
 
 
 class TestAccount:
@@ -60,6 +93,8 @@ class TestAccount:
         assert isinstance(data["balance"], float)
         assert data["currency"] == "USD"
         assert data["updatedAt"].endswith("Z")
+        assert "leverage" in data
+        assert "profit" in data
 
 
 class TestQuotes:
@@ -76,6 +111,8 @@ class TestQuotes:
         assert gold["available"] is True
         assert gold["bid"] > 0
         assert gold["ask"] >= gold["bid"]
+        assert gold["freshness"] == "LIVE"
+        assert gold["updatedAt"].endswith("Z")
 
     def test_quotes_custom_symbols(self, api_client: TestClient) -> None:
         response = api_client.get("/api/v1/quotes?symbols=EURUSD,BTCUSD")

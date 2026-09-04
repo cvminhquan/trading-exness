@@ -100,6 +100,8 @@ describe("repository interface compatibility", () => {
     expect(typeof repo.getAccountSwitchState).toBe("function");
     expect(typeof repo.setActiveAccount).toBe("function");
     expect(typeof repo.getSessionContext).toBe("function");
+    expect(typeof repo.getQuotes).toBe("function");
+    expect(typeof repo.getPaperTrading).toBe("function");
   };
 
   it("MockTradingRepository implements TradingRepository", () => {

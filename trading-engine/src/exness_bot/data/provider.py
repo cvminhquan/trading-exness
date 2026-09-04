@@ -10,7 +10,8 @@ from exness_bot.data.models import (
     TradeHistoryQuery,
     TradeHistoryResult,
 )
-from exness_bot.domain.models import Tick
+from exness_bot.domain.enums import Timeframe
+from exness_bot.domain.models import Candle, Tick
 
 
 class TradingDataProvider(Protocol):
@@ -35,4 +36,13 @@ class TradingDataProvider(Protocol):
 
     def requires_live_broker(self) -> bool:
         """True when provider expects MT5 connectivity."""
+        ...
+
+    def get_candles(
+        self,
+        symbol: str,
+        timeframe: Timeframe,
+        count: int,
+    ) -> list[Candle] | None:
+        """Return OHLCV bars oldest-first, or None when the broker is unavailable."""
         ...

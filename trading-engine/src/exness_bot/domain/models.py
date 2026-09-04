@@ -98,6 +98,8 @@ class AccountInfo(BaseModel):
     name: str = ""
     server: str = ""
     trade_mode: str = "demo"
+    profit: float = 0.0
+    margin_level: float | None = None
 
     model_config = {"frozen": True}
 
@@ -117,6 +119,9 @@ class SymbolInfo(BaseModel):
     spread: int
     trade_mode: int
     visible: bool
+    # None = broker did not expose / not mapped — never assume zero for live stops.
+    stops_level: int | None = None
+    freeze_level: int | None = None
 
     model_config = {"frozen": True}
 
@@ -146,6 +151,8 @@ class Candle(BaseModel):
     close: float
     volume: float
     spread: int | None = None
+    tick_volume: float | None = None
+    real_volume: float | None = None
 
     model_config = {"frozen": True}
 

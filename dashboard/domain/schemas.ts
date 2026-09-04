@@ -6,7 +6,7 @@ export type BotStatus = z.infer<typeof botStatusSchema>;
 export const directionSchema = z.enum(["LONG", "SHORT", "FLAT"]);
 export type Direction = z.infer<typeof directionSchema>;
 
-export const signalActionSchema = z.enum(["BUY", "SELL", "HOLD"]);
+export const signalActionSchema = z.enum(["BUY", "SELL", "HOLD", "NO_SIGNAL", "INVALID"]);
 export type SignalAction = z.infer<typeof signalActionSchema>;
 
 export const exitReasonSchema = z.enum(["stop_loss", "take_profit", "end_of_data", "manual"]);
@@ -20,8 +20,11 @@ export const accountSnapshotSchema = z.object({
   drawdownPct: z.number(),
   margin: z.number(),
   freeMargin: z.number(),
-  currency: z.string().default("USD"),
+    currency: z.string().default("USD"),
   updatedAt: z.string().datetime(),
+  profit: z.number().default(0),
+  leverage: z.number().int().default(0),
+  marginLevel: z.number().nullable().default(null),
 });
 export type AccountSnapshot = z.infer<typeof accountSnapshotSchema>;
 
@@ -43,6 +46,7 @@ export const positionSchema = z.object({
   unrealizedPnl: z.number(),
   rMultiple: z.number().nullable(),
   openedAt: z.string().datetime(),
+  swap: z.number().default(0),
 });
 export type Position = z.infer<typeof positionSchema>;
 
@@ -60,6 +64,8 @@ export const tradeSchema = z.object({
   netPnl: z.number(),
   rMultiple: z.number().nullable(),
   exitReason: exitReasonSchema,
+  commission: z.number().default(0),
+  swap: z.number().default(0),
 });
 export type Trade = z.infer<typeof tradeSchema>;
 
@@ -311,12 +317,104 @@ export const backtestReportSchema = z.object({
 });
 export type BacktestReport = z.infer<typeof backtestReportSchema>;
 
+export const candleEngineStatusSchema = z.object({
+  status: botStatusSchema,
+  lastProcessedAt: z.string().nullable(),
+  lastClosedAt: z.string().nullable(),
+  lastUpdateAt: z.string().nullable(),
+  dataSource: z.string(),
+});
+export type CandleEngineStatus = z.infer<typeof candleEngineStatusSchema>;
+
+export const signalEngineStatusSchema = z.object({
+  status: botStatusSchema,
+  strategy: z.string(),
+  lastProcessedCandle: z.string().nullable(),
+  lastSignal: z.string().nullable(),
+  lastSignalAt: z.string().nullable(),
+  dataSource: z.string(),
+});
+export type SignalEngineStatus = z.infer<typeof signalEngineStatusSchema>;
+
+export const paperExecutionStatusSchema = z.object({
+  status: botStatusSchema,
+  mode: z.string(),
+  balance: z.number(),
+  equity: z.number(),
+  openPositions: z.number().int(),
+  lastExecution: z.string().nullable(),
+  lastExecutionAt: z.string().nullable(),
+  sessionId: z.string().nullable().optional(),
+  accountKind: z.string().optional(),
+});
+export type PaperExecutionStatus = z.infer<typeof paperExecutionStatusSchema>;
+
+export const paperPositionSchema = z.object({
+  positionId: z.string(),
+  symbol: z.string(),
+  side: z.enum(["LONG", "SHORT", "FLAT"]),
+  volume: z.number(),
+  entryPrice: z.number(),
+  currentPrice: z.number(),
+  stopLoss: z.number().nullable(),
+  takeProfit: z.number().nullable(),
+  unrealizedPnl: z.number(),
+  openedAt: z.string(),
+  status: z.string(),
+});
+export type PaperPosition = z.infer<typeof paperPositionSchema>;
+
+export const paperTradeRowSchema = z.object({
+  time: z.string(),
+  symbol: z.string(),
+  side: z.enum(["LONG", "SHORT", "FLAT"]),
+  volume: z.number(),
+  entry: z.number().nullable(),
+  stopLoss: z.number().nullable(),
+  takeProfit: z.number().nullable(),
+  exit: z.number().nullable(),
+  pnl: z.number().nullable(),
+  status: z.string(),
+  reason: z.string().nullable(),
+});
+export type PaperTradeRow = z.infer<typeof paperTradeRowSchema>;
+
+export const paperTradingSchema = z.object({
+  status: botStatusSchema,
+  mode: z.string(),
+  researchOnly: z.boolean(),
+  accountKind: z.string().optional(),
+  sessionId: z.string().nullable().optional(),
+  startedAt: z.string().nullable().optional(),
+  initialBalance: z.number(),
+  balance: z.number(),
+  equity: z.number(),
+  realizedPnl: z.number(),
+  unrealizedPnl: z.number(),
+  dailyPnl: z.number(),
+  drawdownPct: z.number(),
+  openPositions: z.number().int(),
+  executionCount: z.number().int().optional(),
+  signalCount: z.number().int().optional(),
+  candlesProcessed: z.number().int().optional(),
+  rejectedCount: z.number().int().optional(),
+  lastExecution: z.string().nullable(),
+  lastExecutionAt: z.string().nullable(),
+  lastSignal: z.string().nullable(),
+  positions: z.array(paperPositionSchema).optional().default([]),
+  trades: z.array(paperTradeRowSchema),
+});
+export type PaperTrading = z.infer<typeof paperTradingSchema>;
+
 export const sessionContextSchema = z.object({
   tradingMode: z.string(),
   connectionStatus: connectionStatusSchema,
   accountLabel: z.string(),
   botStatus: botStatusSchema,
   accountProfile: z.enum(["demo", "live"]),
+  candleEngine: candleEngineStatusSchema.nullable().optional(),
+  signalEngine: signalEngineStatusSchema.nullable().optional(),
+  paperExecution: paperExecutionStatusSchema.nullable().optional(),
 });
 export type SessionContext = z.infer<typeof sessionContextSchema>;
 
@@ -368,6 +466,9 @@ export const dashboardOverviewSchema = z.object({
 });
 export type DashboardOverview = z.infer<typeof dashboardOverviewSchema>;
 
+export const quoteFreshnessSchema = z.enum(["LIVE", "STALE", "UNAVAILABLE"]);
+export type QuoteFreshness = z.infer<typeof quoteFreshnessSchema>;
+
 export const quoteSchema = z.object({
   symbol: z.string(),
   bid: z.number().nullable(),
@@ -377,5 +478,6 @@ export const quoteSchema = z.object({
   digits: z.number().int().nonnegative(),
   available: z.boolean(),
   updatedAt: z.string().datetime(),
+  freshness: quoteFreshnessSchema.default("LIVE"),
 });
 export type Quote = z.infer<typeof quoteSchema>;

@@ -55,6 +55,9 @@ class BacktestConfig(BaseModel):
     volume_max: float = 100.0
     volume_step: float = 0.01
     trade_contract_size: float = 100.0
+    # Explicit paper research stops — NOT a silent broker default when metadata is missing.
+    paper_stops_level: int = Field(default=10, ge=0)
+    paper_freeze_level: int = Field(default=0, ge=0)
 
     model_config = {"frozen": True}
 
@@ -83,6 +86,8 @@ class BacktestConfig(BaseModel):
             spread=self.spread_points,
             trade_mode=4,
             visible=True,
+            stops_level=self.paper_stops_level,
+            freeze_level=self.paper_freeze_level,
         )
 
     @property

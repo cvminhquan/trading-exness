@@ -18,4 +18,5 @@ export const tradingKeys = {
   session: () => [...tradingKeys.all, "session"] as const,
   quotes: () => [...tradingKeys.all, "quotes"] as const,
   accounts: () => [...tradingKeys.all, "accounts"] as const,
+  paper: () => [...tradingKeys.all, "paper"] as const,
 };

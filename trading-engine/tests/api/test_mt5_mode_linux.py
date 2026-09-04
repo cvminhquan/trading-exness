@@ -55,3 +55,12 @@ class TestMT5ModeLinux:
     def test_health_ok(self, mt5_api_client: TestClient) -> None:
         response = mt5_api_client.get("/health")
         assert response.status_code == 200
+
+    def test_quotes_unavailable_not_mocked(self, mt5_api_client: TestClient) -> None:
+        response = mt5_api_client.get("/api/v1/quotes?symbols=XAUUSD")
+        assert response.status_code == 200
+        gold = response.json()["data"][0]
+        assert gold["symbol"] == "XAUUSD"
+        assert gold["available"] is False
+        assert gold["freshness"] == "UNAVAILABLE"
+        assert gold["bid"] is None

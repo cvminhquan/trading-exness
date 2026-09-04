@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Activity,
   BarChart3,
+  FlaskConical,
   LayoutDashboard,
   Settings,
   Shield,
@@ -24,6 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "strategy", href: "/dashboard/strategy", ...NAV.strategy },
   { id: "risk", href: "/dashboard/risk", ...NAV.risk },
   { id: "backtest", href: "/dashboard/backtest", ...NAV.backtest },
+  { id: "paper", href: "/dashboard/paper", ...NAV.paper },
   { id: "settings", href: "/dashboard/settings", ...NAV.settings },
 ];
 
@@ -34,6 +36,7 @@ export const NAV_ICONS: Record<NavItem["id"], LucideIcon> = {
   strategy: Target,
   risk: Shield,
   backtest: BarChart3,
+  paper: FlaskConical,
   settings: Settings,
 };
 

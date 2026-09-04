@@ -9,18 +9,21 @@ export const useBotStatus = () =>
   useQuery({
     queryKey: tradingKeys.botStatus(),
     queryFn: () => tradingRepository.getBotStatus(),
+    refetchInterval: 5_000,
   });
 
 export const useAccountSnapshot = () =>
   useQuery({
     queryKey: tradingKeys.account(),
     queryFn: () => tradingRepository.getAccountSnapshot(),
+    refetchInterval: 5_000,
   });
 
 export const useSessionContext = () =>
   useQuery({
     queryKey: tradingKeys.session(),
     queryFn: () => tradingRepository.getSessionContext(),
+    refetchInterval: 5_000,
   });
 
 export const useQuotes = () =>
@@ -29,6 +32,13 @@ export const useQuotes = () =>
     queryFn: () => tradingRepository.getQuotes(),
     refetchInterval: 2_000,
     staleTime: 1_000,
+  });
+
+export const usePaperTrading = () =>
+  useQuery({
+    queryKey: tradingKeys.paper(),
+    queryFn: () => tradingRepository.getPaperTrading(),
+    refetchInterval: 5_000,
   });
 
 export const useDashboardOverview = () =>
@@ -42,12 +52,14 @@ export const usePositions = () =>
   useQuery({
     queryKey: tradingKeys.positions(),
     queryFn: () => tradingRepository.getPositions(),
+    refetchInterval: 3_000,
   });
 
 export const useTrades = () =>
   useQuery({
     queryKey: tradingKeys.trades(),
     queryFn: () => tradingRepository.getTrades(),
+    refetchInterval: 15_000,
   });
 
 export const useStrategySnapshot = () =>

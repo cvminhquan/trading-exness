@@ -42,6 +42,7 @@ export const PositionTable = ({ positions, compact = false, isLoading = false }:
                 <TableHead className="text-right">{UI.currentPrice}</TableHead>
                 {!compact ? <TableHead className="hidden text-right lg:table-cell">SL</TableHead> : null}
                 {!compact ? <TableHead className="hidden text-right lg:table-cell">TP</TableHead> : null}
+                {!compact ? <TableHead className="hidden text-right lg:table-cell">Swap</TableHead> : null}
                 <TableHead className="text-right">{METRICS.unrealizedPnl}</TableHead>
                 {!compact ? <TableHead className="hidden text-right md:table-cell">R</TableHead> : null}
                 <TableHead className="text-right">{UI.duration}</TableHead>
@@ -65,6 +66,11 @@ export const PositionTable = ({ positions, compact = false, isLoading = false }:
                   {!compact ? (
                     <TableCell className="hidden text-right tabular-nums lg:table-cell">
                       {position.takeProfit ? formatPrice(position.takeProfit) : "—"}
+                    </TableCell>
+                  ) : null}
+                  {!compact ? (
+                    <TableCell className="hidden text-right tabular-nums lg:table-cell">
+                      <PnLValue value={position.swap} size="sm" />
                     </TableCell>
                   ) : null}
                   <TableCell className="text-right">

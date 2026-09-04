@@ -31,6 +31,8 @@ def make_xauusd_symbol(
     ask: float = 2350.30,
     spread: int = 20,
     volume_max: float = 100.0,
+    stops_level: int | None = 10,
+    freeze_level: int | None = 0,
 ) -> SymbolInfo:
     return SymbolInfo(
         symbol="XAUUSD",
@@ -45,6 +47,8 @@ def make_xauusd_symbol(
         spread=spread,
         trade_mode=4,
         visible=True,
+        stops_level=stops_level,
+        freeze_level=freeze_level,
     )
 
 

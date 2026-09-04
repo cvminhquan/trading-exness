@@ -11,6 +11,7 @@ import {
   strategySnapshotSchema,
   systemSettingsSchema,
   tradeSchema,
+  paperTradingSchema,
 } from "@/domain/schemas";
 import { buildBacktestQueryString, buildTradeQueryString } from "@/domain/api/params";
 import type { ApiClient } from "@/lib/api/client";
@@ -86,5 +87,9 @@ export class ApiTradingRepository implements TradingRepository {
 
   getQuotes() {
     return this.client.get(API_V1.quotes, quoteSchema.array());
+  }
+
+  getPaperTrading() {
+    return this.client.get(API_V1.paper, paperTradingSchema);
   }
 }

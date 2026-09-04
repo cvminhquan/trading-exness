@@ -12,6 +12,7 @@ import type {
   SystemSettings,
   Trade,
   Quote,
+  PaperTrading,
 } from "@/domain";
 import type { BacktestListParams, TradeListParams } from "@/domain/api/params";
 
@@ -30,4 +31,5 @@ export interface TradingRepository {
   setActiveAccount(profile: AccountProfileId): Promise<AccountSwitchState>;
   getSessionContext(): Promise<SessionContext>;
   getQuotes(): Promise<Quote[]>;
+  getPaperTrading(): Promise<PaperTrading>;
 }

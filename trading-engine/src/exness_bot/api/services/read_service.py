@@ -13,15 +13,23 @@ from exness_bot.api.schemas.dashboard import (
     AccountSnapshotDTO,
     AccountSwitchStateDTO,
     BacktestReportDTO,
+    CandleEngineStatusDTO,
     DashboardOverviewDTO,
     EquityPointDTO,
     IndicatorSnapshotDTO,
+    LiveGateResultDTO,
+    LiveReadinessDTO,
+    PaperExecutionStatusDTO,
+    PaperPositionDTO,
+    PaperTradeRowDTO,
+    PaperTradingDTO,
     PositionDTO,
     QuoteDTO,
     RiskLimitDTO,
     RiskSnapshotDTO,
     SessionContextDTO,
     SignalConditionDTO,
+    SignalEngineStatusDTO,
     StrategySignalDTO,
     StrategySnapshotDTO,
     SystemSettingsDTO,
@@ -31,13 +39,25 @@ from exness_bot.api.services.account_runtime import AccountRuntime
 from exness_bot.api.services.backtest_loader import load_all_baselines, load_baseline_by_id
 from exness_bot.api.services.backtest_mapper import map_baseline_to_report, to_iso_utc
 from exness_bot.backtest.config import BacktestConfig
+from exness_bot.candle_engine.engine import CandleEngine
 from exness_bot.config.account_profiles import AccountProfile, AccountProfileStore
+from exness_bot.config.live_enablement import (
+    LivePreflightContext,
+    evaluate_live_enablement,
+    load_intent_store_for_preflight,
+)
 from exness_bot.config.settings import Settings, TradingMode
+from exness_bot.data.freshness import QuoteFreshness, classify_quote_freshness
 from exness_bot.data.models import ProviderConnectionStatus, ProviderSnapshot, TradeHistoryQuery
 from exness_bot.data.provider import TradingDataProvider
+from exness_bot.domain.enums import SignalDirection
 from exness_bot.domain.models import ClosedTrade, Position
+from exness_bot.paper_execution.models import PositionStatus
+from exness_bot.paper_execution.service import ExecutionService
 from exness_bot.persistence.sqlite_repository import SQLiteTradingRepository, parse_sqlite_path
 from exness_bot.risk.models import RiskState
+from exness_bot.signal_engine.engine import SignalEngine
+from exness_bot.signal_engine.models import SignalKind, SignalResult
 
 T = TypeVar("T")
 
@@ -86,9 +106,15 @@ class ReadService:
         project_root: Path | None = None,
         repository: SQLiteTradingRepository | None = None,
         account_runtime: AccountRuntime | None = None,
+        candle_engine: CandleEngine | None = None,
+        signal_engine: SignalEngine | None = None,
+        paper_execution: ExecutionService | None = None,
     ) -> None:
         self._settings = settings
         self._provider = data_provider
+        self._candle_engine = candle_engine
+        self._signal_engine = signal_engine
+        self._paper_execution = paper_execution
         self._project_root = project_root
         self._repository = repository
         self._default_equity = BacktestConfig.from_settings(settings).initial_equity
@@ -101,6 +127,19 @@ class ReadService:
             self._account_runtime.apply_startup_credentials()
         else:
             self._account_runtime = account_runtime
+
+    @property
+    def provider(self) -> TradingDataProvider:
+        return self._provider
+
+    def attach_candle_engine(self, engine: CandleEngine | None) -> None:
+        self._candle_engine = engine
+
+    def attach_signal_engine(self, engine: SignalEngine | None) -> None:
+        self._signal_engine = engine
+
+    def attach_paper_execution(self, execution: ExecutionService | None) -> None:
+        self._paper_execution = execution
 
     def _now_iso(self) -> str:
         return to_iso_utc(datetime.now(tz=UTC)) or ""
@@ -127,6 +166,7 @@ class ReadService:
         if snapshot.connection_status in {
             ProviderConnectionStatus.UNAVAILABLE,
             ProviderConnectionStatus.ERROR,
+            ProviderConnectionStatus.DISCONNECTED,
         }:
             raise ApiAppError(
                 code="BROKER_UNAVAILABLE",
@@ -168,11 +208,277 @@ class ReadService:
             account_label=account_label,
             bot_status=self._bot_status(snapshot),
             account_profile=self._account_runtime.active_profile.value,
+            candle_engine=self._candle_engine_status(),
+            signal_engine=self._signal_engine_status(),
+            paper_execution=self._paper_execution_status(),
+        )
+
+    def _candle_engine_status(self) -> CandleEngineStatusDTO:
+        engine = self._candle_engine
+        if engine is None:
+            return CandleEngineStatusDTO(
+                status="STOPPED",
+                last_processed_at=None,
+                last_closed_at=None,
+                last_update_at=None,
+                data_source=self._provider.data_source.value.upper(),
+            )
+        snap = engine.snapshot()
+        status = str(snap["status"])
+        last_processed = snap["last_processed"]
+        last_closed = snap["last_closed"]
+        last_update = snap["last_update"]
+        allowed = {"RUNNING", "STOPPED", "ERROR", "DISCONNECTED"}
+        processed_at = to_iso_utc(last_processed) if isinstance(last_processed, datetime) else None
+        closed_at = to_iso_utc(last_closed) if isinstance(last_closed, datetime) else None
+        update_at = to_iso_utc(last_update) if isinstance(last_update, datetime) else None
+        return CandleEngineStatusDTO(
+            status=status if status in allowed else "RUNNING",
+            last_processed_at=processed_at,
+            last_closed_at=closed_at,
+            last_update_at=update_at,
+            data_source=str(snap["data_source"]),
+        )
+
+    def _signal_engine_status(self) -> SignalEngineStatusDTO:
+        engine = self._signal_engine
+        if engine is None:
+            return SignalEngineStatusDTO(
+                status="STOPPED",
+                strategy="ema_rsi_atr_v1",
+                last_processed_candle=None,
+                last_signal=None,
+                last_signal_at=None,
+                data_source=self._provider.data_source.value.upper(),
+            )
+        snap = engine.snapshot()
+        last_processed = snap["last_processed"]
+        last_signal_at = snap["last_signal_at"]
+        return SignalEngineStatusDTO(
+            status=str(snap["status"]),
+            strategy=str(snap["strategy"]),
+            last_processed_candle=(
+                to_iso_utc(last_processed) if isinstance(last_processed, datetime) else None
+            ),
+            last_signal=str(snap["last_signal"]) if snap["last_signal"] is not None else None,
+            last_signal_at=(
+                to_iso_utc(last_signal_at) if isinstance(last_signal_at, datetime) else None
+            ),
+            data_source=str(snap["data_source"]),
+        )
+
+    def _paper_execution_status(self) -> PaperExecutionStatusDTO:
+        execution = self._paper_execution
+        if execution is None:
+            return PaperExecutionStatusDTO(
+                status="STOPPED",
+                mode="paper",
+                balance=self._default_equity,
+                equity=self._default_equity,
+                open_positions=0,
+                last_execution=None,
+                last_execution_at=None,
+                session_id=None,
+                account_kind="paper",
+            )
+        account = execution.account_state()
+        last = execution.last_execution()
+        last_at = execution.last_execution_at()
+        session = execution.session()
+        return PaperExecutionStatusDTO(
+            status="RUNNING" if self._settings.paper_execution_enabled else "STOPPED",
+            mode=account.mode,
+            balance=account.balance,
+            equity=account.equity,
+            open_positions=len(execution.open_positions()),
+            last_execution=last.status.value if last else None,
+            last_execution_at=to_iso_utc(last_at) if last_at else None,
+            session_id=session.session_id or None,
+            account_kind="paper",
+        )
+
+    def get_paper_trading(self) -> PaperTradingDTO:
+        status = self._paper_execution_status()
+        last_signal = None
+        if self._signal_engine is not None:
+            snap = self._signal_engine.snapshot()
+            if snap["last_signal"] is not None:
+                last_signal = str(snap["last_signal"])
+        execution = self._paper_execution
+        if last_signal is None and execution is not None:
+            last = execution.last_execution()
+            if last is not None and last.order is not None:
+                last_signal = (
+                    SignalKind.BUY.value
+                    if last.order.side == SignalDirection.LONG
+                    else SignalKind.SELL.value
+                )
+        if execution is None:
+            return PaperTradingDTO(
+                status=status.status,
+                mode=status.mode,
+                research_only=True,
+                account_kind="paper",
+                session_id=None,
+                started_at=None,
+                initial_balance=self._default_equity,
+                balance=status.balance,
+                equity=status.equity,
+                realized_pnl=0.0,
+                unrealized_pnl=0.0,
+                daily_pnl=0.0,
+                drawdown_pct=0.0,
+                open_positions=0,
+                execution_count=0,
+                signal_count=0,
+                candles_processed=0,
+                rejected_count=0,
+                last_execution=None,
+                last_execution_at=None,
+                last_signal=last_signal,
+                positions=[],
+                trades=[],
+            )
+        account = execution.account_state()
+        session = execution.session()
+        return PaperTradingDTO(
+            status=status.status,
+            mode=account.mode,
+            research_only=True,
+            account_kind="paper",
+            session_id=session.session_id or None,
+            started_at=to_iso_utc(session.started_at) if session.started_at else None,
+            initial_balance=account.initial_balance,
+            balance=account.balance,
+            equity=account.equity,
+            realized_pnl=account.realized_pnl,
+            unrealized_pnl=account.unrealized_pnl,
+            daily_pnl=account.daily_pnl,
+            drawdown_pct=account.drawdown_pct,
+            open_positions=len(execution.open_positions()),
+            execution_count=session.execution_count,
+            signal_count=session.signal_count,
+            candles_processed=session.candles_processed,
+            rejected_count=session.rejected_count,
+            last_execution=status.last_execution,
+            last_execution_at=status.last_execution_at,
+            last_signal=last_signal,
+            positions=self._paper_open_positions(execution),
+            trades=self._paper_trade_rows(execution),
+        )
+
+    def _paper_open_positions(self, execution: ExecutionService) -> list[PaperPositionDTO]:
+        rows: list[PaperPositionDTO] = []
+        for position in execution.open_positions():
+            rows.append(
+                PaperPositionDTO(
+                    position_id=position.position_id,
+                    symbol=position.symbol,
+                    side=position.side.value,
+                    volume=position.volume,
+                    entry_price=position.entry_price,
+                    current_price=position.current_price or position.entry_price,
+                    stop_loss=position.stop_loss,
+                    take_profit=position.take_profit,
+                    unrealized_pnl=position.unrealized_pnl,
+                    opened_at=to_iso_utc(position.opened_at) or self._now_iso(),
+                    status=position.status.value,
+                )
+            )
+        return rows
+
+    def _paper_trade_rows(self, execution: ExecutionService) -> list[PaperTradeRowDTO]:
+        rows: list[PaperTradeRowDTO] = []
+        for position in execution.open_positions():
+            rows.append(
+                PaperTradeRowDTO(
+                    time=to_iso_utc(position.opened_at) or self._now_iso(),
+                    symbol=position.symbol,
+                    side=position.side.value,
+                    volume=position.volume,
+                    entry=position.entry_price,
+                    stop_loss=position.stop_loss,
+                    take_profit=position.take_profit,
+                    exit_price=None,
+                    pnl=position.unrealized_pnl,
+                    status=PositionStatus.OPEN.value,
+                    reason=None,
+                )
+            )
+        for closed in execution.journal():
+            rows.append(
+                PaperTradeRowDTO(
+                    time=to_iso_utc(closed.exit_timestamp) or self._now_iso(),
+                    symbol=closed.symbol,
+                    side=closed.side.value,
+                    volume=closed.volume,
+                    entry=closed.entry_price,
+                    stop_loss=None,
+                    take_profit=None,
+                    exit_price=closed.exit_price,
+                    pnl=closed.net_pnl,
+                    status="CLOSED",
+                    reason=closed.exit_reason.value,
+                )
+            )
+        for rejection in execution.rejections():
+            rows.append(
+                PaperTradeRowDTO(
+                    time=to_iso_utc(rejection.at) or self._now_iso(),
+                    symbol=self._settings.symbol,
+                    side="FLAT",
+                    volume=0.0,
+                    entry=None,
+                    stop_loss=None,
+                    take_profit=None,
+                    exit_price=None,
+                    pnl=None,
+                    status="REJECTED",
+                    reason=rejection.code.value,
+                )
+            )
+        rows.sort(key=lambda row: row.time, reverse=True)
+        return rows
+
+    def _signal_result_to_dto(self, result: SignalResult) -> StrategySignalDTO:
+        indicators = result.indicators
+        action = result.signal.value
+        direction = "FLAT"
+        if result.signal == SignalKind.BUY:
+            direction = "LONG"
+        elif result.signal == SignalKind.SELL:
+            direction = "SHORT"
+        return StrategySignalDTO(
+            symbol=result.symbol,
+            strategy=result.strategy,
+            action=action,
+            direction=direction,
+            timestamp=to_iso_utc(result.candle_timestamp) or self._now_iso(),
+            indicators=IndicatorSnapshotDTO(
+                ema20=indicators.ema_20,
+                ema50=indicators.ema_50,
+                ema200=indicators.ema_200,
+                rsi14=indicators.rsi_14,
+                atr14=indicators.atr_14,
+            ),
+            reason=result.reason,
+            conditions=[
+                SignalConditionDTO(
+                    id=item.id,
+                    label=item.label,
+                    detail=item.detail,
+                    satisfied=item.satisfied,
+                )
+                for item in result.conditions
+            ],
+            summary="Tín hiệu nghiên cứu — không phải lệnh đã khớp.",
         )
 
     def get_quotes(self, symbols: list[str] | None = None) -> list[QuoteDTO]:
         requested = symbols or self._settings.watchlist_symbol_list
-        updated_at = self._now_iso()
+        now = datetime.now(tz=UTC)
+        fallback_iso = to_iso_utc(now) or self._now_iso()
+        stale_after = self._settings.live_data_stale_seconds
         quotes: list[QuoteDTO] = []
         for raw_symbol in requested:
             symbol = raw_symbol.strip().upper()
@@ -189,23 +495,31 @@ class ReadService:
                         spread=None,
                         digits=_quote_digits(symbol, None),
                         available=False,
-                        updated_at=updated_at,
+                        updated_at=fallback_iso,
+                        freshness=QuoteFreshness.UNAVAILABLE.value,
                     )
                 )
                 continue
             bid = tick.bid
             ask = tick.ask
             last = tick.last if tick.last > 0 else round((bid + ask) / 2, 8)
+            freshness = classify_quote_freshness(
+                available=True,
+                tick_time=tick.timestamp,
+                now=now,
+                stale_after_seconds=stale_after,
+            )
             quotes.append(
                 QuoteDTO(
                     symbol=symbol,
                     bid=bid,
                     ask=ask,
-                    last=tick.last,
+                    last=last,
                     spread=round(ask - bid, 8) if ask and bid else None,
-                    digits=_quote_digits(symbol, bid or ask or tick.last),
+                    digits=_quote_digits(symbol, bid or ask or last),
                     available=True,
-                    updated_at=to_iso_utc(tick.timestamp) or updated_at,
+                    updated_at=to_iso_utc(tick.timestamp) or fallback_iso,
+                    freshness=freshness.value,
                 )
             )
         return quotes
@@ -236,8 +550,18 @@ class ReadService:
         if snapshot.account is not None and risk_state is not None:
             today_pnl = round(snapshot.account.equity - risk_state.day_start_equity, 2)
         total_pnl = 0.0
+        profit = 0.0
+        leverage = 0
+        margin_level = None
         if snapshot.account is not None:
             total_pnl = round(snapshot.account.equity - self._default_equity, 2)
+            profit = round(snapshot.account.profit, 2)
+            leverage = snapshot.account.leverage
+            margin_level = (
+                round(snapshot.account.margin_level, 2)
+                if snapshot.account.margin_level is not None
+                else None
+            )
         updated_at = to_iso_utc(snapshot.updated_at) or self._now_iso()
         return AccountSnapshotDTO(
             balance=round(balance, 2),
@@ -249,6 +573,9 @@ class ReadService:
             free_margin=round(free_margin, 2),
             currency=snapshot.account.currency if snapshot.account else "USD",
             updated_at=updated_at,
+            profit=profit,
+            leverage=leverage,
+            margin_level=margin_level,
         )
 
     def _map_position(self, position: Position) -> PositionDTO:
@@ -272,6 +599,7 @@ class ReadService:
             unrealized_pnl=round(position.profit, 2),
             r_multiple=r_multiple,
             opened_at=to_iso_utc(position.open_time) or self._now_iso(),
+            swap=round(position.swap, 2),
         )
 
     def get_positions(
@@ -317,6 +645,8 @@ class ReadService:
             net_pnl=trade.net_pnl,
             r_multiple=trade.r_multiple,
             exit_reason=trade.exit_reason,
+            commission=round(trade.commission, 2),
+            swap=round(trade.swap, 2),
         )
 
     def get_trades(self, query: TradeQuery) -> tuple[list[TradeDTO], PaginationMeta]:
@@ -341,13 +671,13 @@ class ReadService:
 
     def _hold_signal(self, *, connected: bool) -> StrategySignalDTO:
         if connected:
-            reason = "Chưa có vòng lặp chiến lược live — giữ tín hiệu HOLD."
-            summary = "Dữ liệu thị trường live khả dụng; tín hiệu chiến lược chưa được tính."
+            reason = "Chưa có tín hiệu từ nến đóng mới — Signal Engine research-only."
+            summary = "Tín hiệu nghiên cứu — không phải lệnh đã khớp."
             conditions = [
                 SignalConditionDTO(
-                    id="strategy-loop",
-                    label="Vòng lặp chiến lược",
-                    detail="Phase 10.6 chưa bật execution loop.",
+                    id="signal-engine",
+                    label="Signal Engine",
+                    detail="Chưa có SignalResult từ ClosedCandleEvent sau warmup.",
                     satisfied=False,
                 )
             ]
@@ -378,6 +708,8 @@ class ReadService:
         snapshot = self._snapshot()
         connected = snapshot.connection_status == ProviderConnectionStatus.CONNECTED
         signal = self._hold_signal(connected=connected)
+        if self._signal_engine is not None and self._signal_engine.last_result is not None:
+            signal = self._signal_result_to_dto(self._signal_engine.last_result)
         return StrategySnapshotDTO(
             id="ema_rsi_atr_v1",
             name="ema_rsi_atr_v1",
@@ -468,6 +800,47 @@ class ReadService:
             max_daily_loss_pct=self._settings.max_daily_loss_pct,
             max_drawdown_pct=self._settings.max_drawdown_pct,
             max_open_positions=self._settings.max_open_positions,
+        )
+
+    def get_live_readiness(self) -> LiveReadinessDTO:
+        """Read-only live enablement preflight — never enables trading."""
+        from exness_bot.paper_execution.factory import DEFAULT_STATE_PATH
+
+        intents, store_error = load_intent_store_for_preflight(DEFAULT_STATE_PATH)
+        symbol = None
+        if self._paper_execution is not None:
+            symbol = self._paper_execution.current_symbol()
+        result = evaluate_live_enablement(
+            LivePreflightContext(
+                settings=self._settings,
+                requested_execution_mode=self._settings.execution_mode.value,
+                symbol_info=symbol,
+                intents=intents,
+                intent_store_error=store_error,
+                broker_query=None,
+            )
+        )
+        return LiveReadinessDTO(
+            allowed=result.allowed,
+            configuration_preflight_ready=result.configuration_preflight_ready,
+            execution_capability=result.execution_capability,
+            readiness_status=result.readiness_status.value,
+            message=result.message,
+            evaluated_at=result.evaluated_at.isoformat(),
+            unresolved_unknown_count=result.unresolved_unknown_count,
+            kill_switch_enabled=result.kill_switch_enabled,
+            legacy_run_allowed=result.legacy_run_allowed,
+            mt5_executor_implemented=result.mt5_executor_implemented,
+            blocking_reasons=list(result.blocking_reasons),
+            gates=[
+                LiveGateResultDTO(
+                    name=g.gate.value,
+                    allowed=g.allowed,
+                    reason=g.reason,
+                    severity=g.severity.value,
+                )
+                for g in result.gates
+            ],
         )
 
     def get_account_switch_state(self) -> AccountSwitchStateDTO:

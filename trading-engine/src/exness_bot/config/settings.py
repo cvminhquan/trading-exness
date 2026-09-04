@@ -32,6 +32,21 @@ class DataSource(StrEnum):
     MT5 = "mt5"
 
 
+class ExecutionMode(StrEnum):
+    """Order execution mode. Operational path: paper only until a dedicated live phase."""
+
+    PAPER = "paper"
+    LIVE = "live"  # Parseable for preflight/docs — NOT operational in Phase 12.2
+
+
+class TradingEnv(StrEnum):
+    """Explicit deployment environment — never inferred from hostname."""
+
+    RESEARCH = "research"
+    STAGING = "staging"
+    LIVE = "live"
+
+
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
@@ -43,9 +58,32 @@ class Settings(BaseSettings):
     )
 
     # --- Safety ---
+    # TRADING_MODE / DRY_RUN / ALLOW_LIVE_TRADING apply to the LEGACY `exness-bot run` stack.
+    # They do NOT enable Phase 11 live execution. Phase 11 uses EXECUTION_MODE=paper only.
     trading_mode: TradingMode = Field(default=TradingMode.DRY_RUN, alias="TRADING_MODE")
     dry_run: bool = Field(default=True, alias="DRY_RUN")
     allow_live_trading: bool = Field(default=False, alias="ALLOW_LIVE_TRADING")
+    # Explicit opt-in for deprecated `exness-bot run` (OrderManager → MT5Adapter).
+    # Phase 11 `paper` / `signals` / `candles` never use this path.
+    allow_legacy_run: bool = Field(default=False, alias="ALLOW_LEGACY_RUN")
+    # Design-only future gate — MUST remain False for operational live. Preflight may inspect.
+    live_execution_enabled: bool = Field(default=False, alias="LIVE_EXECUTION_ENABLED")
+    # Independent kill switch: true → BLOCK LIVE. Default true. Does not enable live when false.
+    live_kill_switch: bool = Field(default=True, alias="LIVE_KILL_SWITCH")
+    # Explicit deployment environment (Gate C). Never inferred.
+    trading_env: str = Field(default="research", alias="TRADING_ENV")
+    # Comma-separated broker login allowlist for live preflight (no passwords).
+    live_account_allowlist: str = Field(default="", alias="LIVE_ACCOUNT_ALLOWLIST")
+    live_server_allowlist: str = Field(default="", alias="LIVE_SERVER_ALLOWLIST")
+    # Explicit canonical→broker symbol map for MT5Executor (e.g. XAUUSD:XAUUSDm).
+    live_symbol_map: str = Field(default="", alias="LIVE_SYMBOL_MAP")
+    mt5_magic: int = Field(default=120300, alias="MT5_MAGIC", ge=0)
+    mt5_order_deviation: int = Field(default=20, alias="MT5_ORDER_DEVIATION", ge=0, le=1000)
+    # Phase 12.4 — one-shot DEMO smoke approval (does not enable strategy loop).
+    live_demo_approval: bool = Field(default=False, alias="LIVE_DEMO_APPROVAL")
+    # Demo account allowlist for controlled smoke (login ids). Empty → block.
+    demo_account_allowlist: str = Field(default="", alias="DEMO_ACCOUNT_ALLOWLIST")
+    demo_server_allowlist: str = Field(default="", alias="DEMO_SERVER_ALLOWLIST")
     loop_poll_seconds: int = Field(default=30, alias="LOOP_POLL_SECONDS", ge=5, le=3600)
     candle_history_count: int = Field(default=250, alias="CANDLE_HISTORY_COUNT", ge=50, le=5000)
 
@@ -118,6 +156,31 @@ class Settings(BaseSettings):
         default="http://localhost:3000",
         alias="API_CORS_ORIGINS",
     )
+    live_data_stale_seconds: int = Field(
+        default=10,
+        alias="LIVE_DATA_STALE_SECONDS",
+        ge=1,
+        le=300,
+    )
+
+    # --- Live Candle Engine (Phase 11.1) ---
+    candle_engine_enabled: bool = Field(default=False, alias="CANDLE_ENGINE_ENABLED")
+    candle_timeframe: str = Field(default="M15", alias="CANDLE_TIMEFRAME")
+    candle_poll_interval_seconds: int = Field(
+        default=3,
+        alias="CANDLE_POLL_INTERVAL_SECONDS",
+        ge=1,
+        le=60,
+    )
+    candle_symbol: str | None = Field(default=None, alias="CANDLE_SYMBOL")
+    signal_engine_enabled: bool = Field(default=False, alias="SIGNAL_ENGINE_ENABLED")
+
+    # --- Paper Execution (Phase 11.3+) ---
+    # Operational path remains paper. EXECUTION_MODE=live is accepted for preflight
+    # inspection only — ExecutionService / paper CLI refuse to run live.
+    # Independent from TRADING_MODE / ALLOW_LIVE_TRADING (legacy run stack).
+    execution_mode: ExecutionMode = Field(default=ExecutionMode.PAPER, alias="EXECUTION_MODE")
+    paper_execution_enabled: bool = Field(default=False, alias="PAPER_EXECUTION_ENABLED")
 
     @field_validator("trading_mode", mode="before")
     @classmethod
@@ -141,6 +204,52 @@ class Settings(BaseSettings):
             if lowered in {AccountProfile.DEMO.value, AccountProfile.LIVE.value}:
                 return lowered
             return AccountProfile.DEMO.value
+        return value
+
+    @field_validator("execution_mode", mode="before")
+    @classmethod
+    def parse_execution_mode(cls, value: object) -> object:
+        if isinstance(value, str):
+            lowered = value.lower().strip()
+            if lowered in {ExecutionMode.PAPER.value, ExecutionMode.LIVE.value}:
+                return lowered
+            raise ValueError(
+                "Unsupported EXECUTION_MODE. Allowed: paper|live. "
+                "Live is parseable for preflight; autonomous live runtime is not wired."
+            )
+        return value
+
+    @field_validator("trading_env", mode="before")
+    @classmethod
+    def parse_trading_env(cls, value: object) -> object:
+        if isinstance(value, str):
+            return value.lower().strip()
+        return value
+
+    @field_validator(
+        "allow_live_trading",
+        "allow_legacy_run",
+        "live_execution_enabled",
+        "live_kill_switch",
+        "live_demo_approval",
+        "dry_run",
+        mode="before",
+    )
+    @classmethod
+    def parse_strict_bool_fields(cls, value: object) -> object:
+        """Fail closed on malformed booleans (only true/false / bool)."""
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered == "true":
+                return True
+            if lowered == "false":
+                return False
+            raise ValueError("Boolean field must be exactly true or false")
+        if isinstance(value, int) and value in {0, 1}:
+            # Reject int — force explicit true/false strings from env
+            raise ValueError("Boolean field must be exactly true or false")
         return value
 
     @model_validator(mode="after")
@@ -178,6 +287,38 @@ class Settings(BaseSettings):
     @property
     def api_cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.api_cors_origins.split(",") if origin.strip()]
+
+    @property
+    def live_account_allowlist_set(self) -> frozenset[str]:
+        return frozenset(
+            part.strip()
+            for part in self.live_account_allowlist.split(",")
+            if part.strip()
+        )
+
+    @property
+    def live_server_allowlist_set(self) -> frozenset[str]:
+        return frozenset(
+            part.strip()
+            for part in self.live_server_allowlist.split(",")
+            if part.strip()
+        )
+
+    @property
+    def demo_account_allowlist_set(self) -> frozenset[str]:
+        return frozenset(
+            part.strip()
+            for part in self.demo_account_allowlist.split(",")
+            if part.strip()
+        )
+
+    @property
+    def demo_server_allowlist_set(self) -> frozenset[str]:
+        return frozenset(
+            part.strip()
+            for part in self.demo_server_allowlist.split(",")
+            if part.strip()
+        )
 
     @property
     def resolved_symbol(self) -> str:
@@ -225,6 +366,11 @@ class Settings(BaseSettings):
         if primary and primary not in seen:
             ordered.insert(0, primary)
         return ordered or [self.symbol]
+
+    @property
+    def resolved_candle_symbol(self) -> str:
+        raw = self.candle_symbol or self.symbol
+        return raw.strip().upper()
 
 
 @lru_cache

@@ -52,7 +52,13 @@ MAX_CANDLE_COUNT = 10_000
 
 
 class MT5Adapter:
-    """MT5 implementation of BrokerPort — no order execution in Phase 1."""
+    """
+    MT5 implementation of ExecutableBroker.
+
+    LEGACY path used by `exness-bot run` / OrderManager.
+    Phase 11 (candle/signal/paper) must use MT5ReadOnlyClient / TradingDataProvider instead.
+    Contains order_send via MT5TradingClient — not for Phase 11 research pipeline.
+    """
 
     def __init__(
         self,

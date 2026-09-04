@@ -6,12 +6,18 @@ from datetime import UTC, datetime, timedelta
 
 import structlog
 
-from exness_bot.broker.mt5.connection_manager import ConnectionState, MT5ConnectionManager
+from exness_bot.broker.mt5.connection_manager import (
+    ConnectionState,
+    MT5ConnectionManager,
+    MT5ConnectionStatus,
+)
 from exness_bot.broker.mt5.mapper import (
     map_account_info,
     map_closed_trades_from_deals,
     map_position,
+    map_rates_to_candles,
     map_tick,
+    timeframe_to_mt5,
 )
 from exness_bot.broker.mt5.symbol_resolver import resolve_broker_symbol
 from exness_bot.config.settings import Settings
@@ -22,7 +28,8 @@ from exness_bot.data.models import (
     TradeHistoryQuery,
     TradeHistoryResult,
 )
-from exness_bot.domain.models import ClosedTrade, Position, Tick
+from exness_bot.domain.enums import Timeframe
+from exness_bot.domain.models import Candle, ClosedTrade, Position, Tick
 
 logger = structlog.get_logger(__name__)
 
@@ -82,7 +89,11 @@ class MT5TradingDataProvider:
             self._symbol_cache[target] = self._broker_symbol
             return self._broker_symbol
         try:
-            requested = self._settings.mt5_symbol if target == self._canonical_symbol.upper() else target
+            requested = (
+                self._settings.mt5_symbol
+                if target == self._canonical_symbol.upper()
+                else target
+            )
             resolved = resolve_broker_symbol(self._connection.client, requested or target)
             self._symbol_cache[target] = resolved
             if target == self._canonical_symbol.upper():
@@ -92,8 +103,13 @@ class MT5TradingDataProvider:
             logger.warning("mt5_symbol_resolution_failed", symbol=target, error=str(exc))
             return None
 
+    def _connect(self) -> MT5ConnectionStatus:
+        """Detect a dead terminal, then retry login without restarting the API."""
+        self._connection.health_check()
+        return self._connection.connect()
+
     def get_snapshot(self) -> ProviderSnapshot:
-        status = self._connection.connect()
+        status = self._connect()
         now = datetime.now(tz=UTC)
         provider_status = self._provider_status()
 
@@ -132,7 +148,17 @@ class MT5TradingDataProvider:
                 )
 
         self._last_snapshot_at = now
-        self._connection.health_check()
+        health = self._connection.health_check()
+        if health.state != ConnectionState.CONNECTED:
+            return ProviderSnapshot(
+                connection_status=ProviderConnectionStatus.DISCONNECTED,
+                data_source=DataSourceMode.MT5,
+                account=None,
+                positions=(),
+                updated_at=now,
+                broker_server=status.server,
+                message=health.message or "Mất kết nối MT5.",
+            )
         return ProviderSnapshot(
             connection_status=self._provider_status(),
             data_source=DataSourceMode.MT5,
@@ -145,7 +171,7 @@ class MT5TradingDataProvider:
         )
 
     def get_tick(self, symbol: str | None = None) -> Tick | None:
-        status = self._connection.connect()
+        status = self._connect()
         if status.state != ConnectionState.CONNECTED:
             return None
         canonical = (symbol or self._canonical_symbol).strip().upper()
@@ -159,9 +185,36 @@ class MT5TradingDataProvider:
         tick = map_tick(canonical, raw_tick)
         return tick
 
+    def get_candles(
+        self,
+        symbol: str,
+        timeframe: Timeframe,
+        count: int,
+    ) -> list[Candle] | None:
+        status = self._connect()
+        if status.state != ConnectionState.CONNECTED:
+            return None
+        canonical = (symbol or self._canonical_symbol).strip().upper()
+        broker_symbol = self._ensure_broker_symbol(canonical)
+        if broker_symbol is None:
+            return None
+        client = self._connection.client
+        rates = client.copy_rates_from_pos(
+            broker_symbol,
+            timeframe_to_mt5(timeframe),
+            0,
+            max(2, count),
+        )
+        if rates is None:
+            logger.warning("mt5_candles_unavailable", symbol=canonical, timeframe=timeframe.value)
+            return None
+        candles = map_rates_to_candles(rates, symbol=canonical, timeframe=timeframe)
+        candles.sort(key=lambda item: item.timestamp)
+        return candles
+
     def get_trade_history(self, query: TradeHistoryQuery) -> TradeHistoryResult:
         now = datetime.now(tz=UTC)
-        status = self._connection.connect()
+        status = self._connect()
         if status.state != ConnectionState.CONNECTED:
             return TradeHistoryResult(trades=(), total=0, updated_at=now)
 

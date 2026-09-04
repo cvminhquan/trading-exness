@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
 from exness_bot.config.settings import DataSource, Settings
@@ -10,6 +12,8 @@ from exness_bot.data.factory import create_trading_data_provider
 from exness_bot.data.mock_provider import MockTradingDataProvider
 from exness_bot.data.models import ProviderConnectionStatus, TradeHistoryQuery
 from exness_bot.data.mt5_provider import MT5TradingDataProvider
+from exness_bot.domain.enums import Timeframe
+from exness_bot.market_data.candles import is_candle_closed
 
 
 @pytest.fixture
@@ -35,6 +39,18 @@ class TestMockProvider:
         provider = MockTradingDataProvider(mock_settings)
         result = provider.get_trade_history(TradeHistoryQuery(result="WIN"))
         assert all(trade.net_pnl > 0 for trade in result.trades)
+
+    def test_get_candles_oldest_first_last_is_forming(self, mock_settings: Settings) -> None:
+        provider = MockTradingDataProvider(mock_settings)
+        candles = provider.get_candles("XAUUSD", Timeframe.M15, 8)
+        assert candles is not None
+        assert len(candles) == 8
+        stamps = [item.timestamp for item in candles]
+        assert stamps == sorted(stamps)
+        now = datetime.now(tz=UTC)
+        assert is_candle_closed(candles[-1].timestamp, Timeframe.M15, now=now) is False
+        if len(candles) >= 2:
+            assert candles[-1].timestamp - candles[-2].timestamp == timedelta(minutes=15)
 
 
 class TestBacktestProvider:

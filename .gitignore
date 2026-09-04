@@ -38,6 +38,11 @@ ENV/
 *.pem
 credentials.json
 .mt5_active_account
+.candle_engine_state.json
+.signal_engine_state.json
+.paper_execution_state.json
+.demo_smoke_state.json
+.demo_smoke_ledger.json
 
 # Testing (Python)
 .pytest_cache/
