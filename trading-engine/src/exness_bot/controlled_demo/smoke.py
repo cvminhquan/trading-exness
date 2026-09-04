@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 import structlog
 
@@ -20,6 +21,7 @@ from exness_bot.controlled_demo.enablement import (
     DemoPreflightContext,
     evaluate_demo_controlled_enablement,
 )
+from exness_bot.controlled_demo.evidence import BrokerSmokeEvidence, build_evidence, mask_login
 from exness_bot.controlled_demo.identity import (
     DemoBrokerProbe,
     DemoIdentitySnapshot,
@@ -76,6 +78,9 @@ class DemoSmokeResult:
     identity: DemoIdentitySnapshot | None = None
     market: DemoMarketSnapshot | None = None
     submitted: bool = False
+    evidence: BrokerSmokeEvidence | None = None
+    real_broker_submission: bool = False
+    session_id: str | None = None
 
 
 @dataclass
@@ -97,10 +102,13 @@ class ControlledDemoSmoke:
     broker_query: BrokerExecutionQuery | None = None
     enablement_fn: EnablementFn = field(default=evaluate_demo_controlled_enablement)
     side: SignalDirection = SignalDirection.LONG
+    real_broker_submission: bool = False
+    session_id: str | None = None
 
     def run(self) -> DemoSmokeResult:
         ledger = DemoSmokeLedger(self.ledger_path)
         prior = ledger.load().submission_count
+        session_id = self.session_id or f"demo-smoke-{uuid4().hex[:12]}"
 
         try:
             broker_symbol = resolve_broker_symbol_explicit(self.settings)
@@ -135,6 +143,8 @@ class ControlledDemoSmoke:
             broker_login=identity.login,
             broker_server=identity.server,
             account_trade_mode=identity.trade_mode,
+            trade_allowed=identity.trade_allowed,
+            terminal_trade_allowed=identity.terminal_trade_allowed,
             quote_fresh=quote_fresh,
             quote_age_seconds=market.age_seconds,
             approval=self.approval,
@@ -317,14 +327,86 @@ class ControlledDemoSmoke:
 
         positions_after = self.probe.list_positions(broker_symbol)
 
+        # Optional read-only intent query even for FILLED (evidence enrichment)
+        if (
+            query is not None
+            and reconcile_status is None
+            and lifecycle is IntentLifecycle.FILLED
+        ):
+            record = store.get(intent.intent_id)
+            if record is not None:
+                qres = query.find_execution(record)
+                reconcile_status = qres.status.value
+
+        evidence = build_evidence(
+            session_id=session_id,
+            intent=intent,
+            ack=ack,
+            lifecycle=lifecycle.value if lifecycle else "UNKNOWN",
+            masked_login=mask_login(identity.login),
+            broker_server=identity.server,
+            broker_symbol=broker_symbol,
+            transport_send_count=oneshot.send_count,
+            reconcile_status=reconcile_status,
+            positions_before=positions_before,
+            positions_after=positions_after,
+            real_broker_submission=self.real_broker_submission,
+            bid=market.symbol.bid,
+            ask=market.symbol.ask,
+            quote_age_seconds=market.age_seconds,
+            quote_status="FRESH" if quote_fresh else "STALE",
+            trade_mode=identity.trade_mode,
+        )
+
         logger.info(
             "demo_smoke_complete",
+            session_id=session_id,
             intent_id=intent.intent_id,
             ack=ack.status.value,
             lifecycle=lifecycle.value if lifecycle else None,
             transport_send_count=oneshot.send_count,
+            position_match=evidence.position_match,
+            real_broker_submission=self.real_broker_submission,
             submitted=True,
         )
+        if lifecycle is IntentLifecycle.UNKNOWN:
+            logger.warning(
+                "demo_smoke_unknown_procedure",
+                message=(
+                    "EXECUTION STATE: UNKNOWN | "
+                    "ACTION REQUIRED: READ-ONLY BROKER RECONCILIATION | "
+                    "AUTOMATIC RESUBMISSION: DISABLED"
+                ),
+            )
+            print(
+                "\n".join(
+                    [
+                        "",
+                        "EXECUTION STATE: UNKNOWN",
+                        "ACTION REQUIRED: READ-ONLY BROKER RECONCILIATION",
+                        "AUTOMATIC RESUBMISSION: DISABLED",
+                        "DO NOT RETRY. DO NOT RESUBMIT. DO NOT AUTO-CLOSE.",
+                        "",
+                    ]
+                )
+            )
+        if evidence.open_positions_after:
+            logger.warning(
+                "demo_smoke_open_position",
+                message=(
+                    "Position remains open and requires separate explicit operator action."
+                ),
+                positions=list(evidence.open_positions_after),
+            )
+            print(
+                "Position remains open and requires separate explicit operator action."
+            )
+            for pos in evidence.open_positions_after:
+                print(
+                    f"  ticket={pos.get('ticket')} symbol={pos.get('symbol')} "
+                    f"volume={pos.get('volume')} price_open={pos.get('price_open')} "
+                    f"sl={pos.get('sl')} tp={pos.get('tp')}"
+                )
 
         return DemoSmokeResult(
             blocked=False,
@@ -341,6 +423,9 @@ class ControlledDemoSmoke:
             identity=identity,
             market=market,
             submitted=True,
+            evidence=evidence,
+            real_broker_submission=self.real_broker_submission,
+            session_id=session_id,
         )
 
 

@@ -20,6 +20,8 @@ class DemoIdentitySnapshot:
     server: str
     login: int
     trade_mode: str
+    terminal_connected: bool | None = None
+    terminal_trade_allowed: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -75,6 +77,17 @@ class ReadOnlyMt5DemoProbe:
             raise RuntimeError(msg)
         account = map_account_info(raw)
         trade_allowed = bool(getattr(raw, "trade_allowed", True))
+        terminal_connected: bool | None = None
+        terminal_trade_allowed: bool | None = None
+        try:
+            terminal = self._client.terminal_info()
+        except Exception:
+            terminal = None
+        if terminal is not None:
+            terminal_connected = bool(getattr(terminal, "connected", True))
+            terminal_trade_allowed = bool(getattr(terminal, "trade_allowed", False))
+            # Prefer terminal trade_allowed when available
+            trade_allowed = trade_allowed and terminal_trade_allowed
         return DemoIdentitySnapshot(
             account=account,
             trade_allowed=trade_allowed,
@@ -82,6 +95,8 @@ class ReadOnlyMt5DemoProbe:
             server=account.server,
             login=account.login,
             trade_mode=account.trade_mode,
+            terminal_connected=terminal_connected,
+            terminal_trade_allowed=terminal_trade_allowed,
         )
 
     def fetch_market(self, broker_symbol: str) -> DemoMarketSnapshot:

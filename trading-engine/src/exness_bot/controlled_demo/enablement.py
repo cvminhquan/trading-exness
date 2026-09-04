@@ -34,6 +34,7 @@ class DemoGateName(StrEnum):
     LEGACY_ISOLATION = "legacy_isolation"
     BROKER_IDENTITY = "broker_identity"
     ACCOUNT_TRADE_MODE = "account_trade_mode"
+    TERMINAL_TRADE_PERMISSION = "terminal_trade_permission"
     SYMBOL_METADATA = "symbol_metadata"
     QUOTE_FRESHNESS = "quote_freshness"
     INTENT_STORE = "intent_store"
@@ -71,6 +72,8 @@ class DemoPreflightContext:
     broker_login: int | None = None
     broker_server: str | None = None
     account_trade_mode: str | None = None
+    trade_allowed: bool | None = None
+    terminal_trade_allowed: bool | None = None
     quote_fresh: bool | None = None
     quote_age_seconds: float | None = None
     approval: OneShotApproval | None = None
@@ -177,6 +180,7 @@ def evaluate_demo_controlled_enablement(
 
     gates.append(_gate_demo_identity(settings, context))
     gates.append(_gate_account_trade_mode(context))
+    gates.append(_gate_terminal_trade_permission(context))
     gates.append(_gate_symbol(context.symbol_info))
     gates.append(_gate_quote_freshness(context))
     gates.append(_gate_intent_store(context))
@@ -307,6 +311,33 @@ def _gate_account_trade_mode(context: DemoPreflightContext) -> DemoGateResult:
     )
 
 
+def _gate_terminal_trade_permission(context: DemoPreflightContext) -> DemoGateResult:
+    """Require trade_allowed from connected terminal/account — operator enables Algo Trading."""
+    if context.trade_allowed is False:
+        return DemoGateResult(
+            DemoGateName.TERMINAL_TRADE_PERMISSION,
+            False,
+            "trade_allowed=false — enable MT5 Algo Trading manually; NO order_send.",
+        )
+    if context.terminal_trade_allowed is False:
+        return DemoGateResult(
+            DemoGateName.TERMINAL_TRADE_PERMISSION,
+            False,
+            "terminal.trade_allowed=false — enable Algo Trading; NO order_send.",
+        )
+    if context.trade_allowed is None and context.terminal_trade_allowed is None:
+        return DemoGateResult(
+            DemoGateName.TERMINAL_TRADE_PERMISSION,
+            False,
+            "trade_allowed unavailable — cannot authorize submission.",
+        )
+    return DemoGateResult(
+        DemoGateName.TERMINAL_TRADE_PERMISSION,
+        True,
+        "trade_allowed=true (terminal/account).",
+    )
+
+
 def _gate_symbol(symbol: SymbolInfo | None) -> DemoGateResult:
     if symbol is None:
         return DemoGateResult(
@@ -347,18 +378,18 @@ def _gate_quote_freshness(context: DemoPreflightContext) -> DemoGateResult:
         return DemoGateResult(
             DemoGateName.QUOTE_FRESHNESS,
             False,
-            "Quote freshness not evaluated.",
+            "QUOTE: BLOCKED — freshness not evaluated.",
         )
     if not context.quote_fresh:
         return DemoGateResult(
             DemoGateName.QUOTE_FRESHNESS,
             False,
-            f"Quote STALE or UNAVAILABLE (age_seconds={context.quote_age_seconds}).",
+            f"QUOTE: BLOCKED — STALE (age_seconds={context.quote_age_seconds}).",
         )
     return DemoGateResult(
         DemoGateName.QUOTE_FRESHNESS,
         True,
-        f"Quote fresh (age_seconds={context.quote_age_seconds}).",
+        f"QUOTE: FRESH (age_seconds={context.quote_age_seconds}).",
     )
 
 

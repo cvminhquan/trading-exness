@@ -5,6 +5,11 @@ from exness_bot.controlled_demo.enablement import (
     DemoEnablementResult,
     evaluate_demo_controlled_enablement,
 )
+from exness_bot.controlled_demo.preflight import (
+    CheckStatus,
+    DemoPreflightReport,
+    run_demo_preflight,
+)
 from exness_bot.controlled_demo.smoke import (
     CONFIRM_PHRASE,
     ControlledDemoSmoke,
@@ -13,9 +18,12 @@ from exness_bot.controlled_demo.smoke import (
 
 __all__ = [
     "CONFIRM_PHRASE",
+    "CheckStatus",
     "ControlledDemoSmoke",
     "DemoEnablementResult",
+    "DemoPreflightReport",
     "DemoSmokeResult",
     "OneShotApproval",
     "evaluate_demo_controlled_enablement",
+    "run_demo_preflight",
 ]

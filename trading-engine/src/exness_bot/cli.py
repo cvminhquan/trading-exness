@@ -98,6 +98,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers.add_parser(
+        "execution-orchestration-smoke",
+        help=(
+            "Phase 12.6 Fake/Paper orchestration diagnostic. "
+            "Never calls LiveMT5ExecutionTransport / order_send."
+        ),
+    )
+
+    subparsers.add_parser(
         "live-preflight",
         help=(
             "Evaluate live enablement gates (read-only). "
@@ -584,6 +592,7 @@ def handle_demo_execution_smoke(*, execute: bool, confirm: str) -> int:
             probe_client: MT5ReadOnlyClient = trading
             transport: object = LiveMT5ExecutionTransport(client=trading)
             broker_query: object = ReadOnlyMt5BrokerExecutionQuery(trading)
+            real_submission = True
         else:
             logger.info(
                 "demo_smoke_preflight_only",
@@ -604,11 +613,55 @@ def handle_demo_execution_smoke(*, execute: bool, confirm: str) -> int:
                 )
             )
             broker_query = ReadOnlyMt5BrokerExecutionQuery(readonly)
+            real_submission = False
+
+        from exness_bot.config.live_enablement import load_intent_store_for_preflight
+        from exness_bot.controlled_demo.preflight import run_demo_preflight
 
         probe = ReadOnlyMt5DemoProbe(
             probe_client,
             stale_after_seconds=settings.live_data_stale_seconds,
         )
+        intents, store_error = load_intent_store_for_preflight(state_path)
+        preflight = run_demo_preflight(
+            settings=settings,
+            probe=probe,
+            intents=intents,
+            intent_store_error=store_error,
+            broker_query=broker_query,  # type: ignore[arg-type]
+            ledger_path=ledger_path,
+            approval=OneShotApproval(active=settings.live_demo_approval),
+        )
+        logger.info(
+            "demo_preflight_report",
+            overall=preflight.overall.value,
+            message=preflight.message,
+            masked_login=preflight.masked_login,
+            trade_mode=preflight.trade_mode,
+            server=preflight.broker_server,
+            broker_symbol=preflight.broker_symbol,
+        )
+        for check in preflight.checks:
+            logger.info(
+                "demo_preflight_gate",
+                name=check.name,
+                status=check.status.value,
+                detail=check.detail,
+            )
+
+        if not execute:
+            # Preflight-only: never submit
+            return 0 if preflight.overall.value == "PASS" else 1
+
+        if preflight.overall.value != "PASS":
+            logger.error(
+                "demo_smoke_execute_blocked_by_preflight",
+                overall=preflight.overall.value,
+                message=preflight.message,
+                note="NO order_send — preflight must PASS before --execute",
+            )
+            return 1
+
         smoke = ControlledDemoSmoke(
             settings=settings,
             probe=probe,
@@ -619,6 +672,7 @@ def handle_demo_execution_smoke(*, execute: bool, confirm: str) -> int:
             confirm_phrase=confirm,
             execute=execute,
             broker_query=broker_query,  # type: ignore[arg-type]
+            real_broker_submission=real_submission,
         )
         result = smoke.run()
         logger.info(
@@ -640,6 +694,17 @@ def handle_demo_execution_smoke(*, execute: bool, confirm: str) -> int:
                     reason=gate.reason,
                 )
         if result.submitted:
+            if result.evidence is not None:
+                logger.info("demo_smoke_evidence", **result.evidence.as_dict())
+            if result.lifecycle is not None and result.lifecycle.value == "UNKNOWN":
+                logger.warning(
+                    "demo_smoke_unknown_operator",
+                    message=(
+                        "EXECUTION STATE: UNKNOWN | "
+                        "ACTION REQUIRED: READ-ONLY BROKER RECONCILIATION | "
+                        "AUTOMATIC RESUBMISSION: DISABLED"
+                    ),
+                )
             logger.warning(
                 "demo_smoke_post_safety",
                 message=(
@@ -684,6 +749,10 @@ def main(argv: list[str] | None = None) -> int:
         return handle_signals(once=args.once)
     if args.command == "paper":
         return handle_paper(once=args.once)
+    if args.command == "execution-orchestration-smoke":
+        from exness_bot.execution.smoke_cli import run_orchestration_smoke
+
+        return run_orchestration_smoke()
     if args.command == "live-preflight":
         return handle_live_preflight()
     if args.command == "demo-execution-smoke":

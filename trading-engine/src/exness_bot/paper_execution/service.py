@@ -27,22 +27,25 @@ from exness_bot.domain.models import (
     SymbolInfo,
     Tick,
 )
+from exness_bot.execution.eligibility import ExecutionEventKind
+from exness_bot.execution.guard import (
+    CompositeExecutionGuard,
+    EventEligibilityGuard,
+    UnresolvedIntentGuard,
+)
+from exness_bot.execution.orchestrator import ExecutionOrchestrator
+from exness_bot.execution.planning import plan_from_approved
+from exness_bot.execution.result import OrchestrationOutcome
 from exness_bot.paper_execution.broker_query import (
     BrokerExecutionQuery,
     UnavailableBrokerExecutionQuery,
 )
 from exness_bot.paper_execution.contract import (
-    AckStatus,
-    ExecutionIntent,
     IntentLifecycle,
     IntentRecord,
 )
 from exness_bot.paper_execution.executor import PaperExecutor
-from exness_bot.paper_execution.intent_store import (
-    ExecutionEvidence,
-    SnapshotIntentStore,
-    UnknownReason,
-)
+from exness_bot.paper_execution.intent_store import SnapshotIntentStore
 from exness_bot.paper_execution.models import (
     ConsumeResult,
     ExecutionOutcome,
@@ -92,6 +95,18 @@ class ExecutionService:
             broker_query or UnavailableBrokerExecutionQuery()
         )
         self._intents = SnapshotIntentStore(self._executor, persist=self._persist)
+        self._orchestrator = ExecutionOrchestrator(
+            store=self._intents,
+            port=self._port,
+            clock=self._clock.now_utc,
+            guard=CompositeExecutionGuard(
+                guards=(
+                    EventEligibilityGuard(),
+                    UnresolvedIntentGuard(store=self._intents),
+                )
+            ),
+            intent_id_factory=lambda _plan: f"paper-intent-{self._executor.allocate_id()}",
+        )
         self._executor.ensure_session(self._clock.now_utc())
         recovered = self._intents.recover_in_flight_to_unknown(now=self._clock.now_utc())
         if recovered:
@@ -363,80 +378,76 @@ class ExecutionService:
                 reason=reason,
             )
 
-        seq = self._executor.allocate_id()
-        intent = ExecutionIntent(
-            intent_id=f"paper-intent-{seq}",
-            idempotency_key=result.idempotency_key,
-            symbol=result.symbol,
-            timeframe=result.timeframe,
-            strategy=result.strategy,
+        plan = plan_from_approved(
+            result=result,
+            decision=decision,
             side=side,
-            requested_quantity=decision.volume,
-            stop_loss=decision.stop_loss,
-            take_profit=decision.take_profit,
-            created_at=result.candle_timestamp,
-            source=result.source,
+            now=now,
+            event_kind=ExecutionEventKind.LIVE,
+            plan_id=f"plan-{result.idempotency_key}",
         )
-        # CREATED → IN_FLIGHT persisted BEFORE any port.submit side effect.
-        created = self._intents.create_intent(intent, now=now)
-        if not created.created:
+        orch = self._orchestrator.execute(plan, quote=self._symbol)
+        self._executor.remember_key(result.idempotency_key)
+
+        if orch.outcome == OrchestrationOutcome.BLOCKED:
+            self._persist()
+            return ConsumeResult(
+                status=ExecutionOutcome.UNKNOWN,
+                reason=orch.message,
+            )
+        if orch.outcome == OrchestrationOutcome.DUPLICATE:
             self._persist()
             return ConsumeResult(
                 status=ExecutionOutcome.DUPLICATE,
-                reason="Idempotency key already exists — không tạo intent thứ hai.",
+                reason=orch.message,
             )
-        self._intents.mark_in_flight(intent.intent_id, now=self._clock.now_utc())
-
-        ack = self._port.submit(intent, quote=self._symbol)
-        lifecycle, outcome = _ack_to_lifecycle(ack.status)
-        evidence = ExecutionEvidence(
-            fill_price=ack.fill_price,
-            broker_order_id=ack.broker_order_id,
-            reason=ack.reason,
-            ack_status=ack.status.value,
-        )
-        finalized_at = self._clock.now_utc()
-        if lifecycle == IntentLifecycle.FILLED:
-            self._intents.mark_filled(intent.intent_id, evidence, now=finalized_at)
-        elif lifecycle == IntentLifecycle.REJECTED:
-            self._intents.mark_rejected(intent.intent_id, evidence, now=finalized_at)
-        else:
-            unknown_reason = _ack_to_unknown_reason(ack.status)
-            self._intents.mark_unknown(
-                intent.intent_id,
-                unknown_reason,
-                now=finalized_at,
-                detail=ack.reason,
+        if orch.outcome == OrchestrationOutcome.ERROR:
+            self._persist()
+            return ConsumeResult(
+                status=ExecutionOutcome.UNKNOWN,
+                reason=orch.message,
             )
-        self._executor.remember_key(result.idempotency_key)
-        if lifecycle == IntentLifecycle.REJECTED:
+        if orch.outcome == OrchestrationOutcome.REJECTED:
             self._executor.record_rejection(
                 PaperRejection(
                     signal_id=result.idempotency_key,
                     code=RejectionCode.INVALID_RISK,
-                    reason=ack.reason or "Execution rejected.",
+                    reason=orch.message or "Execution rejected.",
                     at=self._clock.now_utc(),
                 )
             )
+            self._persist()
+            return ConsumeResult(
+                status=ExecutionOutcome.REJECTED,
+                rejection_code=RejectionCode.INVALID_RISK,
+                reason=orch.message,
+            )
+        if orch.outcome == OrchestrationOutcome.UNKNOWN:
+            self._persist()
+            return ConsumeResult(
+                status=ExecutionOutcome.UNKNOWN,
+                reason=orch.message,
+            )
+
         order = None
         position = None
-        if lifecycle == IntentLifecycle.FILLED and self._executor.snapshot.orders:
+        if orch.lifecycle is IntentLifecycle.FILLED and self._executor.snapshot.orders:
             order = self._executor.snapshot.orders[-1]
             opens = self.open_positions()
             position = opens[-1] if opens else None
         logger.info(
             "paper_execution_ack",
-            intent_id=intent.intent_id,
-            ack=ack.status.value,
-            lifecycle=lifecycle.value,
-            fill=ack.fill_price,
+            intent_id=orch.intent.intent_id if orch.intent else None,
+            ack=orch.ack.status.value if orch.ack else None,
+            lifecycle=orch.lifecycle.value if orch.lifecycle else None,
+            fill=orch.ack.fill_price if orch.ack else None,
         )
         self._persist()
         return ConsumeResult(
-            status=outcome,
+            status=ExecutionOutcome.FILLED,
             order=order,
             position=position,
-            reason=ack.reason or "",
+            reason=orch.message,
         )
 
     def on_closed_candle(self, candle: Candle) -> VirtualExit | None:
@@ -584,29 +595,6 @@ def _validate_before_submit(
             return RejectionCode.INVALID_TP, distance.message or distance.code.value
         return RejectionCode.INVALID_SL, distance.message or distance.code.value
     return None
-
-
-def _ack_to_lifecycle(status: AckStatus) -> tuple[IntentLifecycle, ExecutionOutcome]:
-    if status == AckStatus.FILLED:
-        return IntentLifecycle.FILLED, ExecutionOutcome.FILLED
-    if status == AckStatus.REJECTED:
-        return IntentLifecycle.REJECTED, ExecutionOutcome.REJECTED
-    if status == AckStatus.ACCEPTED:
-        # Accepted but not filled — treat as unresolved for safety.
-        return IntentLifecycle.UNKNOWN, ExecutionOutcome.UNKNOWN
-    if status in {AckStatus.UNKNOWN, AckStatus.TIMEOUT, AckStatus.IN_FLIGHT}:
-        return IntentLifecycle.UNKNOWN, ExecutionOutcome.UNKNOWN
-    return IntentLifecycle.UNKNOWN, ExecutionOutcome.UNKNOWN
-
-
-def _ack_to_unknown_reason(status: AckStatus) -> UnknownReason:
-    if status == AckStatus.TIMEOUT:
-        return UnknownReason.ACK_TIMEOUT
-    if status == AckStatus.ACCEPTED:
-        return UnknownReason.ACK_ACCEPTED
-    if status == AckStatus.IN_FLIGHT:
-        return UnknownReason.ACK_IN_FLIGHT
-    return UnknownReason.ACK_UNKNOWN
 
 
 def map_rejection(reason: str) -> RejectionCode:

@@ -1,12 +1,183 @@
 # Live Execution Architecture & Safety Design
 
-**Cập nhật:** Phase 12.4 (Controlled DEMO one-shot) — 2026-08-29.
+**Cập nhật:** Phase 12.8 (Gated MT5 Execution Integration) — 2026-09-04.
 
 Nhãn: **CURRENT** | **DESIGN** | **FUTURE** | **NOT IMPLEMENTED**.
 
 ---
 
+## Phase 12.8 — Gated MT5 Execution Integration (CURRENT)
+
+Chi tiết: [`PHASE_12_8_REPORT.md`](PHASE_12_8_REPORT.md)
+
+### Status
+
+```text
+PASS
+Phase 12.8 DOES NOT ENABLE AUTONOMOUS LIVE TRADING.
+```
+
+### Composition
+
+```text
+ExecutionOrchestrator
+    ↓
+GatedMT5ExecutionPort   ← evaluate_demo_controlled_enablement (reuse)
+    ↓
+MT5Executor
+    ↓
+OneShotExecutionTransport
+    ↓
+Fake | LiveMT5ExecutionTransport
+```
+
+Default:
+
+```text
+build_execution_service → Paper only
+```
+
+Explicit only:
+
+```text
+build_gated_mt5_execution_port(settings, transport=..., snapshot_provider=...)
+```
+
+---
+
+## Phase 12.7 — Real DEMO One-Shot Evidence (CURRENT)
+
+
+Chi tiết: [`PHASE_12_7_REPORT.md`](PHASE_12_7_REPORT.md) · Runbook: [`DEMO_EXECUTION_SMOKE_RUNBOOK.md`](DEMO_EXECUTION_SMOKE_RUNBOOK.md)
+
+### Status
+
+```text
+CONDITIONAL
+Implementation: PASS
+Real DEMO order_send: NOT TESTED (human operator only)
+```
+
+### Contract
+
+```text
+Operator approval → Preflight PASS → IN_FLIGHT → ONE order_send
+→ broker response → read-only verify → reconcile → exit
+NO RETRY · NO AUTO-CLOSE · DEMO ONLY
+```
+
+Agent may run read-only `demo-execution-smoke` only — **never** `--execute`.
+
+---
+
+## Phase 12.6 — Execution Orchestration Hardening (CURRENT)
+
+
+Chi tiết: [`PHASE_12_6_REPORT.md`](PHASE_12_6_REPORT.md).
+
+### Pipeline
+
+```text
+ClosedCandle / SignalResult
+       ↓
+RiskManager → ApprovedOrderPlan
+       ↓
+ExecutionPlan (broker-neutral)
+       ↓
+ExecutionOrchestrator
+       ↓
+DurableIntentStore (CREATED → IN_FLIGHT)
+       ↓
+ExecutionPort.submit (exactly once)
+       ↓
+FILLED | REJECTED | UNKNOWN
+```
+
+```text
+                         ┌─ Paper/Fake ExecutionPort ✅
+ExecutionOrchestrator ───┤
+                         └─ MT5Executor ❌ NOT WIRED
+```
+
+### Guarantees
+
+- IN_FLIGHT durable **before** side effect  
+- Deterministic idempotency key  
+- CATCH_UP / REPLAY → BLOCKED  
+- Unresolved UNKNOWN blocks **new** plans (global, single-process)  
+- No automatic UNKNOWN retry  
+- CLI: `exness-bot execution-orchestration-smoke` (Fake only)
+
+### Status
+
+```text
+EXECUTION ORCHESTRATION VALIDATED
+REAL MT5 EXECUTION STILL OPERATOR-ONLY
+AUTONOMOUS BROKER WIRING NOT IMPLEMENTED
+```
+
+---
+
+## Phase 12.5 — Real MT5 DEMO Smoke & Recovery (CURRENT)
+
+
+Chi tiết: [`PHASE_12_5_REPORT.md`](PHASE_12_5_REPORT.md).
+
+### Mục tiêu
+
+Chứng minh boundary Phase 12.4 trên tài khoản MT5 DEMO thật (operator-controlled), cộng recovery UNKNOWN bằng Fake transport. **Không** autonomous trading.
+
+### Trạng thái session
+
+```text
+OVERALL: CONDITIONAL
+REAL DEMO order_send: NOT TESTED (gates fail-closed)
+READ-ONLY identity on connected DEMO: PASS (masked login, server, trade_mode=demo)
+UNKNOWN recovery (Fake): PASS
+Second smoke / ledger: PASS (no second transport.send)
+```
+
+### Preflight (read-only)
+
+```text
+exness-bot demo-execution-smoke
+```
+
+Structured checks: PASS | BLOCKED | FAIL | NOT_TESTED. Never calls `order_send`.
+
+### Controlled submit (operator only)
+
+```text
+exness-bot demo-execution-smoke --execute --confirm DEMO-EXECUTE
+```
+
+Requires: `TRADING_ENV=demo`, kill switch off, `LIVE_DEMO_APPROVAL=true`, allowlist, fresh quote, empty ledger. Max one broker submission.
+
+### Recovery policy
+
+```text
+IN_FLIGHT → UNKNOWN → restart → BrokerExecutionQuery
+  CONFIRMED_FILLED   → FILLED
+  CONFIRMED_REJECTED → REJECTED
+  NOT_FOUND|AMBIGUOUS|UNAVAILABLE → UNKNOWN
+NO RESUBMIT
+```
+
+Open positions after FILLED: **no auto-close** — operator action riêng.
+
+### Defaults after smoke
+
+```text
+LIVE_KILL_SWITCH=true
+LIVE_DEMO_APPROVAL=false
+EXECUTION_MODE=paper
+ALLOW_LEGACY_RUN=false
+```
+
+---
+
 ## Phase 12.4 — Controlled DEMO Execution (CURRENT)
+
 
 Chi tiết: [`PHASE_12_4_REPORT.md`](PHASE_12_4_REPORT.md).
 
@@ -177,16 +348,17 @@ Durable intent lifecycle (atomic JSON, fail-closed load). Xem [`PHASE_12_1_REPOR
 
 ```text
 Autonomous live trading loop
-Operational EXECUTION_MODE=live runtime
-Demo/real order_send smoke
+Operational EXECUTION_MODE=live as default runtime
+SignalEngine → MT5Executor continuous wiring
+Real DEMO order_send (operator-gated; see Phase 12.7)
 automatic UNKNOWN retry
+Dashboard BUY/SELL
 ```
 
 ---
 
-## Blockers before controlled live use (Phase 12.4+)
+## Blockers before Phase 12.9 / autonomous use
 
-1. Explicit approval + operator runbook  
-2. Wire `LiveMT5ExecutionTransport` under gates only  
-3. Demo smoke with separate approval  
-4. UNKNOWN / NOT_FOUND operator procedures  
+1. Explicit product decision after Phase 12.8 review  
+2. Optional: human DEMO smoke evidence (12.7)  
+3. **Do not** auto-start Phase 12.9  

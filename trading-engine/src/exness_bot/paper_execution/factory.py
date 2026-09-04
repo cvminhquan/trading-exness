@@ -27,6 +27,12 @@ def build_execution_service(
     state_path: Path | None = None,
     provider: TradingDataProvider | None = None,
 ) -> ExecutionService:
+    """
+    Default composition: Paper ExecutionPort only.
+
+    Phase 12.8 GatedMT5ExecutionPort is NEVER wired here.
+    Use exness_bot.execution.mt5.factory.build_gated_mt5_execution_port explicitly.
+    """
     assert_live_execution_not_operational(settings)
     config = BacktestConfig.from_settings(settings)
     resolved_store = store or FilePaperStateStore(state_path or DEFAULT_STATE_PATH)
