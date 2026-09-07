@@ -27,6 +27,7 @@ from exness_bot.paper_execution.broker_query import (
     UnavailableBrokerExecutionQuery,
 )
 from exness_bot.paper_execution.contract import IntentRecord
+from exness_bot.risk.validators import check_spread
 
 logger = structlog.get_logger(__name__)
 
@@ -279,6 +280,17 @@ def run_demo_preflight(
             CheckStatus.FAIL,
             "QUOTE: BLOCKED — UNAVAILABLE",
         )
+
+    spread_reason = check_spread(sym, settings.max_spread_points)
+    if spread_reason is None:
+        report.add(
+            "spread_limit",
+            CheckStatus.PASS,
+            f"spread_points={market.spread_points:.1f} "
+            f"<= MAX_SPREAD_POINTS={settings.max_spread_points}",
+        )
+    else:
+        report.add("spread_limit", CheckStatus.BLOCKED, spread_reason)
 
     if sym.volume_min > 0 and sym.volume_step > 0 and sym.volume_max > 0:
         report.add(

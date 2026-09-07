@@ -1,4 +1,13 @@
-"""Controlled DEMO smoke orchestrator — exactly one order, no strategy loop."""
+"""Controlled DEMO smoke orchestrator — exactly one order, no strategy loop.
+
+Canonical path (Phase 12.9):
+
+    demo-execution-smoke
+        → ExecutionOrchestrator
+        → GatedMT5ExecutionPort
+        → MT5Executor
+        → OneShotExecutionTransport
+"""
 
 from __future__ import annotations
 
@@ -13,7 +22,6 @@ import structlog
 
 from exness_bot.backtest.config import BacktestConfig
 from exness_bot.broker.mt5.execution_transport import MT5ExecutionTransport
-from exness_bot.broker.mt5.executor import MT5Executor
 from exness_bot.config.settings import Settings
 from exness_bot.controlled_demo.approval import OneShotApproval
 from exness_bot.controlled_demo.enablement import (
@@ -28,32 +36,35 @@ from exness_bot.controlled_demo.identity import (
     DemoMarketSnapshot,
     resolve_broker_symbol_explicit,
 )
-from exness_bot.controlled_demo.intent_factory import build_controlled_demo_intent
+from exness_bot.controlled_demo.intent_factory import (
+    CONTROLLED_DEMO_TEST_VOLUME,
+    build_controlled_demo_plan,
+)
 from exness_bot.controlled_demo.ledger import DemoSmokeLedger
 from exness_bot.controlled_demo.oneshot_transport import OneShotExecutionTransport
 from exness_bot.data.freshness import QuoteFreshness
 from exness_bot.domain.enums import SignalDirection
+from exness_bot.execution.guard import default_orchestration_guards
+from exness_bot.execution.mt5.factory import build_gated_mt5_execution_port
+from exness_bot.execution.mt5.gated_port import GatedMT5ExecutionPort
+from exness_bot.execution.mt5.snapshot import GatedExecutionSnapshot
+from exness_bot.execution.orchestrator import ExecutionOrchestrator
+from exness_bot.execution.result import OrchestrationOutcome
 from exness_bot.paper_execution.broker_query import (
     BrokerExecutionQuery,
     UnavailableBrokerExecutionQuery,
 )
 from exness_bot.paper_execution.contract import (
-    AckStatus,
     ExecutionAck,
     ExecutionIntent,
     IntentLifecycle,
     IntentRecord,
 )
 from exness_bot.paper_execution.executor import PaperExecutor
-from exness_bot.paper_execution.intent_store import (
-    ExecutionEvidence,
-    SnapshotIntentStore,
-    UnknownReason,
-)
+from exness_bot.paper_execution.intent_store import SnapshotIntentStore
 from exness_bot.paper_execution.models import PaperSnapshot
 from exness_bot.paper_execution.state import FilePaperStateStore
 from exness_bot.paper_execution.unknown_recovery import apply_reconcile_to_intent
-from exness_bot.risk.manager import RiskManager
 
 logger = structlog.get_logger(__name__)
 
@@ -81,6 +92,8 @@ class DemoSmokeResult:
     evidence: BrokerSmokeEvidence | None = None
     real_broker_submission: bool = False
     session_id: str | None = None
+    used_gated_port: bool = False
+    orchestration_outcome: str | None = None
 
 
 @dataclass
@@ -89,6 +102,7 @@ class ControlledDemoSmoke:
     One controlled DEMO submission boundary.
 
     Never starts a strategy loop. Never retries UNKNOWN.
+    Uses GatedMT5ExecutionPort — does not duplicate safety gates.
     """
 
     settings: Settings
@@ -192,6 +206,7 @@ class ControlledDemoSmoke:
             market=market,
             broker_symbol=broker_symbol,
             side=self.side,
+            volume=CONTROLLED_DEMO_TEST_VOLUME,
         )
 
         config = BacktestConfig.from_settings(self.settings)
@@ -203,13 +218,12 @@ class ControlledDemoSmoke:
         now = datetime.now(tz=UTC)
 
         try:
-            intent = build_controlled_demo_intent(
+            plan = build_controlled_demo_plan(
                 symbol=market.symbol,
                 canonical_symbol=self.settings.symbol,
                 timeframe=self.settings.timeframe,
                 now=now,
-                account=identity.account,
-                risk=RiskManager(self.settings),
+                max_position_lots=self.settings.max_position_lots,
                 side=self.side,
             )
         except ValueError as exc:
@@ -222,97 +236,86 @@ class ControlledDemoSmoke:
                 broker_symbol=broker_symbol,
             )
 
-        if not self.approval.try_consume(intent_id=intent.intent_id):
-            return DemoSmokeResult(
-                blocked=True,
-                message="Operator approval consume failed — NO SUBMISSION.",
-                enablement=enablement,
-                intent=intent,
-                identity=identity,
-                market=market,
-                broker_symbol=broker_symbol,
-            )
-
         positions_before = self.probe.list_positions(broker_symbol)
-        created = store.create_intent(intent, now=now)
-        if not created.created:
-            return DemoSmokeResult(
-                blocked=True,
-                message="Idempotency collision — NO SUBMISSION.",
-                enablement=enablement,
-                intent=intent,
-                identity=identity,
-                market=market,
-                broker_symbol=broker_symbol,
-            )
-        # IN_FLIGHT BEFORE transport.send
-        store.mark_in_flight(intent.intent_id, now=datetime.now(tz=UTC))
-        _persist(self.state_path, paper)
 
         oneshot = OneShotExecutionTransport(self.transport)
 
-        def _demo_enablement(_ctx: Any) -> Any:
-            # Executor gate: re-check kill switch / env; approval already consumed —
-            # pass a synthetic allowed path only when kill switch still off.
-            from exness_bot.config.live_enablement import (
-                LiveEnablementResult,
-                LiveReadinessStatus,
+        # Freeze prior intents BEFORE orchestrator creates IN_FLIGHT for this plan.
+        # Gated recheck must see unresolved *prior* state only — not the intent
+        # that ExecutionOrchestrator is currently committing.
+        prior_intents = tuple(paper.snapshot.intents)
+
+        def snapshot_provider() -> GatedExecutionSnapshot:
+            return GatedExecutionSnapshot(
+                account_trade_mode=identity.trade_mode,
+                trade_allowed=identity.trade_allowed,
+                terminal_trade_allowed=identity.terminal_trade_allowed,
+                broker_login=identity.login,
+                broker_server=identity.server,
+                quote_fresh=quote_fresh,
+                quote_age_seconds=market.age_seconds,
+                approval=self.approval,
+                prior_submission_count=ledger.load().submission_count,
+                intents=prior_intents,
+                intent_store_error=None,
             )
 
-            # Use demo enablement result: after consume, DEMO_APPROVAL gate would fail.
-            # Executor must not re-evaluate approval; smoke already consumed it.
-            # Provide a thin LiveEnablementResult that mirrors remaining safety.
-            if self.settings.live_kill_switch or self.settings.allow_legacy_run:
-                return LiveEnablementResult(
-                    allowed=False,
-                    configuration_preflight_ready=False,
-                    execution_capability=True,
-                    readiness_status=LiveReadinessStatus.BLOCKED,
-                    gates=(),
-                    blocking_reasons=("post-approval safety recheck failed",),
-                    evaluated_at=datetime.now(tz=UTC),
-                    message="Blocked on recheck",
-                )
-            if self.settings.trading_env.strip().lower() != "demo":
-                return LiveEnablementResult(
-                    allowed=False,
-                    configuration_preflight_ready=False,
-                    execution_capability=True,
-                    readiness_status=LiveReadinessStatus.BLOCKED,
-                    gates=(),
-                    blocking_reasons=("TRADING_ENV no longer demo",),
-                    evaluated_at=datetime.now(tz=UTC),
-                    message="Blocked",
-                )
-            return LiveEnablementResult(
-                allowed=True,
-                configuration_preflight_ready=True,
-                execution_capability=True,
-                readiness_status=LiveReadinessStatus.PREFLIGHT_READY,
-                gates=(),
-                blocking_reasons=(),
-                evaluated_at=datetime.now(tz=UTC),
-                message="Demo one-shot authorized",
-                mt5_executor_implemented=True,
-            )
-
-        executor = MT5Executor(
+        gated: GatedMT5ExecutionPort = build_gated_mt5_execution_port(
+            self.settings,
             transport=oneshot,
-            settings=self.settings,
-            require_enablement=True,
-            enablement_evaluator=_demo_enablement,
+            snapshot_provider=snapshot_provider,
+            wrap_oneshot=False,
         )
-        # Quote SymbolInfo may use broker name; keep domain validations working
-        quote = market.symbol
-        ack = executor.submit(intent, quote=quote)
-        ledger.record_submission(intent_id=intent.intent_id, ack_status=ack.status.value)
 
-        lifecycle = _finalize_intent(store, intent.intent_id, ack)
-        _persist(self.state_path, paper)
+        orch = ExecutionOrchestrator(
+            store=store,
+            port=gated,
+            clock=lambda: datetime.now(tz=UTC),
+            guard=default_orchestration_guards(store),
+            intent_id_factory=lambda p: (
+                f"demo-smoke-{p.plan_id.removeprefix('demo-smoke-plan-')}"
+            ),
+        )
+
+        orch_result = orch.execute(plan, quote=market.symbol)
+        intent = orch_result.intent
+        ack = orch_result.ack
+        lifecycle = orch_result.lifecycle
+
+        # Durable one-shot: only after MT5Executor was reached (side-effect boundary).
+        if gated.executor_submit_count > 0 and intent is not None:
+            ledger.record_submission(
+                intent_id=intent.intent_id,
+                ack_status=(ack.status.value if ack is not None else "UNKNOWN"),
+            )
+            self.approval.try_consume(intent_id=intent.intent_id)
+
+        submitted = gated.executor_submit_count > 0
+        if not submitted:
+            return DemoSmokeResult(
+                blocked=True,
+                message=(
+                    orch_result.message
+                    or "Gated path blocked before MT5Executor — NO SUBMISSION."
+                ),
+                enablement=gated.last_enablement or enablement,
+                intent=intent,
+                ack=ack,
+                lifecycle=lifecycle,
+                transport_send_count=oneshot.send_count,
+                positions_before=positions_before,
+                broker_symbol=broker_symbol,
+                identity=identity,
+                market=market,
+                submitted=False,
+                used_gated_port=True,
+                orchestration_outcome=orch_result.outcome,
+                session_id=session_id,
+            )
 
         reconcile_status = None
         query = self.broker_query
-        if query is not None and lifecycle is IntentLifecycle.UNKNOWN:
+        if query is not None and lifecycle is IntentLifecycle.UNKNOWN and intent is not None:
             record = store.get(intent.intent_id)
             if record is not None:
                 result = query.find_execution(record)
@@ -327,17 +330,19 @@ class ControlledDemoSmoke:
 
         positions_after = self.probe.list_positions(broker_symbol)
 
-        # Optional read-only intent query even for FILLED (evidence enrichment)
         if (
             query is not None
             and reconcile_status is None
             and lifecycle is IntentLifecycle.FILLED
+            and intent is not None
         ):
             record = store.get(intent.intent_id)
             if record is not None:
                 qres = query.find_execution(record)
                 reconcile_status = qres.status.value
 
+        assert intent is not None
+        assert ack is not None
         evidence = build_evidence(
             session_id=session_id,
             intent=intent,
@@ -368,6 +373,8 @@ class ControlledDemoSmoke:
             position_match=evidence.position_match,
             real_broker_submission=self.real_broker_submission,
             submitted=True,
+            gated_port=True,
+            orchestration_outcome=orch_result.outcome,
         )
         if lifecycle is IntentLifecycle.UNKNOWN:
             logger.warning(
@@ -408,10 +415,15 @@ class ControlledDemoSmoke:
                     f"sl={pos.get('sl')} tp={pos.get('tp')}"
                 )
 
+        blocked = orch_result.outcome not in {
+            OrchestrationOutcome.FILLED,
+            OrchestrationOutcome.REJECTED,
+            OrchestrationOutcome.UNKNOWN,
+        }
         return DemoSmokeResult(
-            blocked=False,
+            blocked=blocked,
             message="Controlled DEMO smoke completed (exactly one submission attempt).",
-            enablement=enablement,
+            enablement=gated.last_enablement or enablement,
             intent=intent,
             ack=ack,
             lifecycle=lifecycle,
@@ -426,34 +438,9 @@ class ControlledDemoSmoke:
             evidence=evidence,
             real_broker_submission=self.real_broker_submission,
             session_id=session_id,
+            used_gated_port=True,
+            orchestration_outcome=orch_result.outcome,
         )
-
-
-def _finalize_intent(
-    store: SnapshotIntentStore,
-    intent_id: str,
-    ack: ExecutionAck,
-) -> IntentLifecycle:
-    now = datetime.now(tz=UTC)
-    evidence = ExecutionEvidence(
-        fill_price=ack.fill_price,
-        broker_order_id=ack.broker_order_id,
-        broker_deal_id=ack.broker_position_id,
-        reason=ack.reason,
-        ack_status=ack.status.value,
-    )
-    if ack.status is AckStatus.FILLED:
-        store.mark_filled(intent_id, evidence, now=now)
-        return IntentLifecycle.FILLED
-    if ack.status is AckStatus.REJECTED:
-        store.mark_rejected(intent_id, evidence, now=now)
-        return IntentLifecycle.REJECTED
-    if ack.status is AckStatus.TIMEOUT:
-        reason = UnknownReason.ACK_TIMEOUT
-    else:
-        reason = UnknownReason.ACK_UNKNOWN
-    store.mark_unknown(intent_id, reason, now=now, detail=ack.reason)
-    return IntentLifecycle.UNKNOWN
 
 
 def _load_intents(path: Path) -> tuple[tuple[IntentRecord, ...], str | None]:
@@ -486,6 +473,7 @@ def _print_banner(
     market: DemoMarketSnapshot,
     broker_symbol: str,
     side: SignalDirection,
+    volume: float,
 ) -> None:
     side_label = "BUY" if side is SignalDirection.LONG else "SELL"
     login_mask = str(identity.login)
@@ -504,13 +492,14 @@ def _print_banner(
         f"CURRENCY: {identity.currency}",
         f"SYMBOL: {broker_symbol}",
         f"SIDE: {side_label}",
-        f"VOLUME: {market.symbol.volume_min} (min lot — finalized after risk)",
+        f"VOLUME: {volume} (explicit controlled DEMO test lot)",
         f"BID: {market.symbol.bid} ASK: {market.symbol.ask}",
         f"SPREAD_POINTS: {market.spread_points:.1f}",
         f"QUOTE_AGE_SECONDS: {market.age_seconds:.2f}",
         "",
+        "PATH: ExecutionOrchestrator → GatedMT5ExecutionPort → MT5Executor",
         "KILL SWITCH: DISABLED FOR THIS ONE-SHOT TEST",
-        "OPERATOR APPROVAL: REQUIRED / CONSUMING",
+        "OPERATOR APPROVAL: REQUIRED (rechecked by GatedMT5ExecutionPort)",
         "",
         "MAX SUBMISSIONS: 1",
         "STRATEGY LOOP: DISABLED",

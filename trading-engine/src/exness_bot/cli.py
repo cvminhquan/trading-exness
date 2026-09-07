@@ -547,11 +547,13 @@ def handle_live_preflight() -> int:
 
 def handle_demo_execution_smoke(*, execute: bool, confirm: str) -> int:
     """
-    Phase 12.4 — controlled DEMO one-shot.
+    Phase 12.9 — controlled DEMO one-shot.
 
     Default (no --execute): connect read-only, evaluate gates, never submit.
     With --execute --confirm DEMO-EXECUTE: exactly one submission via
-    MT5Executor → LiveMT5ExecutionTransport. No strategy loop. No retry.
+    ExecutionOrchestrator → GatedMT5ExecutionPort → MT5Executor →
+    OneShotExecutionTransport → LiveMT5ExecutionTransport.
+    No strategy loop. No retry. Explicit VOLUME=0.01.
     """
     from exness_bot.broker.mt5.connection_manager import ConnectionState, MT5ConnectionManager
     from exness_bot.broker.mt5.execution_query import ReadOnlyMt5BrokerExecutionQuery

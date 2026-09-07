@@ -20,6 +20,7 @@ from exness_bot.domain.execution_validation import (
 from exness_bot.domain.models import SymbolInfo
 from exness_bot.paper_execution.broker_query import BrokerExecutionQuery
 from exness_bot.paper_execution.contract import IntentLifecycle, IntentRecord
+from exness_bot.risk.validators import check_spread
 
 logger = structlog.get_logger(__name__)
 
@@ -37,6 +38,7 @@ class DemoGateName(StrEnum):
     TERMINAL_TRADE_PERMISSION = "terminal_trade_permission"
     SYMBOL_METADATA = "symbol_metadata"
     QUOTE_FRESHNESS = "quote_freshness"
+    SPREAD_LIMIT = "spread_limit"
     INTENT_STORE = "intent_store"
     EXECUTOR_CAPABILITY = "executor_capability"
     ONE_SHOT_GUARD = "one_shot_guard"
@@ -183,6 +185,7 @@ def evaluate_demo_controlled_enablement(
     gates.append(_gate_terminal_trade_permission(context))
     gates.append(_gate_symbol(context.symbol_info))
     gates.append(_gate_quote_freshness(context))
+    gates.append(_gate_spread_limit(settings, context.symbol_info))
     gates.append(_gate_intent_store(context))
 
     if not MT5_EXECUTOR_IMPLEMENTED:
@@ -390,6 +393,35 @@ def _gate_quote_freshness(context: DemoPreflightContext) -> DemoGateResult:
         DemoGateName.QUOTE_FRESHNESS,
         True,
         f"QUOTE: FRESH (age_seconds={context.quote_age_seconds}).",
+    )
+
+
+def _gate_spread_limit(
+    settings: Settings,
+    symbol: SymbolInfo | None,
+) -> DemoGateResult:
+    """
+    Fail-closed MAX_SPREAD_POINTS for controlled DEMO.
+
+    Restored after Phase 12.9 removed RiskManager from the smoke path —
+    spread must still block before GatedMT5 → transport.send.
+    """
+    if symbol is None:
+        return DemoGateResult(
+            DemoGateName.SPREAD_LIMIT,
+            False,
+            "Spread check unavailable — symbol missing.",
+        )
+    reason = check_spread(symbol, settings.max_spread_points)
+    if reason is not None:
+        return DemoGateResult(DemoGateName.SPREAD_LIMIT, False, reason)
+    spread_points = symbol.spread
+    if spread_points <= 0:
+        spread_points = round((symbol.ask - symbol.bid) / symbol.point)
+    return DemoGateResult(
+        DemoGateName.SPREAD_LIMIT,
+        True,
+        f"Spread {spread_points} <= MAX_SPREAD_POINTS={settings.max_spread_points}.",
     )
 
 

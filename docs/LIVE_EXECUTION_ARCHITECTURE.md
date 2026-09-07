@@ -1,8 +1,68 @@
 # Live Execution Architecture & Safety Design
 
-**Cập nhật:** Phase 12.8 (Gated MT5 Execution Integration) — 2026-09-04.
+**Cập nhật:** Phase 12.10 (DEMO Execution Evidence & Reconciliation) — 2026-09-07.
 
 Nhãn: **CURRENT** | **DESIGN** | **FUTURE** | **NOT IMPLEMENTED**.
+
+---
+
+## Phase 12.10 — DEMO Evidence & Reconciliation (CURRENT)
+
+Chi tiết: [`PHASE_12_10_DEMO_EXECUTION_EVIDENCE.md`](PHASE_12_10_DEMO_EXECUTION_EVIDENCE.md)
+
+### Status
+
+```text
+CONDITIONAL — AWAITING OPERATOR DEMO EVIDENCE
+Phase 12.10 DOES NOT ENABLE AUTONOMOUS LIVE TRADING.
+Agent MUST NOT run demo-execution-smoke --execute.
+```
+
+### Proof targets
+
+```text
+CREATED → IN_FLIGHT → FILLED | REJECTED | UNKNOWN
+transport_send_count <= 1
+read-only reconciliation only
+no auto-close / no UNKNOWN retry
+```
+
+---
+
+## Phase 12.9 — Controlled DEMO Path Hardening (CURRENT)
+
+Chi tiết: [`PHASE_12_9_CONTROLLED_DEMO_EXECUTION_HARDENING.md`](PHASE_12_9_CONTROLLED_DEMO_EXECUTION_HARDENING.md)
+
+### Status
+
+```text
+PASS (implementation + tests; real DEMO --execute is operator-only, not claimed here)
+Phase 12.9 DOES NOT ENABLE AUTONOMOUS LIVE TRADING.
+```
+
+### Canonical DEMO smoke path
+
+```text
+demo-execution-smoke
+    ↓
+ExecutionOrchestrator
+    ↓
+GatedMT5ExecutionPort   ← evaluate_demo_controlled_enablement (reuse)
+    ↓
+MT5Executor
+    ↓
+OneShotExecutionTransport
+    ↓
+Fake | LiveMT5ExecutionTransport
+```
+
+Controlled DEMO volume is explicit:
+
+```text
+CONTROLLED_DEMO_TEST_VOLUME = 0.01
+```
+
+Not derived from RiskManager / strategy equity sizing.
 
 ---
 
