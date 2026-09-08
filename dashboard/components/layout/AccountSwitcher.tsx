@@ -79,7 +79,7 @@ export const AccountSwitcher = ({ variant = "compact" }: AccountSwitcherProps) =
   const activeSummary =
     active?.configured && (active.server || active.login != null) ? (
       <span
-        className="max-w-[14rem] truncate text-xs tabular-nums text-slate-600 sm:max-w-none"
+        className="max-w-[14rem] truncate text-[12px] tabular-nums text-[var(--muted)] sm:max-w-none"
         title={ACCOUNT_SWITCH.activeAccount}
         aria-label={ACCOUNT_SWITCH.activeAccount}
       >
@@ -90,17 +90,18 @@ export const AccountSwitcher = ({ variant = "compact" }: AccountSwitcherProps) =
     );
   const switcher = (
     <div
-      className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5"
+      className="inline-flex rounded-[var(--radius-control)] border border-[var(--border-strong)] bg-[var(--surface)] p-0.5 shadow-[var(--shadow-sm)]"
       role="group"
       aria-label={A11Y.accountSwitch}
+      title={ACCOUNT_SWITCH.activeAccount}
     >
       <button
         type="button"
         className={cn(
-          "rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
+          "rounded-[calc(var(--radius-control)-2px)] px-3 py-1.5 text-[12px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
           data.activeProfile === "demo"
-            ? "bg-white text-slate-900 shadow-sm"
-            : "text-slate-600 hover:text-slate-900",
+            ? "bg-[var(--accent)] text-white shadow-[var(--shadow-sm)]"
+            : "text-[var(--foreground-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--accent)]",
         )}
         aria-pressed={data.activeProfile === "demo"}
         disabled={!demo?.configured || mutation.isPending}
@@ -112,10 +113,10 @@ export const AccountSwitcher = ({ variant = "compact" }: AccountSwitcherProps) =
       <button
         type="button"
         className={cn(
-          "rounded-md px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
+          "rounded-[calc(var(--radius-control)-2px)] px-3 py-1.5 text-[12px] font-semibold transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
           data.activeProfile === "live"
-            ? "bg-amber-50 text-amber-900 shadow-sm"
-            : "text-slate-600 hover:text-slate-900",
+            ? "bg-[var(--warning)] text-white shadow-[var(--shadow-sm)]"
+            : "text-[var(--foreground-secondary)] hover:bg-[var(--warning-subtle)] hover:text-[var(--warning)]",
           !live?.configured && "cursor-not-allowed opacity-50",
         )}
         aria-pressed={data.activeProfile === "live"}

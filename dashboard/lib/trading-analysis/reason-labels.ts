@@ -15,23 +15,31 @@ export const collectDecisionReasons = (input: {
   finalSignal?: "LONG" | "SHORT" | "WAIT";
   setupState?: string | null;
 }): ReasonItem[] => {
-  const codes: string[] = [];
+  const byCode = new Map<string, string>();
+  const add = (code: string, message?: string) => {
+    if (byCode.has(code)) return;
+    const mapped = mapReasonCode(code);
+    // Prefer Vietnamese map; else human message; never leave bare enum if message exists.
+    byCode.set(
+      code,
+      mapped !== code ? mapped : message && message.trim() ? message : code,
+    );
+  };
+
   for (const r of input.analysisReasons) {
-    if (!r.passed) codes.push(r.code);
+    if (!r.passed) add(r.code, r.message);
   }
   for (const w of input.analysisWarnings) {
-    if (!w.passed) codes.push(w.code);
+    if (!w.passed) add(w.code, w.message);
   }
   for (const code of input.eligibilityReasons ?? []) {
-    codes.push(code);
+    add(code);
   }
-  // Fallback presentation khi API chỉ trả TF_* passed=true nhưng đang WAIT.
-  if (codes.length === 0 && input.finalSignal === "WAIT") {
-    codes.push("FINAL_SIGNAL_WAIT");
+  if (byCode.size === 0 && input.finalSignal === "WAIT") {
+    add("FINAL_SIGNAL_WAIT");
     if (!input.setupState || input.setupState === "NO_SETUP") {
-      codes.push("NO_DIRECTIONAL_SETUP");
+      add("NO_DIRECTIONAL_SETUP");
     }
   }
-  const unique = [...new Set(codes)];
-  return unique.map((code) => ({ code, label: mapReasonCode(code) }));
+  return [...byCode.entries()].map(([code, label]) => ({ code, label }));
 };

@@ -28,7 +28,15 @@ const TradesExplorer = () => {
 
   return (
     <>
-      <SymbolTabs activeSymbol={symbol} hrefForSymbol={hrefForSymbol} />
+      <SymbolTabs
+        activeSymbol={symbol}
+        hrefForSymbol={hrefForSymbol}
+        signals={
+          mtfAnalysisQuery.data
+            ? { [symbol]: mtfAnalysisQuery.data.finalSignal }
+            : undefined
+        }
+      />
 
       <QueryState
         isLoading={mtfAnalysisQuery.isLoading}

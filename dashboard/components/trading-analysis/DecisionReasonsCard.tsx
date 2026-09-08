@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import type { ExecutionCandidateStatus, MultiTimeframeAnalysis } from "@/domain";
 import { TRADE_ANALYSIS_UX as L } from "@/lib/i18n/vi";
 import { collectDecisionReasons } from "@/lib/trading-analysis/reason-labels";
@@ -25,50 +26,82 @@ export const DecisionReasonsCard = ({
     setupState: eligibility?.setupState ?? analysis.setup?.state,
   });
   const hasSetup = hasDirectionalSetup(analysis);
+  const setupState = eligibility?.setupState ?? analysis.setup?.state;
   const isBlocked =
     analysis.executionAssessment === "BLOCKED" ||
     (eligibility != null && !eligibility.eligible && hasSetup);
+  const isWaitingEntry = setupState === "WAITING_FOR_ENTRY" && !isBlocked;
 
-  const title =
-    analysis.finalSignal === "WAIT"
-      ? L.reasonsTitleWait
-      : isBlocked
-        ? L.reasonsTitleBlocked
+  const headline = isBlocked
+    ? L.blocked
+    : analysis.finalSignal === "WAIT"
+      ? "WAIT"
+      : isWaitingEntry
+        ? L.waitingForEntry
+        : L.reasonsTitle;
+
+  const summary = isBlocked
+    ? L.blockedSummary
+    : analysis.finalSignal === "WAIT"
+      ? L.waitMessage
+      : isWaitingEntry
+        ? L.waitingForEntry
         : L.reasonsTitle;
 
   return (
-    <section className="border-t border-slate-200 pt-3" aria-label={title}>
+    <section
+      className={cn(
+        "rounded-[var(--radius-card)] border px-5 py-4",
+        isBlocked &&
+          "border-[var(--negative)]/25 bg-[var(--negative-subtle)]",
+        isWaitingEntry &&
+          "border-[var(--warning)]/25 bg-[var(--warning-subtle)]",
+        !isBlocked &&
+          !isWaitingEntry &&
+          "border-[var(--border)] bg-[var(--surface-subtle)]",
+      )}
+      aria-label={headline}
+    >
       <h3
         className={cn(
-          "text-[11px] font-semibold uppercase tracking-wide",
-          isBlocked ? "text-rose-800" : "text-slate-500",
+          "flex items-center gap-2 text-[15px] font-semibold tracking-wide uppercase",
+          isBlocked && "text-[var(--negative)]",
+          isWaitingEntry && "text-[var(--warning)]",
+          !isBlocked && !isWaitingEntry && "text-[var(--foreground)]",
         )}
       >
-        {title}
+        {isBlocked ? <AlertTriangle className="h-4 w-4" aria-hidden /> : null}
+        {headline}
       </h3>
+      <p className="mt-1 text-[14px] text-[var(--foreground-secondary)]">{summary}</p>
 
       {items.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-500">{L.dash}</p>
+        <p className="mt-3 text-[14px] text-[var(--muted)]">{L.dash}</p>
       ) : (
-        <ul className="mt-2 space-y-1 text-sm text-slate-700">
+        <ul className="mt-3 space-y-1.5 text-[14px] text-[var(--foreground-secondary)]">
           {items.map((item) => (
-            <li key={item.code}>{item.label}</li>
+            <li key={item.code} className="flex gap-2">
+              <span className="text-[var(--muted)]" aria-hidden>
+                •
+              </span>
+              <span>{item.label}</span>
+            </li>
           ))}
         </ul>
       )}
 
       {items.length > 0 ? (
-        <div className="mt-2">
+        <div className="mt-3">
           <button
             type="button"
-            className="text-[11px] text-slate-400 underline-offset-2 hover:text-slate-700 hover:underline"
+            className="text-[13px] font-medium text-[var(--muted)] underline-offset-2 transition-colors hover:text-[var(--accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
             onClick={() => setShowRaw((v) => !v)}
             aria-expanded={showRaw}
           >
             {L.technicalDetails}
           </button>
           {showRaw ? (
-            <ul className="mt-1 space-y-0.5 font-mono text-[10px] text-slate-400">
+            <ul className="mt-2 space-y-1 font-mono text-[12px] text-[var(--muted)]">
               {items.map((item) => (
                 <li key={`raw-${item.code}`}>{item.code}</li>
               ))}

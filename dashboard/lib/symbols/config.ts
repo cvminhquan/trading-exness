@@ -10,6 +10,15 @@ export const DASHBOARD_SYMBOLS = [
 
 export type DashboardSymbol = (typeof DASHBOARD_SYMBOLS)[number];
 
+/** Human-facing pair labels (presentation only). */
+export const DASHBOARD_SYMBOL_LABELS: Record<DashboardSymbol, string> = {
+  XAUUSD: "Vàng / USD",
+  BTCUSD: "Bitcoin / USD",
+  ETHUSD: "Ethereum / USD",
+  EURUSD: "Euro / USD",
+  XAGUSD: "Bạc / USD",
+};
+
 export const DEFAULT_DASHBOARD_SYMBOL: DashboardSymbol = "XAUUSD";
 
 /** Static sidebar segments that must not be captured by /dashboard/[symbol]. */

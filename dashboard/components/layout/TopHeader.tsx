@@ -13,16 +13,19 @@ export const TopHeader = () => {
   const { data, isLoading } = useSessionContext();
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 md:px-6">
-        <p className="truncate text-sm font-semibold tracking-tight text-slate-900 md:text-base">
+    <header
+      className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--surface)]"
+      style={{ boxShadow: "var(--shadow-xs)" }}
+    >
+      <div className="flex items-center justify-between gap-3 px-4 py-3 md:px-6">
+        <p className="truncate text-[15px] font-semibold tracking-tight text-[var(--foreground)] md:text-[16px]">
           {UI.appName}
         </p>
 
-        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
           <AccountSwitcher variant="compact" />
           {isLoading ? (
-            <Skeleton className="h-7 w-16" />
+            <Skeleton className="h-8 w-16" />
           ) : data ? (
             <>
               <ConnectionIndicator status={data.connectionStatus} compact />

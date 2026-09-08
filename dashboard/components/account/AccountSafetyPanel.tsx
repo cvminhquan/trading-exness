@@ -8,7 +8,7 @@ type AccountSafetyPanelProps = {
   safety: AccountSafety;
 };
 
-const Chip = ({
+const Status = ({
   label,
   value,
   tone = "neutral",
@@ -17,49 +17,62 @@ const Chip = ({
   value: string;
   tone?: "neutral" | "ok" | "warn" | "bad";
 }) => (
-  <span
-    className={cn(
-      "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px]",
-      tone === "ok" && "border-emerald-200 bg-emerald-50 text-emerald-800",
-      tone === "warn" && "border-amber-200 bg-amber-50 text-amber-900",
-      tone === "bad" && "border-rose-200 bg-rose-50 text-rose-800",
-      tone === "neutral" && "border-slate-200 bg-slate-50 text-slate-700",
-    )}
-  >
-    <span className="font-semibold uppercase tracking-wide opacity-70">
+  <span className="inline-flex items-center gap-1.5 text-[12px]">
+    <span
+      className={cn(
+        "size-1.5 rounded-full",
+        tone === "ok" && "bg-[var(--positive)]",
+        tone === "warn" && "bg-[var(--warning)]",
+        tone === "bad" && "bg-[var(--negative)]",
+        tone === "neutral" && "bg-slate-400",
+      )}
+      aria-hidden
+    />
+    <span className="font-medium tracking-wide text-[var(--text-muted)] uppercase">
       {label}
     </span>
-    <span className="font-semibold tabular-nums">{value}</span>
+    <span
+      className={cn(
+        "font-semibold tabular-nums",
+        tone === "ok" && "text-[var(--positive)]",
+        tone === "warn" && "text-[var(--warning)]",
+        tone === "bad" && "text-[var(--negative)]",
+        tone === "neutral" && "text-[var(--text-secondary)]",
+      )}
+    >
+      {value}
+    </span>
   </span>
 );
 
-/** Compact safety strip — tránh hiểu nhầm bot đang autonomous live trading. */
+/** Compact status strip — indicators, not buttons. */
 export const AccountSafetyPanel = ({ safety }: AccountSafetyPanelProps) => (
   <div
-    className="flex flex-wrap items-center gap-1.5"
+    className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-sm bg-[var(--surface)] px-4 py-2.5"
     aria-label={ACCOUNT_OVERVIEW.safetyTitle}
+    role="status"
   >
-    <Chip label={ACCOUNT_OVERVIEW.mode} value={safety.tradeMode} />
-    <Chip
+    <Status label={ACCOUNT_OVERVIEW.mode} value={safety.tradeMode} />
+    <Status
       label={ACCOUNT_OVERVIEW.mt5}
       value={safety.mt5Status}
       tone={safety.mt5Status === "CONNECTED" ? "ok" : "bad"}
     />
-    <Chip
+    <Status
       label={ACCOUNT_OVERVIEW.executionMode}
       value={safety.executionMode}
       tone={safety.executionMode === "LIVE" ? "warn" : "neutral"}
     />
-    <Chip
+    <Status
       label={ACCOUNT_OVERVIEW.killSwitch}
       value={safety.killSwitch}
       tone={safety.killSwitch === "ON" ? "ok" : "warn"}
     />
     {safety.server ? (
-      <span className="text-[11px] text-slate-400">{safety.server}</span>
+      <span className="text-[12px] text-[var(--text-muted)]">{safety.server}</span>
     ) : null}
-    <span className="text-[10px] text-slate-400">
-      Dashboard chỉ đọc — không đặt lệnh từ UI
+    <span className="text-[12px] text-[var(--text-muted)]">
+      Dashboard chỉ đọc
     </span>
   </div>
 );

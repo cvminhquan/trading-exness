@@ -1,5 +1,13 @@
 import type { Position } from "@/domain";
-import { formatDuration, formatPrice, formatRMultiple, formatVolume } from "@/lib/format";
+import {
+  formatDuration,
+  formatPrice,
+  formatRMultiple,
+  formatSignedPercent,
+  formatVolume,
+  getPnLSentiment,
+} from "@/lib/format";
+import { computePositionPriceMovePct } from "@/lib/market/position-move";
 import { METRICS, UI } from "@/lib/i18n/vi";
 import { PnLValue } from "@/components/shared/PnLValue";
 import { DirectionIndicator } from "@/components/shared/DirectionIndicator";
@@ -12,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableSkeleton } from "@/components/shared/Skeletons";
+import { cn } from "@/lib/utils";
 
 type PositionTableProps = {
   positions: Position[];
@@ -27,85 +36,116 @@ export const PositionTable = ({
   if (isLoading) return <TableSkeleton rows={compact ? 2 : 4} />;
 
   return (
-    <div className="max-h-[420px] overflow-auto border-t border-slate-200">
+    <div className="max-h-[480px] overflow-auto">
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-[#f4f5f7]">
+        <TableHeader className="sticky top-0 z-10 bg-[var(--surface-subtle)]">
           <TableRow className="hover:bg-transparent">
-            <TableHead className="h-8 text-[11px] font-medium">{UI.symbol}</TableHead>
-            <TableHead className="h-8 text-[11px] font-medium">{UI.direction}</TableHead>
-            <TableHead className="h-8 text-right text-[11px] font-medium">
+            <TableHead className="h-11 text-[13px] font-semibold text-[var(--foreground-secondary)]">
+              {UI.symbol}
+            </TableHead>
+            <TableHead className="h-11 text-[13px] font-semibold text-[var(--foreground-secondary)]">
+              {UI.direction}
+            </TableHead>
+            <TableHead className="h-11 text-right text-[13px] font-semibold text-[var(--foreground-secondary)]">
               {UI.volume}
             </TableHead>
-            <TableHead className="h-8 text-right text-[11px] font-medium">
+            <TableHead className="h-11 text-right text-[13px] font-semibold text-[var(--foreground-secondary)]">
               {UI.entry}
             </TableHead>
-            <TableHead className="h-8 text-right text-[11px] font-medium">
+            <TableHead className="h-11 text-right text-[13px] font-semibold text-[var(--foreground-secondary)]">
               {UI.currentPrice}
             </TableHead>
             {!compact ? (
-              <TableHead className="hidden h-8 text-right text-[11px] font-medium lg:table-cell">
+              <TableHead className="hidden h-11 text-right text-[13px] font-semibold text-[var(--foreground-secondary)] lg:table-cell">
                 SL
               </TableHead>
             ) : null}
             {!compact ? (
-              <TableHead className="hidden h-8 text-right text-[11px] font-medium lg:table-cell">
+              <TableHead className="hidden h-11 text-right text-[13px] font-semibold text-[var(--foreground-secondary)] lg:table-cell">
                 TP
               </TableHead>
             ) : null}
-            <TableHead className="h-8 text-right text-[11px] font-medium">
+            <TableHead className="h-11 text-right text-[13px] font-semibold text-[var(--foreground-secondary)]">
               {METRICS.unrealizedPnl}
             </TableHead>
             {!compact ? (
-              <TableHead className="hidden h-8 text-right text-[11px] font-medium md:table-cell">
+              <TableHead className="hidden h-11 text-right text-[13px] font-semibold text-[var(--foreground-secondary)] md:table-cell">
                 R
               </TableHead>
             ) : null}
-            <TableHead className="h-8 text-right text-[11px] font-medium">
+            <TableHead className="h-11 text-right text-[13px] font-semibold text-[var(--foreground-secondary)]">
               {UI.duration}
             </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {positions.map((position) => (
-            <TableRow key={position.id} className="h-9 hover:bg-slate-50/80">
-              <TableCell className="py-1.5 text-sm font-medium">
-                {position.symbol}
-              </TableCell>
-              <TableCell className="py-1.5">
-                <DirectionIndicator direction={position.direction} />
-              </TableCell>
-              <TableCell className="py-1.5 text-right text-sm tabular-nums">
-                {formatVolume(position.volume)}
-              </TableCell>
-              <TableCell className="py-1.5 text-right text-sm tabular-nums">
-                {formatPrice(position.entryPrice)}
-              </TableCell>
-              <TableCell className="py-1.5 text-right text-sm tabular-nums">
-                {formatPrice(position.currentPrice)}
-              </TableCell>
-              {!compact ? (
-                <TableCell className="hidden py-1.5 text-right text-sm tabular-nums lg:table-cell">
-                  {position.stopLoss ? formatPrice(position.stopLoss) : "—"}
+          {positions.map((position) => {
+            const movePct = computePositionPriceMovePct(position);
+            const moveSentiment = getPnLSentiment(movePct);
+            return (
+              <TableRow
+                key={position.id}
+                className="h-12 border-[var(--border)] transition-colors hover:bg-[var(--surface-hover)]"
+              >
+                <TableCell className="py-2 text-[14px] font-semibold">
+                  {position.symbol}
                 </TableCell>
-              ) : null}
-              {!compact ? (
-                <TableCell className="hidden py-1.5 text-right text-sm tabular-nums lg:table-cell">
-                  {position.takeProfit ? formatPrice(position.takeProfit) : "—"}
+                <TableCell className="py-2">
+                  <DirectionIndicator direction={position.direction} />
                 </TableCell>
-              ) : null}
-              <TableCell className="py-1.5 text-right">
-                <PnLValue value={position.unrealizedPnl} size="sm" />
-              </TableCell>
-              {!compact ? (
-                <TableCell className="hidden py-1.5 text-right text-sm tabular-nums md:table-cell">
-                  {formatRMultiple(position.rMultiple)}
+                <TableCell className="py-2 text-right text-[14px] tabular-nums">
+                  {formatVolume(position.volume)}
                 </TableCell>
-              ) : null}
-              <TableCell className="py-1.5 text-right text-sm tabular-nums text-slate-500">
-                {formatDuration(position.openedAt)}
-              </TableCell>
-            </TableRow>
-          ))}
+                <TableCell className="py-2 text-right text-[14px] tabular-nums">
+                  {formatPrice(position.entryPrice)}
+                </TableCell>
+                <TableCell className="py-2 text-right text-[14px] tabular-nums">
+                  {formatPrice(position.currentPrice)}
+                </TableCell>
+                {!compact ? (
+                  <TableCell className="hidden py-2 text-right text-[14px] tabular-nums lg:table-cell">
+                    {position.stopLoss ? formatPrice(position.stopLoss) : "—"}
+                  </TableCell>
+                ) : null}
+                {!compact ? (
+                  <TableCell className="hidden py-2 text-right text-[14px] tabular-nums lg:table-cell">
+                    {position.takeProfit ? formatPrice(position.takeProfit) : "—"}
+                  </TableCell>
+                ) : null}
+                <TableCell className="py-2 text-right">
+                  <div className="inline-flex flex-col items-end">
+                    <PnLValue
+                      value={position.unrealizedPnl}
+                      size="sm"
+                      showIcon={false}
+                      className="text-[14px] font-semibold"
+                    />
+                    {movePct != null ? (
+                      <span
+                        className={cn(
+                          "text-[12px] font-semibold tabular-nums",
+                          moveSentiment === "profit" && "text-[var(--positive)]",
+                          moveSentiment === "loss" && "text-[var(--negative)]",
+                          moveSentiment === "flat" && "text-[var(--text-muted)]",
+                        )}
+                        title="Biến động giá so với entry (không phải ROI vốn)"
+                      >
+                        {formatSignedPercent(movePct)}
+                      </span>
+                    ) : null}
+                  </div>
+                </TableCell>
+                {!compact ? (
+                  <TableCell className="hidden py-2 text-right text-[14px] tabular-nums md:table-cell">
+                    {formatRMultiple(position.rMultiple)}
+                  </TableCell>
+                ) : null}
+                <TableCell className="py-2 text-right text-[13px] tabular-nums text-[var(--text-muted)]">
+                  {formatDuration(position.openedAt)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

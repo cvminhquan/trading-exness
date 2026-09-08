@@ -52,8 +52,31 @@ export default function DashboardSymbolPage({ params }: PageProps) {
 
   return (
     <div className="space-y-4">
-      {/* Primary workspace: symbol → decision */}
-      <SymbolTabs activeSymbol={symbol} />
+      <QueryState
+        isLoading={accountOverviewQuery.isLoading}
+        isError={accountOverviewQuery.isError}
+        errorMessage={accountOverviewQuery.error?.message}
+        onRetry={() => void accountOverviewQuery.refetch()}
+        loadingFallback={<OverviewSkeleton />}
+        section={SECTION_LABELS.overview}
+      >
+        {accountOverviewQuery.data ? (
+          <AccountOverviewSection overview={accountOverviewQuery.data} />
+        ) : null}
+      </QueryState>
+
+      {accountOverviewQuery.data ? (
+        <AccountSafetyPanel safety={accountOverviewQuery.data.safety} />
+      ) : null}
+
+      <SymbolTabs
+        activeSymbol={symbol}
+        signals={
+          mtfAnalysisQuery.data
+            ? { [symbol]: mtfAnalysisQuery.data.finalSignal }
+            : undefined
+        }
+      />
 
       <QueryState
         isLoading={mtfAnalysisQuery.isLoading}
@@ -71,66 +94,54 @@ export default function DashboardSymbolPage({ params }: PageProps) {
         ) : null}
       </QueryState>
 
-      {/* Secondary: positions */}
-      <section aria-label={`${METRICS.openPositions} ${symbol}`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {showAllPositions
-              ? METRICS.openPositions
-              : `${METRICS.openPositions} · ${symbol}`}
-          </h2>
-          <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-slate-500">
-            <input
-              type="checkbox"
-              checked={showAllPositions}
-              onChange={(e) => setShowAllPositions(e.target.checked)}
-              className="rounded-sm border-slate-300"
-            />
-            Hiện tất cả
-          </label>
-        </div>
-        <QueryState
-          isLoading={positionsQuery.isLoading}
-          isError={positionsQuery.isError}
-          errorMessage={positionsQuery.error?.message}
-          onRetry={() => void positionsQuery.refetch()}
-          loadingFallback={<TableSkeleton rows={3} />}
-          section={SECTION_LABELS.positions}
-          isEmpty={!positionsQuery.isLoading && visiblePositions.length === 0}
-          emptyTitle={EMPTY.noOpenPositions}
-          emptyDescription={EMPTY.noOpenPositionsOverview}
+      <div className="grid gap-4 xl:grid-cols-12">
+        <section
+          className="surface-card px-5 py-4 xl:col-span-8"
+          aria-label={`${METRICS.openPositions} ${symbol}`}
         >
-          {visiblePositions.length > 0 ? (
-            <PositionTable positions={visiblePositions} compact />
-          ) : null}
-        </QueryState>
-      </section>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-[16px] font-semibold text-[var(--foreground)]">
+              {showAllPositions
+                ? METRICS.openPositions
+                : `${METRICS.openPositions} · ${symbol}`}
+            </h2>
+            <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-[var(--muted)] transition-colors hover:text-[var(--accent)]">
+              <input
+                type="checkbox"
+                checked={showAllPositions}
+                onChange={(e) => setShowAllPositions(e.target.checked)}
+                className="rounded border-[var(--border-strong)] text-[var(--accent)] focus:ring-[var(--accent)]"
+              />
+              Hiện tất cả
+            </label>
+          </div>
+          <QueryState
+            isLoading={positionsQuery.isLoading}
+            isError={positionsQuery.isError}
+            errorMessage={positionsQuery.error?.message}
+            onRetry={() => void positionsQuery.refetch()}
+            loadingFallback={<TableSkeleton rows={3} />}
+            section={SECTION_LABELS.positions}
+            isEmpty={!positionsQuery.isLoading && visiblePositions.length === 0}
+            emptyTitle={EMPTY.noOpenPositions}
+            emptyDescription={EMPTY.noOpenPositionsOverview}
+          >
+            {visiblePositions.length > 0 ? (
+              <PositionTable positions={visiblePositions} compact />
+            ) : null}
+          </QueryState>
+        </section>
 
-      {/* Tertiary: account / safety / PnL */}
-      {accountOverviewQuery.data ? (
-        <AccountSafetyPanel safety={accountOverviewQuery.data.safety} />
-      ) : null}
-
-      <QueryState
-        isLoading={accountOverviewQuery.isLoading}
-        isError={accountOverviewQuery.isError}
-        errorMessage={accountOverviewQuery.error?.message}
-        onRetry={() => void accountOverviewQuery.refetch()}
-        loadingFallback={<OverviewSkeleton />}
-        section={SECTION_LABELS.overview}
-      >
-        {accountOverviewQuery.data ? (
-          <AccountOverviewSection overview={accountOverviewQuery.data} />
-        ) : null}
-      </QueryState>
-
-      <RealizedPnlChart
-        data={dailyPnlQuery.data ?? []}
-        isLoading={dailyPnlQuery.isLoading}
-        isError={dailyPnlQuery.isError}
-        errorMessage={dailyPnlQuery.error?.message}
-        onRetry={() => void dailyPnlQuery.refetch()}
-      />
+        <div className="xl:col-span-4">
+          <RealizedPnlChart
+            data={dailyPnlQuery.data ?? []}
+            isLoading={dailyPnlQuery.isLoading}
+            isError={dailyPnlQuery.isError}
+            errorMessage={dailyPnlQuery.error?.message}
+            onRetry={() => void dailyPnlQuery.refetch()}
+          />
+        </div>
+      </div>
     </div>
   );
 }

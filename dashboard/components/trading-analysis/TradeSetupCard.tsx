@@ -17,98 +17,132 @@ export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
 
   if (!hasSetup || !setup) {
     return (
-      <section aria-label={L.setupTitle}>
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <section className="surface-card h-full px-5 py-4" aria-label={L.setupTitle}>
+        <h3 className="text-[16px] font-semibold text-[var(--foreground)]">
           {L.setupTitle}
         </h3>
-        <p className="mt-2 text-sm text-slate-600">{L.noDirectionalSetup}</p>
+        <p className="mt-3 text-[14px] text-[var(--foreground-secondary)]">
+          {L.noDirectionalSetup}
+        </p>
       </section>
     );
   }
 
   const zone =
     setup.entryZoneLow != null && setup.entryZoneHigh != null
-      ? `${formatNumber(setup.entryZoneLow, 2)} – ${formatNumber(setup.entryZoneHigh, 2)}`
+      ? `$${formatNumber(setup.entryZoneLow, 2)} – $${formatNumber(setup.entryZoneHigh, 2)}`
       : L.dash;
   const volume = analysis.sizing?.normalizedVolume;
+  const tp1 = setup.takeProfits.find((t) => t.level === 1);
+  const otherTps = setup.takeProfits.filter((t) => t.level !== 1);
+  const signalTone =
+    analysis.finalSignal === "LONG"
+      ? "text-[var(--positive)] bg-[var(--positive-subtle)]"
+      : analysis.finalSignal === "SHORT"
+        ? "text-[var(--negative)] bg-[var(--negative-subtle)]"
+        : "text-[var(--muted)] bg-[var(--surface-subtle)]";
 
   return (
-    <section aria-label={L.setupTitle}>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        {L.setupTitle}
-      </h3>
+    <section className="surface-card h-full px-5 py-4" aria-label={L.setupTitle}>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[16px] font-semibold text-[var(--foreground)]">
+          {L.setupTitle}
+        </h3>
+        <span
+          className={cn(
+            "rounded-full px-2 py-0.5 text-[12px] font-bold uppercase",
+            signalTone,
+          )}
+        >
+          {analysis.finalSignal}
+        </span>
+      </div>
 
-      <dl className="mt-2 space-y-1.5 text-sm">
-        <Row label={L.direction} value={analysis.finalSignal} emphasize />
-        <Row label={L.entryZone} value={zone} />
-        <Row
-          label={L.currentPrice}
-          value={
-            analysis.currentPrice == null
-              ? L.dash
-              : formatNumber(analysis.currentPrice, 2)
-          }
-        />
-        <Row
-          label={L.stopLoss}
-          value={setup.stopLoss == null ? L.dash : formatNumber(setup.stopLoss, 2)}
-        />
-      </dl>
+      <div className="mt-4 space-y-4">
+        <ValueBlock label={L.entryZone} value={zone} size="lg" />
 
-      <ul className="mt-2 space-y-1">
-        {setup.takeProfits.map((tp) => {
-          const isTp1 = tp.level === 1;
-          return (
-            <li
-              key={tp.level}
-              className="flex items-baseline justify-between gap-2 text-sm"
-            >
-              <span className="text-slate-500">
-                TP{tp.level}
-                <span className="ml-1.5 text-[10px] uppercase tracking-wide text-slate-400">
-                  {isTp1 ? L.executionTarget : L.analysisTargetOnly}
-                </span>
-              </span>
-              <span className="font-medium tabular-nums text-slate-900">
-                {formatNumber(tp.price, 2)}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+        <div className="grid grid-cols-2 gap-4">
+          <ValueBlock
+            label={L.currentPrice}
+            value={
+              analysis.currentPrice == null
+                ? L.dash
+                : `$${formatNumber(analysis.currentPrice, 2)}`
+            }
+          />
+          <ValueBlock
+            label={L.stopLoss}
+            value={
+              setup.stopLoss == null ? L.dash : `$${formatNumber(setup.stopLoss, 2)}`
+            }
+          />
+        </div>
 
-      <dl className="mt-2">
-        <Row
+        {tp1 ? (
+          <div className="rounded-[var(--radius-tab)] bg-[var(--surface-subtle)] px-3 py-3">
+            <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+              TP1
+            </p>
+            <p className="mt-1 text-[18px] font-semibold tabular-nums text-[var(--foreground)]">
+              ${formatNumber(tp1.price, 2)}
+            </p>
+            <p className="mt-0.5 text-[12px] font-semibold tracking-wide text-[var(--positive)] uppercase">
+              {L.executionTarget}
+            </p>
+          </div>
+        ) : null}
+
+        {otherTps.length > 0 ? (
+          <div className="grid grid-cols-2 gap-4">
+            {otherTps.map((tp) => (
+              <div key={tp.level}>
+                <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+                  TP{tp.level}
+                </p>
+                <p className="mt-1 text-[15px] font-semibold tabular-nums text-[var(--foreground-secondary)]">
+                  ${formatNumber(tp.price, 2)}
+                </p>
+                <p className="mt-0.5 text-[12px] text-[var(--muted)]">
+                  {L.analysisTargetOnly}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        <ValueBlock
           label={L.volume}
           value={
             volume == null ? L.dash : `${formatNumber(volume, 2)} ${L.lot}`
           }
         />
-      </dl>
+      </div>
 
       <PriceRelationshipBar analysis={analysis} />
     </section>
   );
 };
 
-const Row = ({
+const ValueBlock = ({
   label,
   value,
-  emphasize,
+  size = "md",
 }: {
   label: string;
   value: string;
-  emphasize?: boolean;
+  size?: "md" | "lg";
 }) => (
-  <div className="flex items-baseline justify-between gap-3">
-    <dt className="text-xs text-slate-500">{label}</dt>
-    <dd
+  <div>
+    <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+      {label}
+    </p>
+    <p
       className={cn(
-        "tabular-nums text-slate-900",
-        emphasize ? "font-semibold" : "font-medium",
+        "mt-1 font-semibold tabular-nums text-[var(--foreground)]",
+        size === "lg" ? "text-[16px]" : "text-[15px]",
       )}
     >
       {value}
-    </dd>
+    </p>
   </div>
 );

@@ -2,12 +2,19 @@ import { PNL_LABELS } from "@/lib/i18n/vi";
 
 const UNAVAILABLE = "—";
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
+const moneyFormatter = (currency: string, digits = 2) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+
+const numberFormatter = (digits = 2) =>
+  new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
 
 const percentFormatter = new Intl.NumberFormat("en-US", {
   style: "percent",
@@ -20,19 +27,52 @@ const compactNumberFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-export const formatCurrency = (value: number | null | undefined): string => {
+/** Account/instrument money — uses ISO currency when provided. */
+export const formatMoney = (
+  value: number | null | undefined,
+  currency = "USD",
+  digits = 2,
+): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
-  return currencyFormatter.format(value);
+  try {
+    return moneyFormatter(currency, digits).format(value);
+  } catch {
+    return `${numberFormatter(digits).format(value)} ${currency}`;
+  }
 };
 
-export const formatSignedCurrency = (value: number | null | undefined): string => {
+export const formatCurrency = (value: number | null | undefined): string =>
+  formatMoney(value, "USD");
+
+export const formatSignedMoney = (
+  value: number | null | undefined,
+  currency = "USD",
+  digits = 2,
+): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
-  const formatted = formatCurrency(Math.abs(value));
-  if (value > 0) return `+${formatted}`;
-  if (value < 0) return `-${formatted}`;
-  return formatted;
+  const abs = formatMoney(Math.abs(value), currency, digits);
+  if (value > 0) return `+${abs}`;
+  if (value < 0) return `-${abs}`;
+  return abs;
 };
 
+export const formatSignedCurrency = (value: number | null | undefined): string =>
+  formatSignedMoney(value, "USD");
+
+/** `value` is already in percent units (e.g. 0.30 for 0.30%). */
+export const formatSignedPercent = (
+  value: number | null | undefined,
+  digits = 2,
+): string => {
+  if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(digits)}%`;
+};
+
+/** Alias used by market lists. */
+export const formatSignedPercentChange = formatSignedPercent;
+
+/** `value` is percent units; formats via Intl as ratio when needed. */
 export const formatPercent = (value: number | null | undefined): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
   return percentFormatter.format(value / 100);
@@ -43,15 +83,15 @@ export const formatPrice = (
   digits = 2,
 ): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
-  return value.toFixed(digits);
+  return numberFormatter(digits).format(value);
 };
 
 export const formatMarketPrice = (
   value: number | null | undefined,
-  digits = 5,
+  digits = 2,
 ): string => formatPrice(value, digits);
 
-/** Giá gọn kiểu danh sách thịnh hành (CMC-like), không đổi đơn vị tiền tệ gốc. */
+/** Compact market list price — en-US tabular. */
 export const formatCompactMarketPrice = (
   value: number | null | undefined,
   digits = 2,
@@ -59,38 +99,22 @@ export const formatCompactMarketPrice = (
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
   const abs = Math.abs(value);
   if (abs >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toLocaleString("vi-VN", {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2,
-    })}B`;
+    return `${numberFormatter(2).format(value / 1_000_000_000)}B`;
   }
   if (abs >= 1_000_000) {
-    return `${(value / 1_000_000).toLocaleString("vi-VN", {
-      maximumFractionDigits: 2,
-      minimumFractionDigits: 2,
-    })}M`;
+    return `${numberFormatter(2).format(value / 1_000_000)}M`;
   }
-  if (abs >= 1_000) {
-    return value.toLocaleString("vi-VN", {
-      maximumFractionDigits: Math.min(digits, 2),
-      minimumFractionDigits: 0,
-    });
-  }
-  return value.toLocaleString("vi-VN", {
-    maximumFractionDigits: digits,
-    minimumFractionDigits: Math.min(2, digits),
-  });
-};
-
-export const formatSignedPercentChange = (value: number | null | undefined): string => {
-  if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
-  const sign = value > 0 ? "+" : value < 0 ? "" : "";
-  return `${sign}${value.toFixed(2)}%`;
+  return numberFormatter(Math.min(digits, abs >= 100 ? 2 : digits)).format(value);
 };
 
 export const formatVolume = (value: number | null | undefined): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
-  return `${compactNumberFormatter.format(value)} lots`;
+  return `${compactNumberFormatter.format(value)} lot`;
+};
+
+export const formatScore = (value: number | null | undefined, digits = 2): string => {
+  if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
+  return numberFormatter(digits).format(value);
 };
 
 export const formatRMultiple = (value: number | null | undefined): string => {
@@ -101,7 +125,7 @@ export const formatRMultiple = (value: number | null | undefined): string => {
 
 export const formatNumber = (value: number | null | undefined, digits = 2): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
-  return value.toFixed(digits);
+  return numberFormatter(digits).format(value);
 };
 
 export const formatDateTime = (iso: string | null | undefined): string => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Check, X } from "lucide-react";
 import type { ExecutionCandidateStatus, MultiTimeframeAnalysis } from "@/domain";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { TRADE_ANALYSIS_UX as L } from "@/lib/i18n/vi";
@@ -21,96 +22,129 @@ export const RiskAssessmentCard = ({
   const riskOk = sizing?.riskAcceptable === true;
   const showRiskConflict = brokerOk && !riskOk;
 
-  let eligibilityLabel: string = L.na;
-  if (analysis.executionAssessment === "READY" || eligibility?.eligible) {
-    eligibilityLabel = L.ready;
-  } else if (
+  const eligibleReady =
+    analysis.executionAssessment === "READY" || eligibility?.eligible === true;
+  const eligibleBlocked =
     analysis.executionAssessment === "BLOCKED" ||
-    (eligibility != null && !eligibility.eligible && hasSetup)
-  ) {
+    (eligibility != null && eligibility.eligible === false && hasSetup);
+
+  let eligibilityLabel: string = L.na;
+  let eligibilityTone: "good" | "bad" | "neutral" = "neutral";
+  if (eligibleReady) {
+    eligibilityLabel = L.ready;
+    eligibilityTone = "good";
+  } else if (eligibleBlocked) {
     eligibilityLabel = L.blocked;
-  } else if (!hasSetup) {
-    eligibilityLabel = L.na;
+    eligibilityTone = "bad";
   }
 
   return (
-    <section aria-label={L.riskTitle}>
-      <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+    <section className="surface-card h-full px-5 py-4" aria-label={L.riskTitle}>
+      <h3 className="text-[16px] font-semibold text-[var(--foreground)]">
         {L.riskTitle}
       </h3>
 
       {!sizing ? (
-        <p className="mt-2 text-sm text-slate-600">{L.noSetupMessage}</p>
+        <p className="mt-3 text-[14px] text-[var(--foreground-secondary)]">
+          {L.noSetupMessage}
+        </p>
       ) : (
-        <dl className="mt-2 space-y-1.5 text-sm">
-          <Row label={L.riskBudget} value={formatCurrency(sizing.riskBudgetUsd)} />
-          <Row
-            label={L.estimatedRisk}
-            value={
-              sizing.estimatedRiskUsd == null
-                ? L.dash
-                : formatCurrency(sizing.estimatedRiskUsd)
-            }
-          />
-          <Row
-            label={L.proposedVolume}
-            value={
-              sizing.normalizedVolume == null
-                ? L.dash
-                : `${formatNumber(sizing.normalizedVolume, 2)} ${L.lot}`
-            }
-          />
-          <Row
-            label={L.brokerExecutable}
-            value={brokerOk ? L.yes : L.no}
-            tone={brokerOk ? "good" : "bad"}
-          />
-          <Row
-            label={L.riskAcceptable}
-            value={riskOk ? L.yes : L.no}
-            tone={riskOk ? "good" : "bad"}
-          />
-          <Row
-            label={L.executionEligibility}
-            value={eligibilityLabel}
-            tone={
-              eligibilityLabel === L.ready
-                ? "good"
-                : eligibilityLabel === L.blocked
-                  ? "bad"
-                  : "neutral"
-            }
-          />
-        </dl>
+        <>
+          <div className="mt-4 space-y-4">
+            <Metric
+              value={formatCurrency(sizing.riskBudgetUsd)}
+              label={L.riskBudget}
+            />
+            <Metric
+              value={
+                sizing.estimatedRiskUsd == null
+                  ? L.dash
+                  : formatCurrency(sizing.estimatedRiskUsd)
+              }
+              label={L.estimatedRisk}
+            />
+            <Metric
+              value={
+                sizing.normalizedVolume == null
+                  ? L.dash
+                  : `${formatNumber(sizing.normalizedVolume, 2)} ${L.lot}`
+              }
+              label={L.proposedVolume}
+            />
+          </div>
+
+          <div className="mt-5 space-y-2.5 border-t border-[var(--border)] pt-4">
+            <StatusRow
+              ok={brokerOk}
+              label={L.brokerExecutable}
+              value={brokerOk ? L.yes : L.no}
+            />
+            <StatusRow
+              ok={riskOk}
+              label={L.riskAcceptable}
+              value={riskOk ? L.yes : L.no}
+            />
+            <StatusRow
+              ok={eligibilityTone === "good"}
+              label={L.executionEligibility}
+              value={eligibilityLabel}
+              forcedBad={eligibilityTone === "bad"}
+            />
+          </div>
+        </>
       )}
 
       {showRiskConflict ? (
-        <p className="mt-2 text-xs text-amber-800">{L.riskOverBudgetMessage}</p>
+        <p className="mt-3 text-[13px] text-[var(--warning)]">
+          {L.riskOverBudgetMessage}
+        </p>
       ) : null}
     </section>
   );
 };
 
-const Row = ({
-  label,
-  value,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  tone?: "neutral" | "good" | "bad";
-}) => (
-  <div className="flex items-baseline justify-between gap-3">
-    <dt className="text-xs text-slate-500">{label}</dt>
-    <dd
-      className={cn(
-        "font-medium tabular-nums",
-        tone === "good" && "text-emerald-800",
-        tone === "bad" && "text-rose-800",
-        tone === "neutral" && "text-slate-900",
-      )}
-    >
+const Metric = ({ value, label }: { value: string; label: string }) => (
+  <div>
+    <p className="text-[20px] font-semibold tabular-nums text-[var(--foreground)]">
       {value}
-    </dd>
+    </p>
+    <p className="mt-0.5 text-[12px] font-medium text-[var(--muted)]">{label}</p>
   </div>
 );
+
+const StatusRow = ({
+  ok,
+  label,
+  value,
+  forcedBad,
+}: {
+  ok: boolean;
+  label: string;
+  value: string;
+  forcedBad?: boolean;
+}) => {
+  const bad = forcedBad || !ok;
+  return (
+    <div
+      className="flex min-h-[36px] items-center justify-between gap-3 text-[14px]"
+      role="status"
+    >
+      <span className="flex items-center gap-2 text-[var(--foreground-secondary)]">
+        {bad ? (
+          <X className="h-4 w-4 text-[var(--negative)]" aria-hidden />
+        ) : (
+          <Check className="h-4 w-4 text-[var(--positive)]" aria-hidden />
+        )}
+        {label}
+      </span>
+      <span
+        className={cn(
+          "font-semibold tabular-nums uppercase",
+          bad ? "text-[var(--negative)]" : "text-[var(--positive)]",
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+};

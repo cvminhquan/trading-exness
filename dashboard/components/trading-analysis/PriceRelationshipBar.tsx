@@ -11,7 +11,6 @@ type PriceRelationshipBarProps = {
 
 /**
  * Horizontal relationship: TP1 — Current — Entry zone — SL (presentation only).
- * Uses backend setup prices; no new trading logic.
  */
 export const PriceRelationshipBar = ({ analysis }: PriceRelationshipBarProps) => {
   const setup = analysis.setup;
@@ -22,23 +21,23 @@ export const PriceRelationshipBar = ({ analysis }: PriceRelationshipBarProps) =>
   const sl = setup.stopLoss ?? null;
   const zoneLow = setup.entryZoneLow ?? null;
   const zoneHigh = setup.entryZoneHigh ?? null;
-  const zoneMid =
-    zoneLow != null && zoneHigh != null ? (zoneLow + zoneHigh) / 2 : null;
 
-  const points = [
-    { key: "TP1", value: tp1 },
-    { key: "CURRENT", value: current },
-    { key: "ENTRY", value: zoneMid },
-    { key: "SL", value: sl },
-  ].filter((p): p is { key: string; value: number } => p.value != null);
+  const anchors = [
+    { key: "TP1", value: tp1, emphasize: false },
+    { key: "CURRENT", value: current, emphasize: true },
+    { key: "SL", value: sl, emphasize: false },
+  ].filter((p): p is { key: string; value: number; emphasize: boolean } => p.value != null);
 
-  if (points.length < 2) return null;
+  if (anchors.length < 2 && zoneLow == null) return null;
 
-  const vals = points.map((p) => p.value);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
+  const allVals = [
+    ...anchors.map((a) => a.value),
+    ...(zoneLow != null ? [zoneLow] : []),
+    ...(zoneHigh != null ? [zoneHigh] : []),
+  ];
+  const min = Math.min(...allVals);
+  const max = Math.max(...allVals);
   const span = max - min || 1;
-
   const pct = (v: number) => ((v - min) / span) * 100;
 
   const inZone =
@@ -51,39 +50,75 @@ export const PriceRelationshipBar = ({ analysis }: PriceRelationshipBarProps) =>
 
   const distance = setup.distanceToEntry;
 
+  const labelOffset = (key: string) =>
+    key === "CURRENT" ? "top-6" : key === "TP1" ? "top-0" : "top-6";
+
   return (
-    <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-2" aria-label="Price relationship">
-      <div className="relative h-8">
-        <div className="absolute top-1/2 left-0 right-0 h-px -translate-y-1/2 bg-slate-200" />
+    <div className="mt-5 space-y-2" aria-label="Price relationship">
+      <div className="relative h-[4.5rem]">
+        <div className="absolute top-3.5 right-0 left-0 h-[2px] bg-[var(--border-strong)]" />
         {zoneLow != null && zoneHigh != null ? (
           <div
-            className="absolute top-1/2 h-1.5 -translate-y-1/2 bg-slate-200"
+            className="absolute top-2.5 h-4 rounded-[var(--radius-control)] bg-[var(--accent-muted)]/70"
             style={{
               left: `${Math.min(pct(zoneLow), pct(zoneHigh))}%`,
-              width: `${Math.abs(pct(zoneHigh) - pct(zoneLow))}%`,
+              width: `${Math.max(Math.abs(pct(zoneHigh) - pct(zoneLow)), 2)}%`,
             }}
             title={`${L.entryZoneLabel}: ${formatNumber(zoneLow, 2)} – ${formatNumber(zoneHigh, 2)}`}
           />
         ) : null}
-        {points.map((p) => (
+        {anchors.map((p) => (
           <div
             key={p.key}
-            className="absolute top-0 flex -translate-x-1/2 flex-col items-center"
+            className={cn(
+              "absolute flex -translate-x-1/2 flex-col items-center",
+              labelOffset(p.key),
+            )}
             style={{ left: `${pct(p.value)}%` }}
           >
             <span
               className={cn(
-                "size-1.5 rounded-full",
-                p.key === "CURRENT" ? "bg-slate-900" : "bg-slate-400",
+                "rounded-full border-2 border-[var(--surface)]",
+                p.emphasize
+                  ? "size-3.5 bg-[var(--foreground)]"
+                  : "size-2.5 bg-[var(--muted)]",
               )}
             />
-            <span className="mt-1 text-[9px] font-medium uppercase tracking-wide text-slate-500">
+            <span
+              className={cn(
+                "mt-1 font-semibold tracking-wide uppercase",
+                p.emphasize
+                  ? "text-[12px] text-[var(--foreground)]"
+                  : "text-[12px] text-[var(--muted)]",
+              )}
+            >
               {p.key}
+            </span>
+            <span
+              className={cn(
+                "tabular-nums",
+                p.emphasize
+                  ? "text-[13px] font-bold text-[var(--foreground)]"
+                  : "text-[12px] font-medium text-[var(--foreground-secondary)]",
+              )}
+            >
+              {formatNumber(p.value, 2)}
             </span>
           </div>
         ))}
+        {zoneLow != null && zoneHigh != null ? (
+          <p
+            className="absolute -top-0.5 text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase"
+            style={{
+              left: `${(Math.min(pct(zoneLow), pct(zoneHigh)) + Math.max(pct(zoneLow), pct(zoneHigh))) / 2}%`,
+              transform: "translateX(-50%)",
+            }}
+          >
+            ENTRY ZONE
+          </p>
+        ) : null}
       </div>
-      <p className={cn("text-[11px]", inZone ? "text-slate-700" : "text-slate-600")}>
+      <p className="text-[13px] font-medium text-[var(--foreground-secondary)]">
         {inZone
           ? L.priceInEntryZone
           : L.priceAwayFromEntry.replace(

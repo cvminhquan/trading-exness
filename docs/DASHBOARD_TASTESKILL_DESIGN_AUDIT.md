@@ -66,6 +66,22 @@ Applied operator-focused design system (dense / calm / financial).
 3. Force `en-US` tabular price formatting in SymbolTabs
 4. Mobile viewport screenshot when browser resize available
 
-## Principle
+## Market data visual language (CMC-inspired)
 
-Decision clarity > density > consistency > aesthetics.
+Follow-up to TasteSkill densify — restore financial density without card bloat.
+
+### Preserved / restored
+
+- Symbol tabs: price + session abs/% move (baseline = first mid in browser session)
+- Active tab: surface + bottom indicator + stronger price
+- Decision: large price, MarketMove, M15 dark primary block, HTF secondary tiles
+- Account: Today PnL money + `dailyReturnPct` when backend flags available
+- Positions: unrealized money + entry→current price-move % (not capital ROI)
+- DEMO/LIVE segmented control: high-contrast selected state
+- Buttons: stronger primary/secondary/ghost hierarchy
+
+### Honesty constraints
+
+- Session % ≠ 24h CMC (documented domain formula)
+- Position % = price move vs entry by direction (tooltip clarifies)
+- No fabricated % when baseline/entry unavailable

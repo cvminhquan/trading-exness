@@ -24,12 +24,14 @@ export const PageHeader = ({
   >
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-2">
-        <h1 className="text-lg font-semibold tracking-tight text-slate-900">
+        <h1 className="text-[22px] font-semibold tracking-tight text-[var(--text-primary)]">
           {title}
         </h1>
         {badge}
       </div>
-      <p className="mt-0.5 max-w-2xl text-xs text-slate-500">{description}</p>
+      <p className="mt-1 max-w-2xl text-[13px] text-[var(--text-muted)]">
+        {description}
+      </p>
     </div>
     {action ? <div className="shrink-0">{action}</div> : null}
   </header>

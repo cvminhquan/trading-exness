@@ -36,10 +36,14 @@ type BotStatusIndicatorProps = {
 export const BotStatusIndicator = ({ status, compact = false, className }: BotStatusIndicatorProps) => {
   const meta = BOT_STATUS_VARIANT[status];
   return (
-    <Badge variant={meta.variant} className={cn("gap-1.5 normal-case", className)}>
+    <Badge
+      variant={meta.variant}
+      className={cn("pointer-events-none normal-case", className)}
+      role="status"
+    >
       <span className="sr-only">{BOT_STATUS_DESCRIPTIONS[status]}</span>
       <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-current opacity-90" />
-      {!compact ? BOT_STATUS_LABELS[status] : status}
+      {!compact ? BOT_STATUS_LABELS[status] : BOT_STATUS_LABELS[status]}
     </Badge>
   );
 };
@@ -60,17 +64,13 @@ export const ConnectionIndicator = ({
   return (
     <Badge
       variant={meta.variant}
-      className={cn("normal-case", className)}
+      className={cn("pointer-events-none normal-case", className)}
       title={label}
       aria-label={label}
+      role="status"
     >
-      {compact
-        ? status === "CONNECTED"
-          ? "MT5"
-          : status === "RECONNECTING"
-            ? "…"
-            : "MT5?"
-        : label}
+      <span aria-hidden className="inline-block h-2 w-2 rounded-full bg-current opacity-90" />
+      {compact ? label : label}
     </Badge>
   );
 };
