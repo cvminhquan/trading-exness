@@ -97,6 +97,8 @@ export const ACCOUNT_SWITCH = {
   demoFull: "Tài khoản demo",
   liveFull: "Tài khoản thật (chỉ đọc)",
   switching: "Đang chuyển tài khoản...",
+  switchingHint: "Vui lòng chờ — dashboard đang đăng nhập MT5 và tải lại dữ liệu.",
+  switchingAria: "Đang chuyển tài khoản, vui lòng chờ",
   confirmTitle: "Chuyển sang tài khoản thật?",
   confirmBody:
     "Dashboard sẽ đăng nhập MT5 vào tài khoản thật để xem dữ liệu. Bot không đặt lệnh. Terminal MT5 trên máy cũng sẽ chuyển sang tài khoản này.",
