@@ -67,7 +67,7 @@ export const DashboardShell = ({ children }: { children: React.ReactNode }) => {
         className={cn(
           "relative flex h-11 items-center gap-3 rounded-r-[var(--radius-tab)] border-l-[3px] px-3 text-[15px] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
           active
-            ? "border-[var(--accent)] bg-[var(--surface-active)] font-semibold text-[var(--foreground)]"
+            ? "border-[var(--accent)] bg-[var(--surface-active)] font-semibold text-[var(--accent)]"
             : "border-transparent font-medium text-[var(--foreground-secondary)] hover:bg-[var(--accent-subtle)] hover:text-[var(--foreground)]",
         )}
         aria-current={active ? "page" : undefined}

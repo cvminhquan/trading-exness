@@ -38,6 +38,12 @@ export const normalizeDashboardSymbol = (raw: string): string =>
 export const isDashboardSymbol = (raw: string): raw is DashboardSymbol =>
   (DASHBOARD_SYMBOLS as readonly string[]).includes(normalizeDashboardSymbol(raw));
 
+/** Symbol market-watch hợp lệ (core hoặc symbol thêm tay). */
+export const isValidMarketSymbol = (raw: string): boolean => {
+  const n = normalizeDashboardSymbol(raw);
+  return n.length >= 3 && n.length <= 12 && /^[A-Z0-9]+$/.test(n);
+};
+
 export const resolveDashboardSymbol = (raw: string | undefined | null): DashboardSymbol => {
   if (!raw) return DEFAULT_DASHBOARD_SYMBOL;
   const n = normalizeDashboardSymbol(raw);

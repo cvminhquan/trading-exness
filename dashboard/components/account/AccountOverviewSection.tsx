@@ -73,73 +73,80 @@ export const AccountOverviewSection = ({
         </p>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x lg:divide-[var(--border)]">
-        <div className="lg:pr-6">
-          <Stat label={ACCOUNT_OVERVIEW.todayPnl} emphasize>
-            <div>
-              <PnLValue
-                value={overview.totalPnlToday}
-                showIcon={false}
-                className="text-[22px] font-semibold"
-              />
-              {overview.dailyReturnAvailable && overview.dailyReturnPct != null ? (
-                <p
-                  className={cn(
-                    "mt-0.5 text-[13px] font-semibold tabular-nums",
-                    overview.dailyReturnPct > 0 && "text-[var(--positive)]",
-                    overview.dailyReturnPct < 0 && "text-[var(--negative)]",
-                    overview.dailyReturnPct === 0 && "text-[var(--muted)]",
-                  )}
-                >
-                  {formatSignedPercent(overview.dailyReturnPct)}
-                </p>
-              ) : null}
-            </div>
-          </Stat>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-5 lg:divide-x lg:divide-[var(--border)]">
+          <div className="lg:pr-5">
+            <Stat label={ACCOUNT_OVERVIEW.todayPnl} emphasize>
+              <div>
+                <PnLValue
+                  value={overview.totalPnlToday}
+                  showIcon={false}
+                  className="text-[22px] font-semibold"
+                />
+                {overview.dailyReturnAvailable &&
+                overview.dailyReturnPct != null ? (
+                  <p
+                    className={cn(
+                      "mt-0.5 text-[13px] font-semibold tabular-nums",
+                      overview.dailyReturnPct > 0 && "text-[var(--positive)]",
+                      overview.dailyReturnPct < 0 && "text-[var(--negative)]",
+                      overview.dailyReturnPct === 0 && "text-[var(--muted)]",
+                    )}
+                  >
+                    {formatSignedPercent(overview.dailyReturnPct)}
+                  </p>
+                ) : null}
+              </div>
+            </Stat>
+          </div>
+          <div className="lg:px-5">
+            <Stat label={METRICS.equity}>
+              {formatMoney(overview.equity, currency)}
+            </Stat>
+          </div>
+          <div className="lg:px-5">
+            <Stat label={METRICS.balance}>
+              {formatMoney(overview.balance, currency)}
+            </Stat>
+          </div>
+          <div className="lg:px-5">
+            <Stat label={METRICS.marginLevel}>
+              {overview.marginLevel == null
+                ? "—"
+                : `${formatNumber(overview.marginLevel, 2)}%`}
+            </Stat>
+          </div>
+          <div className="lg:pl-5">
+            <Stat label={METRICS.openPositions}>
+              {overview.openPositionsCount}
+            </Stat>
+          </div>
         </div>
-        <div className="lg:px-6">
-          <Stat label={METRICS.equity}>{formatMoney(overview.equity, currency)}</Stat>
-        </div>
-        <div className="lg:px-6">
-          <Stat label={METRICS.balance}>
-            {formatMoney(overview.balance, currency)}
-          </Stat>
-        </div>
-        <div className="lg:px-6">
-          <Stat label={METRICS.marginLevel}>
-            {overview.marginLevel == null
-              ? "—"
-              : `${formatNumber(overview.marginLevel, 2)}%`}
-          </Stat>
-        </div>
-        <div className="lg:pl-6">
-          <Stat label={METRICS.openPositions}>{overview.openPositionsCount}</Stat>
-        </div>
-      </div>
 
-      <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t border-[var(--border)] pt-3 text-[13px] text-[var(--muted)]">
-        <span>
-          {METRICS.usedMargin}{" "}
-          <span className="font-semibold tabular-nums text-[var(--foreground-secondary)]">
-            {formatMoney(overview.margin, currency)}
-          </span>
-        </span>
-        <span>
-          {ACCOUNT_OVERVIEW.unrealized}{" "}
-          <PnLValue
-            value={overview.unrealizedPnl}
-            showIcon={false}
-            className="inline text-[13px] font-semibold"
-          />
-        </span>
-        <span>
-          {ACCOUNT_OVERVIEW.realized}{" "}
-          <PnLValue
-            value={overview.realizedPnlToday}
-            showIcon={false}
-            className="inline text-[13px] font-semibold"
-          />
-        </span>
+        <div className="shrink-0 space-y-1.5 border-t border-[var(--border)] pt-3 text-[13px] xl:border-t-0 xl:border-l xl:pt-0 xl:pl-5">
+          <p className="text-[var(--muted)]">
+            {METRICS.usedMargin}{" "}
+            <span className="font-semibold tabular-nums text-[var(--foreground-secondary)]">
+              {formatMoney(overview.margin, currency)}
+            </span>
+          </p>
+          <p className="text-[var(--muted)]">
+            {ACCOUNT_OVERVIEW.unrealized}{" "}
+            <PnLValue
+              value={overview.unrealizedPnl}
+              showIcon={false}
+              className="inline text-[13px] font-semibold"
+            />
+          </p>
+          <p className="text-[var(--muted)]">
+            {ACCOUNT_OVERVIEW.realized}{" "}
+            <PnLValue
+              value={overview.realizedPnlToday}
+              showIcon={false}
+              className="inline text-[13px] font-semibold"
+            />
+          </p>
+        </div>
       </div>
     </section>
   );

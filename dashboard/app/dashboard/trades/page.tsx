@@ -31,11 +31,6 @@ const TradesExplorer = () => {
       <SymbolTabs
         activeSymbol={symbol}
         hrefForSymbol={hrefForSymbol}
-        signals={
-          mtfAnalysisQuery.data
-            ? { [symbol]: mtfAnalysisQuery.data.finalSignal }
-            : undefined
-        }
       />
 
       <QueryState
@@ -50,6 +45,7 @@ const TradesExplorer = () => {
           <TradeAnalysisSection
             analysis={mtfAnalysisQuery.data}
             eligibility={executionCandidateQuery.data}
+            showTimeframeDetails
           />
         ) : null}
       </QueryState>

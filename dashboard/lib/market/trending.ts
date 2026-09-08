@@ -1,11 +1,7 @@
+import { DASHBOARD_SYMBOLS } from "@/lib/symbols/config";
+
 /** Danh sách mặc định “thịnh hành” trên Dashboard (MT5 canonical). */
-export const TRENDING_SYMBOLS = [
-  "XAUUSD",
-  "BTCUSD",
-  "ETHUSD",
-  "EURUSD",
-  "XAGUSD",
-] as const;
+export const TRENDING_SYMBOLS = DASHBOARD_SYMBOLS;
 
 export const TRENDING_STORAGE_KEY = "exness.dashboard.extraSymbols";
 

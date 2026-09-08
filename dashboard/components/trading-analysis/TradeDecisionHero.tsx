@@ -48,7 +48,7 @@ export const TradeDecisionHero = ({
   const quotesQuery = useQuotes([analysis.symbol]);
   const quotes = quotesQuery.data ?? [];
   const moves = useSessionQuoteMoves(quotes);
-  const move = moves[analysis.symbol];
+  const move = moves[analysis.symbol]?.move ?? null;
   const quote = quotes[0];
   const digits = quote?.digits ?? 2;
   const displayPrice =
@@ -70,13 +70,11 @@ export const TradeDecisionHero = ({
           ? L.entryZoneState
           : setupState.replaceAll("_", " ");
 
-  const statusLabel = isBlocked
-    ? L.blocked
-    : isReady
-      ? L.ready
-      : freshnessTone(freshness) === "warn"
-        ? freshness
-        : null;
+  const statusLabel = isReady
+    ? L.ready
+    : freshnessTone(freshness) === "warn"
+      ? freshness
+      : null;
 
   const m15Bias = structureBiasLabel(m15?.structureClassification, {
     bullish: L.structureBullish,
@@ -100,7 +98,7 @@ export const TradeDecisionHero = ({
 
   return (
     <section
-      className="surface-card px-5 py-5"
+      className="surface-card flex h-full min-h-0 flex-col px-5 py-5"
       aria-label={L.sectionTitle}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -202,78 +200,83 @@ export const TradeDecisionHero = ({
         </div>
       </div>
 
-      <div
-        className={cn(
-          "mt-4 rounded-[var(--radius-tab)] border border-[var(--border)] px-4 py-3",
-          m15Tone === "bear" &&
-            "border-l-[3px] border-l-[var(--negative)] bg-[var(--negative-subtle)]",
-          m15Tone === "bull" &&
-            "border-l-[3px] border-l-[var(--positive)] bg-[var(--positive-subtle)]",
-          m15Tone === "neutral" && "bg-[var(--surface-subtle)]",
-        )}
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-[12px] font-semibold tracking-wide text-[var(--foreground-secondary)] uppercase">
-            M15 PRIMARY
-          </p>
-          <p
-            className={cn(
-              "text-[12px] font-semibold tracking-wide uppercase",
-              m15Tone === "bear" && "text-[var(--negative)]",
-              m15Tone === "bull" && "text-[var(--positive)]",
-              m15Tone === "neutral" && "text-[var(--muted)]",
-            )}
-          >
-            {m15Bias}
-          </p>
-        </div>
-        <p
+      <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
+        <div
           className={cn(
-            "mt-1 text-[28px] leading-none font-semibold tabular-nums",
-            m15Tone === "bear" && "text-[var(--negative)]",
-            m15Tone === "bull" && "text-[var(--positive)]",
-            m15Tone === "neutral" && "text-[var(--foreground)]",
+            "rounded-[var(--radius-tab)] border border-[var(--border)] px-3 py-3 md:col-span-2 xl:col-span-2",
+            m15Tone === "bear" &&
+              "border-l-[3px] border-l-[var(--negative)] bg-[var(--negative-subtle)]",
+            m15Tone === "bull" &&
+              "border-l-[3px] border-l-[var(--positive)] bg-[var(--positive-subtle)]",
+            m15Tone === "neutral" && "bg-[var(--surface-subtle)]",
           )}
         >
-          {m15Score == null ? L.dash : formatScore(m15Score, 2)}
-        </p>
-        <div className="mt-3">
-          <MtfScoreBar score={m15Score} />
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-[12px] font-semibold tracking-wide text-[var(--foreground-secondary)] uppercase">
+              M15 PRIMARY
+            </p>
+            <p
+              className={cn(
+                "text-[12px] font-semibold tracking-wide uppercase",
+                m15Tone === "bear" && "text-[var(--negative)]",
+                m15Tone === "bull" && "text-[var(--positive)]",
+                m15Tone === "neutral" && "text-[var(--muted)]",
+              )}
+            >
+              {m15Bias}
+            </p>
+          </div>
+          <p
+            className={cn(
+              "mt-1 text-[26px] leading-none font-semibold tabular-nums",
+              m15Tone === "bear" && "text-[var(--negative)]",
+              m15Tone === "bull" && "text-[var(--positive)]",
+              m15Tone === "neutral" && "text-[var(--foreground)]",
+            )}
+          >
+            {m15Score == null ? L.dash : formatScore(m15Score, 2)}
+          </p>
+          <div className="mt-2.5">
+            <MtfScoreBar score={m15Score} />
+          </div>
         </div>
-      </div>
 
-      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {(["H1", "H4", "D1"] as const).map((tf) => {
           const row = analysis.timeframes[tf];
           const tfScore = row?.score?.totalScore;
           const role =
             tf === "H1" ? "CONFIRMATION" : tf === "H4" ? "CONTEXT" : "MACRO";
+          const bias = structureBiasLabel(row?.structureClassification, {
+            bullish: L.structureBullish,
+            bearish: L.structureBearish,
+            mixed: L.structureMixed,
+          });
           const stronger = tf === "H1";
           return (
             <div
               key={tf}
-              className="rounded-[var(--radius-tab)] bg-[var(--surface-subtle)] px-3 py-2.5"
+              className={cn(
+                "rounded-[var(--radius-tab)] bg-[var(--surface-subtle)] px-3 py-3",
+                stronger && "ring-1 ring-[var(--border)]",
+              )}
             >
-              <p
-                className={cn(
-                  "font-semibold text-[var(--foreground)]",
-                  stronger ? "text-[13px]" : "text-[12px]",
-                )}
-              >
+              <p className="text-[12px] font-semibold text-[var(--foreground)]">
                 {tf}{" "}
                 <span className="font-medium text-[var(--muted)]">{role}</span>
               </p>
               <p
                 className={cn(
                   "mt-1 font-semibold tabular-nums",
-                  stronger ? "text-[18px]" : "text-[16px]",
+                  stronger ? "text-[20px]" : "text-[18px]",
                   (tfScore ?? 0) > 0 && "text-[var(--positive)]",
                   (tfScore ?? 0) < 0 && "text-[var(--negative)]",
                   (tfScore ?? 0) === 0 && "text-[var(--foreground-secondary)]",
-                  !stronger && "opacity-90",
                 )}
               >
                 {tfScore == null ? L.dash : formatScore(tfScore, 2)}
+              </p>
+              <p className="mt-1 text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+                {bias}
               </p>
             </div>
           );

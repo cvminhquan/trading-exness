@@ -216,6 +216,15 @@ export const TRENDING_QUOTES = {
   changeUnavailable: "Chưa có % thay đổi",
 } as const;
 
+export const SYMBOL_TABS = {
+  navLabel: "Symbol",
+  addTab: "Thêm symbol",
+  addTabAria: "Thêm symbol vào danh sách theo dõi",
+  addPlaceholder: "VD: GBPUSD",
+  cancelAdd: "Hủy thêm symbol",
+  removeTab: (symbol: string) => `Gỡ ${symbol} khỏi danh sách`,
+} as const;
+
 export const ACCOUNT_DATA_STATUS_LABELS = {
   LIVE: "Dữ liệu mới",
   STALE: "Dữ liệu cũ",
@@ -362,7 +371,7 @@ export const TRADE_ANALYSIS_UX = {
   reasonsTitleBlocked: "Tại sao candidate bị BLOCKED?",
   reasonsTitle: "Lý do quyết định",
   blockedSummary: "Chưa đáp ứng đầy đủ điều kiện vào lệnh.",
-  technicalDetails: "Technical details",
+  technicalDetails: "Chi tiết kỹ thuật",
   mtfDetailsTitle: "Chi tiết đa khung thời gian",
   mtfScore: "MTF Score",
   confidenceLabel: "Confidence",
@@ -385,7 +394,7 @@ export const TRADE_ANALYSIS_UX = {
   analysisTargetOnly: "Chỉ phân tích",
   price: "Price",
   entryZoneLabel: "Entry zone",
-  waitingForEntry: "Chờ vào vùng entry",
+  waitingForEntry: "Chờ giá quay lại vùng vào lệnh",
   entryZoneState: "Giá trong vùng entry",
   priceAwayFromEntry: "Giá cách vùng vào lệnh {n}",
   priceInEntryZone: "Giá đang nằm trong vùng vào lệnh",

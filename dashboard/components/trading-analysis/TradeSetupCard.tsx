@@ -17,7 +17,10 @@ export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
 
   if (!hasSetup || !setup) {
     return (
-      <section className="surface-card h-full px-5 py-4" aria-label={L.setupTitle}>
+      <section
+        className="surface-card flex h-full min-h-0 flex-col px-5 py-4"
+        aria-label={L.setupTitle}
+      >
         <h3 className="text-[16px] font-semibold text-[var(--foreground)]">
           {L.setupTitle}
         </h3>
@@ -28,10 +31,6 @@ export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
     );
   }
 
-  const zone =
-    setup.entryZoneLow != null && setup.entryZoneHigh != null
-      ? `$${formatNumber(setup.entryZoneLow, 2)} – $${formatNumber(setup.entryZoneHigh, 2)}`
-      : L.dash;
   const volume = analysis.sizing?.normalizedVolume;
   const tp1 = setup.takeProfits.find((t) => t.level === 1);
   const otherTps = setup.takeProfits.filter((t) => t.level !== 1);
@@ -43,8 +42,11 @@ export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
         : "text-[var(--muted)] bg-[var(--surface-subtle)]";
 
   return (
-    <section className="surface-card h-full px-5 py-4" aria-label={L.setupTitle}>
-      <div className="flex items-center justify-between gap-2">
+    <section
+      className="surface-card flex h-full min-h-0 flex-col px-5 py-4"
+      aria-label={L.setupTitle}
+    >
+      <div className="flex shrink-0 items-center justify-between gap-2">
         <h3 className="text-[16px] font-semibold text-[var(--foreground)]">
           {L.setupTitle}
         </h3>
@@ -58,49 +60,58 @@ export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
         </span>
       </div>
 
-      <div className="mt-4 space-y-4">
-        <ValueBlock label={L.entryZone} value={zone} size="lg" />
-
-        <div className="grid grid-cols-2 gap-4">
-          <ValueBlock
-            label={L.currentPrice}
-            value={
-              analysis.currentPrice == null
-                ? L.dash
-                : `$${formatNumber(analysis.currentPrice, 2)}`
-            }
-          />
-          <ValueBlock
-            label={L.stopLoss}
-            value={
-              setup.stopLoss == null ? L.dash : `$${formatNumber(setup.stopLoss, 2)}`
-            }
-          />
-        </div>
+      <div className="mt-4 flex flex-col gap-3">
+        <MetricRow
+          label={L.entryZone}
+          value={
+            setup.entryZoneLow != null && setup.entryZoneHigh != null
+              ? `${formatNumber(setup.entryZoneLow, 2)} – ${formatNumber(setup.entryZoneHigh, 2)}`
+              : L.dash
+          }
+          emphasize
+        />
+        <MetricRow
+          label={L.currentPrice}
+          value={
+            analysis.currentPrice == null
+              ? L.dash
+              : formatNumber(analysis.currentPrice, 2)
+          }
+        />
+        <MetricRow
+          label={L.stopLoss}
+          value={
+            setup.stopLoss == null ? L.dash : formatNumber(setup.stopLoss, 2)
+          }
+        />
 
         {tp1 ? (
-          <div className="rounded-[var(--radius-tab)] bg-[var(--surface-subtle)] px-3 py-3">
-            <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
-              TP1
-            </p>
-            <p className="mt-1 text-[18px] font-semibold tabular-nums text-[var(--foreground)]">
-              ${formatNumber(tp1.price, 2)}
-            </p>
-            <p className="mt-0.5 text-[12px] font-semibold tracking-wide text-[var(--positive)] uppercase">
-              {L.executionTarget}
-            </p>
+          <div className="rounded-[var(--radius-tab)] bg-[var(--surface-subtle)] px-3 py-2.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <div>
+                <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+                  TP1
+                </p>
+                <p className="mt-0.5 text-[12px] font-semibold tracking-wide text-[var(--positive)] uppercase">
+                  {L.executionTarget}
+                </p>
+              </div>
+              <p className="text-[17px] font-semibold tabular-nums text-[var(--foreground)]">
+                {formatNumber(tp1.price, 2)}
+              </p>
+            </div>
           </div>
         ) : null}
 
         {otherTps.length > 0 ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {otherTps.map((tp) => (
-              <div key={tp.level}>
+              <div key={tp.level} className="min-w-0">
                 <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
                   TP{tp.level}
                 </p>
                 <p className="mt-1 text-[15px] font-semibold tabular-nums text-[var(--foreground-secondary)]">
-                  ${formatNumber(tp.price, 2)}
+                  {formatNumber(tp.price, 2)}
                 </p>
                 <p className="mt-0.5 text-[12px] text-[var(--muted)]">
                   {L.analysisTargetOnly}
@@ -110,36 +121,36 @@ export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
           </div>
         ) : null}
 
-        <ValueBlock
+        <MetricRow
           label={L.volume}
           value={
             volume == null ? L.dash : `${formatNumber(volume, 2)} ${L.lot}`
           }
         />
-      </div>
 
-      <PriceRelationshipBar analysis={analysis} />
+        <PriceRelationshipBar analysis={analysis} />
+      </div>
     </section>
   );
 };
 
-const ValueBlock = ({
+const MetricRow = ({
   label,
   value,
-  size = "md",
+  emphasize,
 }: {
   label: string;
   value: string;
-  size?: "md" | "lg";
+  emphasize?: boolean;
 }) => (
-  <div>
-    <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+  <div className="flex min-w-0 items-start justify-between gap-3">
+    <p className="shrink-0 pt-0.5 text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
       {label}
     </p>
     <p
       className={cn(
-        "mt-1 font-semibold tabular-nums text-[var(--foreground)]",
-        size === "lg" ? "text-[16px]" : "text-[15px]",
+        "min-w-0 text-right font-semibold break-words tabular-nums text-[var(--foreground)]",
+        emphasize ? "text-[15px]" : "text-[15px]",
       )}
     >
       {value}

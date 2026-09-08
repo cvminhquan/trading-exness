@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { DecisionReasonsCard } from "@/components/trading-analysis/DecisionReasonsCard";
 import type { ExecutionCandidateStatus, MultiTimeframeAnalysis } from "@/domain";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { TRADE_ANALYSIS_UX as L } from "@/lib/i18n/vi";
@@ -39,18 +40,21 @@ export const RiskAssessmentCard = ({
   }
 
   return (
-    <section className="surface-card h-full px-5 py-4" aria-label={L.riskTitle}>
-      <h3 className="text-[16px] font-semibold text-[var(--foreground)]">
+    <section
+      className="surface-card flex h-full min-h-0 flex-col px-4 py-3.5"
+      aria-label={L.riskTitle}
+    >
+      <h3 className="text-[15px] font-semibold text-[var(--foreground)]">
         {L.riskTitle}
       </h3>
 
       {!sizing ? (
-        <p className="mt-3 text-[14px] text-[var(--foreground-secondary)]">
+        <p className="mt-2 text-[13px] text-[var(--foreground-secondary)]">
           {L.noSetupMessage}
         </p>
       ) : (
         <>
-          <div className="mt-4 space-y-4">
+          <div className="mt-3 space-y-2.5">
             <Metric
               value={formatCurrency(sizing.riskBudgetUsd)}
               label={L.riskBudget}
@@ -73,7 +77,7 @@ export const RiskAssessmentCard = ({
             />
           </div>
 
-          <div className="mt-5 space-y-2.5 border-t border-[var(--border)] pt-4">
+          <div className="mt-3 space-y-1 border-t border-[var(--border)] pt-3">
             <StatusRow
               ok={brokerOk}
               label={L.brokerExecutable}
@@ -95,20 +99,29 @@ export const RiskAssessmentCard = ({
       )}
 
       {showRiskConflict ? (
-        <p className="mt-3 text-[13px] text-[var(--warning)]">
+        <p className="mt-2 text-[12px] text-[var(--warning)]">
           {L.riskOverBudgetMessage}
         </p>
       ) : null}
+
+      <div className="mt-3">
+        <DecisionReasonsCard
+          analysis={analysis}
+          eligibility={eligibility}
+          embedded
+          maxItems={3}
+        />
+      </div>
     </section>
   );
 };
 
 const Metric = ({ value, label }: { value: string; label: string }) => (
-  <div>
-    <p className="text-[20px] font-semibold tabular-nums text-[var(--foreground)]">
+  <div className="flex items-baseline justify-between gap-3">
+    <p className="text-[12px] font-medium text-[var(--muted)]">{label}</p>
+    <p className="text-[17px] font-semibold tabular-nums text-[var(--foreground)]">
       {value}
     </p>
-    <p className="mt-0.5 text-[12px] font-medium text-[var(--muted)]">{label}</p>
   </div>
 );
 
@@ -126,20 +139,23 @@ const StatusRow = ({
   const bad = forcedBad || !ok;
   return (
     <div
-      className="flex min-h-[36px] items-center justify-between gap-3 text-[14px]"
+      className="flex min-h-[28px] items-center justify-between gap-2 text-[13px]"
       role="status"
     >
-      <span className="flex items-center gap-2 text-[var(--foreground-secondary)]">
+      <span className="flex min-w-0 items-center gap-1.5 text-[var(--foreground-secondary)]">
         {bad ? (
-          <X className="h-4 w-4 text-[var(--negative)]" aria-hidden />
+          <X className="h-3.5 w-3.5 shrink-0 text-[var(--negative)]" aria-hidden />
         ) : (
-          <Check className="h-4 w-4 text-[var(--positive)]" aria-hidden />
+          <Check
+            className="h-3.5 w-3.5 shrink-0 text-[var(--positive)]"
+            aria-hidden
+          />
         )}
-        {label}
+        <span className="truncate">{label}</span>
       </span>
       <span
         className={cn(
-          "font-semibold tabular-nums uppercase",
+          "shrink-0 font-semibold tabular-nums uppercase",
           bad ? "text-[var(--negative)]" : "text-[var(--positive)]",
         )}
       >

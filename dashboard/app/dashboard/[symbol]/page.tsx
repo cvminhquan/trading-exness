@@ -13,7 +13,7 @@ import { TradeAnalysisSection } from "@/components/trading-analysis/TradeAnalysi
 import { EMPTY, METRICS, SECTION_LABELS } from "@/lib/i18n/vi";
 import {
   DASHBOARD_RESERVED_SEGMENTS,
-  isDashboardSymbol,
+  isValidMarketSymbol,
   normalizeDashboardSymbol,
 } from "@/lib/symbols/config";
 import {
@@ -35,7 +35,7 @@ export default function DashboardSymbolPage({ params }: PageProps) {
 
   if (
     (DASHBOARD_RESERVED_SEGMENTS as readonly string[]).includes(raw.toLowerCase()) ||
-    !isDashboardSymbol(symbol)
+    !isValidMarketSymbol(symbol)
   ) {
     notFound();
   }
@@ -69,14 +69,7 @@ export default function DashboardSymbolPage({ params }: PageProps) {
         <AccountSafetyPanel safety={accountOverviewQuery.data.safety} />
       ) : null}
 
-      <SymbolTabs
-        activeSymbol={symbol}
-        signals={
-          mtfAnalysisQuery.data
-            ? { [symbol]: mtfAnalysisQuery.data.finalSignal }
-            : undefined
-        }
-      />
+      <SymbolTabs activeSymbol={symbol} />
 
       <QueryState
         isLoading={mtfAnalysisQuery.isLoading}
@@ -105,15 +98,14 @@ export default function DashboardSymbolPage({ params }: PageProps) {
                 ? METRICS.openPositions
                 : `${METRICS.openPositions} · ${symbol}`}
             </h2>
-            <label className="flex cursor-pointer items-center gap-1.5 text-[13px] text-[var(--muted)] transition-colors hover:text-[var(--accent)]">
-              <input
-                type="checkbox"
-                checked={showAllPositions}
-                onChange={(e) => setShowAllPositions(e.target.checked)}
-                className="rounded border-[var(--border-strong)] text-[var(--accent)] focus:ring-[var(--accent)]"
-              />
-              Hiện tất cả
-            </label>
+            <button
+              type="button"
+              className="text-[13px] font-semibold text-[var(--accent)] transition-colors hover:text-[var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+              onClick={() => setShowAllPositions((v) => !v)}
+              aria-pressed={showAllPositions}
+            >
+              {showAllPositions ? "Chỉ symbol hiện tại" : "Xem tất cả →"}
+            </button>
           </div>
           <QueryState
             isLoading={positionsQuery.isLoading}

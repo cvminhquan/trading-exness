@@ -10,7 +10,7 @@ type PriceRelationshipBarProps = {
 };
 
 /**
- * Horizontal relationship: TP1 — Current — Entry zone — SL (presentation only).
+ * Tóm tắt thứ tự quan hệ giá — không lặp lại số đã hiện ở trên.
  */
 export const PriceRelationshipBar = ({ analysis }: PriceRelationshipBarProps) => {
   const setup = analysis.setup;
@@ -22,23 +22,17 @@ export const PriceRelationshipBar = ({ analysis }: PriceRelationshipBarProps) =>
   const zoneLow = setup.entryZoneLow ?? null;
   const zoneHigh = setup.entryZoneHigh ?? null;
 
-  const anchors = [
-    { key: "TP1", value: tp1, emphasize: false },
-    { key: "CURRENT", value: current, emphasize: true },
-    { key: "SL", value: sl, emphasize: false },
-  ].filter((p): p is { key: string; value: number; emphasize: boolean } => p.value != null);
+  const points: { key: string; value: number }[] = [];
+  if (tp1 != null) points.push({ key: "TP1", value: tp1 });
+  if (current != null) points.push({ key: "CURRENT", value: current });
+  if (zoneLow != null && zoneHigh != null) {
+    points.push({ key: "ENTRY", value: (zoneLow + zoneHigh) / 2 });
+  }
+  if (sl != null) points.push({ key: "SL", value: sl });
 
-  if (anchors.length < 2 && zoneLow == null) return null;
+  if (points.length < 2) return null;
 
-  const allVals = [
-    ...anchors.map((a) => a.value),
-    ...(zoneLow != null ? [zoneLow] : []),
-    ...(zoneHigh != null ? [zoneHigh] : []),
-  ];
-  const min = Math.min(...allVals);
-  const max = Math.max(...allVals);
-  const span = max - min || 1;
-  const pct = (v: number) => ((v - min) / span) * 100;
+  const order = [...points].sort((a, b) => a.value - b.value);
 
   const inZone =
     setup.state === "ENTRY_ZONE" ||
@@ -50,75 +44,38 @@ export const PriceRelationshipBar = ({ analysis }: PriceRelationshipBarProps) =>
 
   const distance = setup.distanceToEntry;
 
-  const labelOffset = (key: string) =>
-    key === "CURRENT" ? "top-6" : key === "TP1" ? "top-0" : "top-6";
-
   return (
-    <div className="mt-5 space-y-2" aria-label="Price relationship">
-      <div className="relative h-[4.5rem]">
-        <div className="absolute top-3.5 right-0 left-0 h-[2px] bg-[var(--border-strong)]" />
-        {zoneLow != null && zoneHigh != null ? (
-          <div
-            className="absolute top-2.5 h-4 rounded-[var(--radius-control)] bg-[var(--accent-muted)]/70"
-            style={{
-              left: `${Math.min(pct(zoneLow), pct(zoneHigh))}%`,
-              width: `${Math.max(Math.abs(pct(zoneHigh) - pct(zoneLow)), 2)}%`,
-            }}
-            title={`${L.entryZoneLabel}: ${formatNumber(zoneLow, 2)} – ${formatNumber(zoneHigh, 2)}`}
-          />
-        ) : null}
-        {anchors.map((p) => (
-          <div
-            key={p.key}
-            className={cn(
-              "absolute flex -translate-x-1/2 flex-col items-center",
-              labelOffset(p.key),
-            )}
-            style={{ left: `${pct(p.value)}%` }}
-          >
+    <div
+      className="mt-4 border-t border-[var(--border)] pt-4"
+      aria-label="Price relationship"
+    >
+      <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+        Thứ tự giá
+      </p>
+      <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] font-semibold">
+        {order.map((p, i) => (
+          <span key={p.key} className="inline-flex items-center gap-1.5">
+            {i > 0 ? (
+              <span className="text-[var(--muted)]" aria-hidden>
+                →
+              </span>
+            ) : null}
             <span
               className={cn(
-                "rounded-full border-2 border-[var(--surface)]",
-                p.emphasize
-                  ? "size-3.5 bg-[var(--foreground)]"
-                  : "size-2.5 bg-[var(--muted)]",
-              )}
-            />
-            <span
-              className={cn(
-                "mt-1 font-semibold tracking-wide uppercase",
-                p.emphasize
-                  ? "text-[12px] text-[var(--foreground)]"
-                  : "text-[12px] text-[var(--muted)]",
+                "rounded-full px-2 py-0.5 tracking-wide uppercase",
+                p.key === "CURRENT"
+                  ? "bg-[var(--foreground)] text-[var(--surface)]"
+                  : p.key === "ENTRY"
+                    ? "bg-[var(--accent-subtle)] text-[var(--accent)]"
+                    : "bg-[var(--surface-subtle)] text-[var(--foreground-secondary)]",
               )}
             >
               {p.key}
             </span>
-            <span
-              className={cn(
-                "tabular-nums",
-                p.emphasize
-                  ? "text-[13px] font-bold text-[var(--foreground)]"
-                  : "text-[12px] font-medium text-[var(--foreground-secondary)]",
-              )}
-            >
-              {formatNumber(p.value, 2)}
-            </span>
-          </div>
+          </span>
         ))}
-        {zoneLow != null && zoneHigh != null ? (
-          <p
-            className="absolute -top-0.5 text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase"
-            style={{
-              left: `${(Math.min(pct(zoneLow), pct(zoneHigh)) + Math.max(pct(zoneLow), pct(zoneHigh))) / 2}%`,
-              transform: "translateX(-50%)",
-            }}
-          >
-            ENTRY ZONE
-          </p>
-        ) : null}
       </div>
-      <p className="text-[13px] font-medium text-[var(--foreground-secondary)]">
+      <p className="mt-3 text-[13px] font-medium text-[var(--foreground-secondary)]">
         {inZone
           ? L.priceInEntryZone
           : L.priceAwayFromEntry.replace(

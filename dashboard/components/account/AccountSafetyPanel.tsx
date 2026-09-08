@@ -24,11 +24,11 @@ const Status = ({
         tone === "ok" && "bg-[var(--positive)]",
         tone === "warn" && "bg-[var(--warning)]",
         tone === "bad" && "bg-[var(--negative)]",
-        tone === "neutral" && "bg-slate-400",
+        tone === "neutral" && "bg-[var(--muted)]",
       )}
       aria-hidden
     />
-    <span className="font-medium tracking-wide text-[var(--text-muted)] uppercase">
+    <span className="font-medium tracking-wide text-[var(--muted)] uppercase">
       {label}
     </span>
     <span
@@ -37,7 +37,7 @@ const Status = ({
         tone === "ok" && "text-[var(--positive)]",
         tone === "warn" && "text-[var(--warning)]",
         tone === "bad" && "text-[var(--negative)]",
-        tone === "neutral" && "text-[var(--text-secondary)]",
+        tone === "neutral" && "text-[var(--foreground-secondary)]",
       )}
     >
       {value}
@@ -45,10 +45,10 @@ const Status = ({
   </span>
 );
 
-/** Compact status strip — indicators, not buttons. */
+/** Compact status strip under account — not a competing card. */
 export const AccountSafetyPanel = ({ safety }: AccountSafetyPanelProps) => (
   <div
-    className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-sm bg-[var(--surface)] px-4 py-2.5"
+    className="flex flex-wrap items-center gap-x-4 gap-y-1 px-1 py-1"
     aria-label={ACCOUNT_OVERVIEW.safetyTitle}
     role="status"
   >
@@ -69,10 +69,8 @@ export const AccountSafetyPanel = ({ safety }: AccountSafetyPanelProps) => (
       tone={safety.killSwitch === "ON" ? "ok" : "warn"}
     />
     {safety.server ? (
-      <span className="text-[12px] text-[var(--text-muted)]">{safety.server}</span>
+      <span className="text-[12px] text-[var(--muted)]">{safety.server}</span>
     ) : null}
-    <span className="text-[12px] text-[var(--text-muted)]">
-      Dashboard chỉ đọc
-    </span>
+    <span className="text-[12px] text-[var(--muted)]">Dashboard chỉ đọc</span>
   </div>
 );

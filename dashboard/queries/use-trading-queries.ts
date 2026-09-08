@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AccountProfileId } from "@/domain";
 import { tradingRepository } from "@/repositories";
 import { tradingKeys } from "./keys";
@@ -46,6 +46,25 @@ export const useMultiTimeframeAnalysis = (symbol = "XAUUSD") =>
     queryFn: () => tradingRepository.getMultiTimeframeAnalysis(symbol),
     refetchInterval: 5_000,
   });
+
+/** finalSignal cho mọi symbol dashboard — dùng SymbolTabs hiển thị LONG/SHORT/WAIT. */
+export const useDashboardSymbolSignals = (symbols: readonly string[]) => {
+  const queries = useQueries({
+    queries: symbols.map((symbol) => ({
+      queryKey: tradingKeys.mtfAnalysis(symbol),
+      queryFn: () => tradingRepository.getMultiTimeframeAnalysis(symbol),
+      refetchInterval: 5_000,
+      staleTime: 4_000,
+    })),
+  });
+
+  const signals: Record<string, "LONG" | "SHORT" | "WAIT" | undefined> = {};
+  symbols.forEach((symbol, index) => {
+    signals[symbol] = queries[index]?.data?.finalSignal;
+  });
+
+  return signals;
+};
 
 export const useExecutionCandidateStatus = (symbol = "XAUUSD") =>
   useQuery({
