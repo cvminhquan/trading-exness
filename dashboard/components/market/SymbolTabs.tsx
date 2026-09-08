@@ -126,9 +126,9 @@ export const SymbolTabs = ({
   return (
     <nav
       aria-label={SYMBOL_TABS.navLabel}
-      className="w-full overflow-hidden rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]"
+      className="w-full rounded-[var(--radius-card)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-card)]"
     >
-      <div className="flex w-full min-w-0 items-stretch overflow-x-auto">
+      <div className="flex w-full min-w-0 items-stretch overflow-x-auto p-1">
         {symbols.map((symbol, index) => {
           const active = symbol === activeSymbol;
           const quote = bySymbol.get(symbol);
@@ -166,10 +166,10 @@ export const SymbolTabs = ({
                 ref={active ? activeRef : undefined}
                 href={hrefForSymbol(symbol)}
                 className={cn(
-                  "flex w-full min-w-0 flex-col gap-1 px-3.5 py-3 transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent)]",
+                  "flex w-full min-w-0 flex-col gap-1 px-3.5 py-3 transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                   active
-                    ? "border-b-[3px] border-[var(--accent)] bg-[var(--surface)] shadow-[0_-1px_0_0_var(--border)]"
-                    : "border-b-[3px] border-transparent hover:bg-[var(--surface-subtle)]",
+                    ? "rounded-[var(--radius-tab)] bg-[var(--surface)] shadow-[inset_3px_0_0_0_var(--accent),inset_0_-3px_0_0_var(--accent),0_4px_14px_rgba(37,99,235,0.14)]"
+                    : "rounded-[var(--radius-tab)] hover:bg-[var(--surface-subtle)]",
                 )}
                 aria-current={active ? "page" : undefined}
               >
@@ -189,7 +189,7 @@ export const SymbolTabs = ({
 
                 <div className="flex min-w-0 items-end justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-[16px] font-semibold tabular-nums text-[var(--foreground)]">
+                    <p className="truncate text-[17px] font-bold tabular-nums text-[var(--foreground)]">
                       {price == null
                         ? "—"
                         : `$${formatCompactMarketPrice(price, Math.min(digits, 2))}`}

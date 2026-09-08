@@ -18,7 +18,6 @@ import {
 } from "@/lib/symbols/config";
 import {
   useAccountOverview,
-  useDailyRealizedPnl,
   useExecutionCandidateStatus,
   useMultiTimeframeAnalysis,
   usePositions,
@@ -41,7 +40,6 @@ export default function DashboardSymbolPage({ params }: PageProps) {
   }
 
   const accountOverviewQuery = useAccountOverview();
-  const dailyPnlQuery = useDailyRealizedPnl(7);
   const positionsQuery = usePositions();
   const mtfAnalysisQuery = useMultiTimeframeAnalysis(symbol);
   const executionCandidateQuery = useExecutionCandidateStatus(symbol);
@@ -125,13 +123,7 @@ export default function DashboardSymbolPage({ params }: PageProps) {
         </section>
 
         <div className="xl:col-span-4">
-          <RealizedPnlChart
-            data={dailyPnlQuery.data ?? []}
-            isLoading={dailyPnlQuery.isLoading}
-            isError={dailyPnlQuery.isError}
-            errorMessage={dailyPnlQuery.error?.message}
-            onRetry={() => void dailyPnlQuery.refetch()}
-          />
+          <RealizedPnlChart />
         </div>
       </div>
     </div>
