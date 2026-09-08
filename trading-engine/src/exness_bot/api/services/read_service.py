@@ -3,22 +3,50 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import TypeVar
 
+from exness_bot.account_overview.freshness import AccountDataStatus, classify_account_data_status
+from exness_bot.account_overview.pnl import (
+    compute_daily_return_pct,
+    group_realized_by_utc_day,
+    mask_login,
+    sum_realized_pnl_from_closed_trades,
+    sum_unrealized_pnl,
+    utc_day_bounds,
+)
 from exness_bot.api.errors import ApiAppError
 from exness_bot.api.schemas.common import PaginationMeta
 from exness_bot.api.schemas.dashboard import (
+    AccountOverviewDTO,
+    AccountSafetyDTO,
     AccountSnapshotDTO,
     AccountSwitchStateDTO,
+    AnalysisIndicatorsDTO,
+    AnalysisMarketDTO,
+    AnalysisReasonDTO,
+    AnalysisSizingDTO,
+    AnalysisStructureDTO,
+    AnalysisTradePlanDTO,
     BacktestReportDTO,
     CandleEngineStatusDTO,
+    DailyRealizedPnlDTO,
     DashboardOverviewDTO,
     EquityPointDTO,
+    ExecutionCandidateDTO,
+    ExecutionCandidateStatusDTO,
+    ExecutionCandidateTakeProfitDTO,
     IndicatorSnapshotDTO,
     LiveGateResultDTO,
     LiveReadinessDTO,
+    MtfPatternDTO,
+    MtfScoreDTO,
+    MtfSetupDTO,
+    MtfTakeProfitDTO,
+    MtfTimeframeDTO,
+    MtfVolumeDTO,
+    MultiTimeframeAnalysisDTO,
     PaperExecutionStatusDTO,
     PaperPositionDTO,
     PaperTradeRowDTO,
@@ -33,6 +61,7 @@ from exness_bot.api.schemas.dashboard import (
     StrategySignalDTO,
     StrategySnapshotDTO,
     SystemSettingsDTO,
+    TradeAnalysisDTO,
     TradeDTO,
 )
 from exness_bot.api.services.account_runtime import AccountRuntime
@@ -52,6 +81,12 @@ from exness_bot.data.models import ProviderConnectionStatus, ProviderSnapshot, T
 from exness_bot.data.provider import TradingDataProvider
 from exness_bot.domain.enums import SignalDirection
 from exness_bot.domain.models import ClosedTrade, Position
+from exness_bot.market_analysis.models import TradeAnalysisResult
+from exness_bot.market_analysis.mtf_service import (
+    MultiTimeframeAnalysis,
+    MultiTimeframeAnalysisService,
+)
+from exness_bot.market_analysis.service import MarketAnalysisService
 from exness_bot.paper_execution.models import PositionStatus
 from exness_bot.paper_execution.service import ExecutionService
 from exness_bot.persistence.sqlite_repository import SQLiteTradingRepository, parse_sqlite_path
@@ -577,6 +612,482 @@ class ReadService:
             leverage=leverage,
             margin_level=margin_level,
         )
+
+    def _collect_closed_trades(
+        self,
+        *,
+        start: datetime,
+        end: datetime,
+    ) -> list[ClosedTrade]:
+        page = 1
+        page_size = 200
+        collected: list[ClosedTrade] = []
+        while True:
+            result = self._provider.get_trade_history(
+                TradeHistoryQuery(
+                    page=page,
+                    page_size=page_size,
+                    start=start,
+                    end=end,
+                )
+            )
+            collected.extend(result.trades)
+            if len(collected) >= result.total or not result.trades:
+                break
+            page += 1
+            if page > 50:
+                break
+        return collected
+
+    def _balance_cashflow(self, start: datetime, end: datetime) -> float | None:
+        getter = getattr(self._provider, "get_balance_cashflow", None)
+        if getter is None:
+            return None
+        try:
+            return float(getter(start, end))
+        except (TypeError, ValueError, OSError):
+            return None
+
+    def _algo_trading_label(self) -> str:
+        if not self._provider.requires_live_broker():
+            return "UNKNOWN"
+        terminal_getter = getattr(self._provider, "_connection", None)
+        if terminal_getter is None:
+            return "UNKNOWN"
+        try:
+            client = terminal_getter.client
+            info = client.terminal_info()
+            if info is None:
+                return "UNKNOWN"
+            allowed = bool(getattr(info, "trade_allowed", False))
+            return "ENABLED" if allowed else "DISABLED"
+        except (AttributeError, OSError, RuntimeError, TypeError):
+            return "UNKNOWN"
+
+    def _build_account_safety(
+        self,
+        snapshot: ProviderSnapshot,
+        *,
+        trade_mode: str | None,
+        server: str | None,
+    ) -> AccountSafetyDTO:
+        mt5_status = "CONNECTED"
+        if snapshot.connection_status != ProviderConnectionStatus.CONNECTED:
+            mt5_status = "DISCONNECTED"
+        mode_label = (trade_mode or "unknown").upper()
+        if mode_label == "LIVE":
+            mode_label = "REAL"
+        elif mode_label == "DEMO":
+            mode_label = "DEMO"
+        kill = "ON" if self._settings.live_kill_switch else "OFF"
+        execution = self._settings.execution_mode.value.upper()
+        return AccountSafetyDTO(
+            trade_mode=mode_label,
+            server=server,
+            mt5_status=mt5_status,
+            algo_trading=self._algo_trading_label(),
+            kill_switch=kill,
+            execution_mode=execution,
+        )
+
+    def get_trade_analysis(self, symbol: str | None = None) -> TradeAnalysisDTO:
+        """Phase 16 read-only market analysis / trade proposal — never executes."""
+        service = MarketAnalysisService(self._settings, self._provider)
+        result = service.analyze(symbol)
+        return self._map_trade_analysis(result)
+
+    def get_multi_timeframe_analysis(
+        self, symbol: str | None = None
+    ) -> MultiTimeframeAnalysisDTO:
+        """Phase 16.2 multi-timeframe analysis — never executes."""
+        service = MultiTimeframeAnalysisService(self._settings, self._provider)
+        result = service.analyze(symbol)
+        return self._map_mtf_analysis(result)
+
+    def get_execution_candidate_status(
+        self, symbol: str | None = None
+    ) -> ExecutionCandidateStatusDTO:
+        """Phase 16.3 execution-candidate status — never executes."""
+        from exness_bot.market_analysis.contract.service import ExecutionContractService
+
+        service = ExecutionContractService(self._settings, self._provider)
+        result = service.get_execution_candidate_status(symbol)
+        return self._map_execution_candidate_status(result)
+
+    @staticmethod
+    def _map_execution_candidate_status(
+        result: object,
+    ) -> ExecutionCandidateStatusDTO:
+        from exness_bot.market_analysis.contract.models import ExecutionCandidateStatus
+
+        assert isinstance(result, ExecutionCandidateStatus)
+        candidate_dto = None
+        if result.candidate is not None:
+            c = result.candidate
+            candidate_dto = ExecutionCandidateDTO(
+                candidate_id=c.candidate_id,
+                setup_id=c.setup_id,
+                analysis_fingerprint=c.analysis_fingerprint,
+                symbol=c.symbol,
+                broker_symbol=c.broker_symbol,
+                side=c.side,
+                entry=c.entry,
+                stop_loss=c.stop_loss,
+                take_profits=[
+                    ExecutionCandidateTakeProfitDTO(
+                        level=tp.level,
+                        price=tp.price,
+                        allocation_pct=tp.allocation_pct,
+                        rr=tp.rr,
+                        reason=tp.reason,
+                    )
+                    for tp in c.take_profits
+                ],
+                proposed_volume=c.proposed_volume,
+                estimated_risk_usd=c.estimated_risk_usd,
+                estimated_risk_pct=c.estimated_risk_pct,
+                broker_executable=c.broker_executable,
+                risk_acceptable=c.risk_acceptable,
+                created_at=to_iso_utc(c.created_at),
+            )
+        return ExecutionCandidateStatusDTO(
+            eligible=result.eligible,
+            setup_state=result.setup_state,
+            setup_id=result.setup_id,
+            analysis_fingerprint=result.analysis_fingerprint,
+            candidate=candidate_dto,
+            reasons=list(result.reasons),
+            warnings=list(result.warnings),
+            strategy_id=result.strategy_id,
+            confidence_score=result.confidence_score,
+            confidence_meaning=result.confidence_meaning,
+            generated_at=to_iso_utc(result.generated_at),
+        )
+
+    @staticmethod
+    def _map_mtf_analysis(result: MultiTimeframeAnalysis) -> MultiTimeframeAnalysisDTO:
+        timeframes: dict[str, MtfTimeframeDTO] = {}
+        for key, tf in result.timeframes.items():
+            score = None
+            if tf.score is not None:
+                score = MtfScoreDTO(
+                    trend_score=tf.score.trend_score,
+                    structure_score=tf.score.structure_score,
+                    momentum_score=tf.score.momentum_score,
+                    location_score=tf.score.location_score,
+                    volume_score=tf.score.volume_score,
+                    total_score=tf.score.total_score,
+                )
+            timeframes[key] = MtfTimeframeDTO(
+                timeframe=tf.timeframe,
+                candle_timestamp=(
+                    to_iso_utc(tf.candle_timestamp) if tf.candle_timestamp else None
+                ),
+                close=tf.close,
+                trend=tf.trend.value,
+                signal=tf.signal,
+                confidence=tf.confidence,
+                score=score,
+                ema20=tf.ema20,
+                ema50=tf.ema50,
+                ema200=tf.ema200,
+                rsi14=tf.rsi14,
+                atr14=tf.atr14,
+                macd=tf.macd,
+                macd_signal=tf.macd_signal,
+                macd_histogram=tf.macd_histogram,
+                macd_momentum=tf.macd_momentum,
+                structure_classification=tf.structure_classification.value,
+                sequence=list(tf.sequence),
+                nearest_support=tf.nearest_support,
+                nearest_resistance=tf.nearest_resistance,
+                volume=MtfVolumeDTO(
+                    source=tf.volume.source,
+                    current=tf.volume.current,
+                    average=tf.volume.average,
+                    ratio=tf.volume.ratio,
+                    state=tf.volume.state,
+                ),
+                pattern=MtfPatternDTO(
+                    type=tf.pattern.type,
+                    confidence=tf.pattern.confidence,
+                    evidence=list(tf.pattern.evidence),
+                ),
+                status=tf.status,
+                reasons=[
+                    AnalysisReasonDTO(code=r.code, passed=r.passed, message=r.message)
+                    for r in tf.reasons
+                ],
+            )
+
+        setup_dto = None
+        if result.setup is not None:
+            s = result.setup
+            setup_dto = MtfSetupDTO(
+                type=s.setup_type.value,
+                state=s.state.value,
+                entry_type=s.entry_type,
+                entry_price=s.entry_price,
+                entry_zone_low=s.entry_zone_low,
+                entry_zone_high=s.entry_zone_high,
+                entry_reason=s.entry_reason,
+                stop_loss=s.stop_loss,
+                sl_reason=s.sl_reason,
+                sl_distance=s.sl_distance,
+                sl_distance_atr=s.sl_distance_atr,
+                take_profits=[
+                    MtfTakeProfitDTO(
+                        level=tp.level,
+                        price=tp.price,
+                        allocation_pct=tp.allocation_pct,
+                        rr=tp.rr,
+                        reason=tp.reason,
+                    )
+                    for tp in s.take_profits
+                ],
+                distance_to_entry=s.distance_to_entry,
+            )
+
+        sizing_dto = None
+        if result.sizing is not None:
+            sz = result.sizing
+            sizing_dto = AnalysisSizingDTO(
+                equity=sz.equity,
+                risk_percent=sz.risk_percent,
+                risk_budget_usd=sz.risk_budget_usd,
+                raw_volume=sz.raw_volume,
+                normalized_volume=sz.normalized_volume,
+                broker_min_volume=sz.broker_min_volume,
+                broker_max_volume=sz.broker_max_volume,
+                broker_volume_step=sz.broker_volume_step,
+                estimated_risk_usd=sz.estimated_risk_usd,
+                estimated_risk_pct=sz.estimated_risk_pct,
+                broker_executable=sz.broker_executable,
+                risk_acceptable=sz.risk_acceptable,
+            )
+
+        return MultiTimeframeAnalysisDTO(
+            symbol=result.symbol,
+            broker_symbol=result.broker_symbol,
+            current_price=result.current_price,
+            timeframes=timeframes,
+            final_signal=result.final_signal,
+            confidence_score=result.confidence_score,
+            confidence_meaning=result.confidence_meaning,
+            trend=result.trend,
+            structure_summary=result.structure_summary,
+            key_supports=list(result.key_supports),
+            key_resistances=list(result.key_resistances),
+            setup=setup_dto,
+            sizing=sizing_dto,
+            execution_assessment=result.execution_assessment,
+            reasons=[
+                AnalysisReasonDTO(code=r.code, passed=r.passed, message=r.message)
+                for r in result.reasons
+            ],
+            warnings=[
+                AnalysisReasonDTO(code=r.code, passed=r.passed, message=r.message)
+                for r in result.warnings
+            ],
+            summary_vi=list(result.summary_vi),
+            generated_at=(
+                to_iso_utc(result.generated_at)
+                if result.generated_at
+                else datetime.now(tz=UTC).isoformat()
+            ),
+            freshness=result.freshness,
+        )
+
+    @staticmethod
+    def _map_trade_analysis(result: TradeAnalysisResult) -> TradeAnalysisDTO:
+        market = AnalysisMarketDTO(
+            bid=result.market.bid,
+            ask=result.market.ask,
+            spread_points=result.market.spread_points,
+            quote_timestamp=(
+                to_iso_utc(result.market.quote_timestamp)
+                if result.market.quote_timestamp
+                else None
+            ),
+            quote_age_seconds=result.market.quote_age_seconds,
+        )
+        indicators = AnalysisIndicatorsDTO(
+            ema20=result.indicators.ema20,
+            ema50=result.indicators.ema50,
+            ema200=result.indicators.ema200,
+            rsi14=result.indicators.rsi14,
+            atr14=result.indicators.atr14,
+            close=result.indicators.close,
+        )
+        trade = None
+        if result.trade is not None:
+            trade = AnalysisTradePlanDTO(
+                entry=result.trade.entry,
+                stop_loss=result.trade.stop_loss,
+                take_profit=result.trade.take_profit,
+                risk_reward_ratio=result.trade.risk_reward_ratio,
+            )
+        sizing = None
+        if result.sizing is not None:
+            sizing = AnalysisSizingDTO(
+                equity=result.sizing.equity,
+                risk_percent=result.sizing.risk_percent,
+                risk_budget_usd=result.sizing.risk_budget_usd,
+                raw_volume=result.sizing.raw_volume,
+                normalized_volume=result.sizing.normalized_volume,
+                broker_min_volume=result.sizing.broker_min_volume,
+                broker_max_volume=result.sizing.broker_max_volume,
+                broker_volume_step=result.sizing.broker_volume_step,
+                estimated_risk_usd=result.sizing.estimated_risk_usd,
+                estimated_risk_pct=result.sizing.estimated_risk_pct,
+                broker_executable=result.sizing.broker_executable,
+                risk_acceptable=result.sizing.risk_acceptable,
+            )
+        structure_dto = None
+        structure = result.structure
+        if structure is not None:
+            structure_dto = AnalysisStructureDTO(
+                classification=structure.classification.value,
+                latest_swing_high=structure.latest_swing_high,
+                latest_swing_low=structure.latest_swing_low,
+                sequence=list(structure.sequence),
+                nearest_support=structure.nearest_support,
+                nearest_resistance=structure.nearest_resistance,
+                distance_to_support=structure.distance_to_support,
+                distance_to_resistance=structure.distance_to_resistance,
+                distance_to_support_atr=structure.distance_to_support_atr,
+                distance_to_resistance_atr=structure.distance_to_resistance_atr,
+            )
+        strategy_signal = (
+            result.strategy_signal.value
+            if result.strategy_signal is not None
+            else result.signal.value
+        )
+        return TradeAnalysisDTO(
+            symbol=result.symbol,
+            broker_symbol=result.broker_symbol,
+            timeframe=result.timeframe,
+            strategy=result.strategy,
+            market=market,
+            indicators=indicators,
+            regime=result.regime.value,
+            signal=result.signal.value,
+            execution_status=result.execution_status.value,
+            trade=trade,
+            sizing=sizing,
+            reasons=[
+                AnalysisReasonDTO(code=r.code, passed=r.passed, message=r.message)
+                for r in result.reasons
+            ],
+            blocking_reasons=[
+                AnalysisReasonDTO(code=r.code, passed=r.passed, message=r.message)
+                for r in result.blocking_reasons
+            ],
+            candle_timestamp=(
+                to_iso_utc(result.candle_timestamp) if result.candle_timestamp else None
+            ),
+            generated_at=(
+                to_iso_utc(result.generated_at)
+                if result.generated_at
+                else datetime.now(tz=UTC).isoformat()
+            ),
+            status=result.status.value,
+            strategy_signal=strategy_signal,
+            context_assessment=result.context_assessment,
+            structure=structure_dto,
+        )
+
+    def get_account_overview(self) -> AccountOverviewDTO:
+        """Read-only account overview with deal-based realized PnL (Phase 15.X)."""
+        now = datetime.now(tz=UTC)
+        snapshot = self._snapshot()
+        updated_at = snapshot.updated_at
+        if updated_at.tzinfo is None:
+            updated_at = updated_at.replace(tzinfo=UTC)
+        age_seconds = max(0.0, (now - updated_at.astimezone(UTC)).total_seconds())
+        status = classify_account_data_status(
+            connection_status=snapshot.connection_status,
+            account_present=snapshot.account is not None,
+            updated_at=updated_at,
+            now=now,
+            stale_after_seconds=self._settings.live_data_stale_seconds,
+            marked_stale=snapshot.stale,
+        )
+        trade_mode = snapshot.account.trade_mode if snapshot.account else None
+        server = (
+            (snapshot.account.server if snapshot.account else None)
+            or snapshot.broker_server
+        )
+        safety = self._build_account_safety(snapshot, trade_mode=trade_mode, server=server)
+        updated_iso = to_iso_utc(updated_at) or self._now_iso()
+
+        if status in {AccountDataStatus.DISCONNECTED, AccountDataStatus.UNAVAILABLE}:
+            message = snapshot.message or "Dữ liệu tài khoản không khả dụng."
+            if status == AccountDataStatus.DISCONNECTED:
+                message = snapshot.message or "Mất kết nối MT5."
+            return AccountOverviewDTO(
+                status=status.value,
+                updated_at=updated_iso,
+                age_seconds=round(age_seconds, 3),
+                message=message,
+                server=server,
+                trade_mode=trade_mode,
+                safety=safety,
+            )
+
+        assert snapshot.account is not None
+        account = snapshot.account
+        day_start, _day_end = utc_day_bounds(now)
+        window_end = now + timedelta(seconds=1)
+        closed = self._collect_closed_trades(start=day_start, end=window_end)
+        realized = sum_realized_pnl_from_closed_trades(
+            closed, start=day_start, end=window_end
+        )
+        unrealized = sum_unrealized_pnl(snapshot.positions)
+        total_today = realized + unrealized
+        cashflow = self._balance_cashflow(day_start, window_end)
+        daily_return = compute_daily_return_pct(
+            equity=account.equity,
+            total_pnl_today=total_today,
+            balance_cashflow_today=cashflow,
+        )
+        stale_message: str | None = None
+        if status == AccountDataStatus.STALE:
+            stale_message = f"Cập nhật lần cuối: {int(age_seconds)}s trước."
+
+        return AccountOverviewDTO(
+            status=status.value,
+            balance=account.balance,
+            equity=account.equity,
+            margin=account.margin,
+            free_margin=account.free_margin,
+            margin_level=account.margin_level,
+            currency=account.currency,
+            unrealized_pnl=round(unrealized, 4),
+            realized_pnl_today=round(realized, 4),
+            total_pnl_today=round(total_today, 4),
+            daily_return_pct=None if daily_return is None else round(daily_return, 4),
+            daily_return_available=daily_return is not None,
+            open_positions_count=len(snapshot.positions),
+            server=server,
+            trade_mode=account.trade_mode,
+            login_masked=mask_login(account.login),
+            updated_at=updated_iso,
+            age_seconds=round(age_seconds, 3),
+            message=stale_message,
+            safety=safety,
+        )
+
+    def get_daily_realized_pnl(self, *, days: int = 7) -> list[DailyRealizedPnlDTO]:
+        """Realized PnL history by UTC day — not fabricated equity."""
+        days = max(1, min(days, 90))
+        now = datetime.now(tz=UTC)
+        start = datetime(now.year, now.month, now.day, tzinfo=UTC) - timedelta(days=days - 1)
+        closed = self._collect_closed_trades(start=start, end=now + timedelta(seconds=1))
+        rows = group_realized_by_utc_day(closed, days=days, end=now)
+        return [
+            DailyRealizedPnlDTO(date=day, realized_pnl=round(pnl, 4)) for day, pnl in rows
+        ]
 
     def _map_position(self, position: Position) -> PositionDTO:
         direction = position.direction.value

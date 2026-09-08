@@ -77,8 +77,11 @@ export default function SettingsPage() {
         <div className="space-y-4">
           {GROUPS.map((group) => (
             <Card key={group.title}>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between gap-2">
                 <CardTitle>{group.title}</CardTitle>
+                <Badge variant="default" className="normal-case">
+                  READ ONLY
+                </Badge>
               </CardHeader>
               <CardContent>
                 <dl className="divide-y divide-slate-200">
@@ -97,6 +100,18 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
           ))}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2">
+              <CardTitle>Diagnostics</CardTitle>
+              <Badge variant="default" className="normal-case">
+                READ ONLY
+              </Badge>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-600">
+              <p>Password / credential fields: không hiển thị.</p>
+              <p className="mt-1">Không có nút Save giả — cấu hình chỉnh qua env/backend.</p>
+            </CardContent>
+          </Card>
           <p className="text-xs text-slate-500">{UI.settingsConfigDisabled}</p>
         </div>
       </QueryState>

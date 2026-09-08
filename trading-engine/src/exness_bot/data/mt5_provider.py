@@ -16,6 +16,7 @@ from exness_bot.broker.mt5.mapper import (
     map_closed_trades_from_deals,
     map_position,
     map_rates_to_candles,
+    map_symbol_info,
     map_tick,
     timeframe_to_mt5,
 )
@@ -29,7 +30,7 @@ from exness_bot.data.models import (
     TradeHistoryResult,
 )
 from exness_bot.domain.enums import Timeframe
-from exness_bot.domain.models import Candle, ClosedTrade, Position, Tick
+from exness_bot.domain.models import Candle, ClosedTrade, Position, SymbolInfo, Tick
 
 logger = structlog.get_logger(__name__)
 
@@ -138,14 +139,20 @@ class MT5TradingDataProvider:
             )
 
         account = map_account_info(raw_account)
+        # Account overview needs ALL open positions (not only the configured symbol).
+        raw_positions = client.positions_get()
         positions: tuple[Position, ...] = ()
-        if broker_symbol:
-            raw_positions = client.positions_get(broker_symbol)
-            if raw_positions:
-                positions = tuple(
-                    map_position(item, canonical_symbol=self._canonical_symbol)
-                    for item in raw_positions
+        if raw_positions:
+            mapped: list[Position] = []
+            for item in raw_positions:
+                raw_symbol = str(getattr(item, "symbol", "") or "")
+                canonical = (
+                    self._canonical_symbol
+                    if broker_symbol and raw_symbol == broker_symbol
+                    else raw_symbol or self._canonical_symbol
                 )
+                mapped.append(map_position(item, canonical_symbol=canonical))
+            positions = tuple(mapped)
 
         self._last_snapshot_at = now
         health = self._connection.health_check()
@@ -184,6 +191,26 @@ class MT5TradingDataProvider:
             return None
         tick = map_tick(canonical, raw_tick)
         return tick
+
+    def get_symbol_info(self, symbol: str | None = None) -> SymbolInfo | None:
+        """Read-only broker symbol metadata (volume/tick/stops)."""
+        status = self._connect()
+        if status.state != ConnectionState.CONNECTED:
+            return None
+        canonical = (symbol or self._canonical_symbol).strip().upper()
+        broker_symbol = self._ensure_broker_symbol(canonical)
+        if broker_symbol is None:
+            return None
+        raw = self._connection.client.symbol_info(broker_symbol)
+        if raw is None:
+            return None
+        info = map_symbol_info(raw)
+        # Preserve canonical name for dashboard consumers.
+        return info.model_copy(update={"symbol": canonical})
+
+    def resolve_broker_symbol(self, symbol: str | None = None) -> str | None:
+        canonical = (symbol or self._canonical_symbol).strip().upper()
+        return self._ensure_broker_symbol(canonical)
 
     def get_candles(
         self,
@@ -239,6 +266,19 @@ class MT5TradingDataProvider:
             total=total,
             updated_at=now,
         )
+
+    def get_balance_cashflow(self, start: datetime, end: datetime) -> float:
+        """Sum BALANCE/CREDIT deal profits in [start, end). Used for daily-return trust."""
+        status = self._connect()
+        if status.state != ConnectionState.CONNECTED:
+            return 0.0
+        client = self._connection.client
+        raw_deals = client.history_deals_get(start, end)
+        if raw_deals is None:
+            return 0.0
+        from exness_bot.account_overview.pnl import sum_balance_cashflow_from_deals
+
+        return sum_balance_cashflow_from_deals(list(raw_deals), start=start, end=end)
 
     @staticmethod
     def _filter_trades(trades: list[ClosedTrade], query: TradeHistoryQuery) -> list[ClosedTrade]:

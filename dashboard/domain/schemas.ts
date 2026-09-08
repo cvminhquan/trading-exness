@@ -28,6 +28,54 @@ export const accountSnapshotSchema = z.object({
 });
 export type AccountSnapshot = z.infer<typeof accountSnapshotSchema>;
 
+export const accountDataStatusSchema = z.enum([
+  "LIVE",
+  "STALE",
+  "DISCONNECTED",
+  "UNAVAILABLE",
+]);
+export type AccountDataStatus = z.infer<typeof accountDataStatusSchema>;
+
+export const accountSafetySchema = z.object({
+  tradeMode: z.string(),
+  server: z.string().nullable(),
+  mt5Status: z.enum(["CONNECTED", "DISCONNECTED"]),
+  algoTrading: z.enum(["ENABLED", "DISABLED", "UNKNOWN"]),
+  killSwitch: z.enum(["ON", "OFF"]),
+  executionMode: z.enum(["PAPER", "LIVE"]),
+});
+export type AccountSafety = z.infer<typeof accountSafetySchema>;
+
+export const accountOverviewSchema = z.object({
+  status: accountDataStatusSchema,
+  balance: z.number().nullable().optional(),
+  equity: z.number().nullable().optional(),
+  margin: z.number().nullable().optional(),
+  freeMargin: z.number().nullable().optional(),
+  marginLevel: z.number().nullable().optional(),
+  currency: z.string().nullable().optional(),
+  unrealizedPnl: z.number().nullable().optional(),
+  realizedPnlToday: z.number().nullable().optional(),
+  totalPnlToday: z.number().nullable().optional(),
+  dailyReturnPct: z.number().nullable().optional(),
+  dailyReturnAvailable: z.boolean().default(false),
+  openPositionsCount: z.number().int().default(0),
+  server: z.string().nullable().optional(),
+  tradeMode: z.string().nullable().optional(),
+  loginMasked: z.string().nullable().optional(),
+  updatedAt: z.string().datetime(),
+  ageSeconds: z.number(),
+  message: z.string().nullable().optional(),
+  safety: accountSafetySchema,
+});
+export type AccountOverview = z.infer<typeof accountOverviewSchema>;
+
+export const dailyRealizedPnlSchema = z.object({
+  date: z.string(),
+  realizedPnl: z.number(),
+});
+export type DailyRealizedPnl = z.infer<typeof dailyRealizedPnlSchema>;
+
 export const equityPointSchema = z.object({
   timestamp: z.string().datetime(),
   equity: z.number(),
@@ -481,3 +529,256 @@ export const quoteSchema = z.object({
   freshness: quoteFreshnessSchema.default("LIVE"),
 });
 export type Quote = z.infer<typeof quoteSchema>;
+
+export const analysisReasonSchema = z.object({
+  code: z.string(),
+  passed: z.boolean(),
+  message: z.string(),
+});
+export type AnalysisReason = z.infer<typeof analysisReasonSchema>;
+
+export const tradeAnalysisSchema = z.object({
+  symbol: z.string(),
+  brokerSymbol: z.string(),
+  timeframe: z.string(),
+  strategy: z.string().default("ema_rsi_atr_v1"),
+  market: z.object({
+    bid: z.number().nullable().optional(),
+    ask: z.number().nullable().optional(),
+    spreadPoints: z.number().nullable().optional(),
+    quoteTimestamp: z.string().nullable().optional(),
+    quoteAgeSeconds: z.number().nullable().optional(),
+  }),
+  indicators: z.object({
+    ema20: z.number().nullable().optional(),
+    ema50: z.number().nullable().optional(),
+    ema200: z.number().nullable().optional(),
+    rsi14: z.number().nullable().optional(),
+    atr14: z.number().nullable().optional(),
+    close: z.number().nullable().optional(),
+  }),
+  regime: z.enum(["BULLISH", "BEARISH", "NEUTRAL"]),
+  signal: z.enum(["BUY", "SELL", "WAIT"]),
+  executionStatus: z.enum(["READY", "BLOCKED", "NOT_APPLICABLE"]),
+  trade: z
+    .object({
+      entry: z.number(),
+      stopLoss: z.number(),
+      takeProfit: z.number(),
+      riskRewardRatio: z.number(),
+    })
+    .nullable()
+    .optional(),
+  sizing: z
+    .object({
+      equity: z.number(),
+      riskPercent: z.number(),
+      riskBudgetUsd: z.number(),
+      rawVolume: z.number().nullable().optional(),
+      normalizedVolume: z.number().nullable().optional(),
+      brokerMinVolume: z.number().nullable().optional(),
+      brokerMaxVolume: z.number().nullable().optional(),
+      brokerVolumeStep: z.number().nullable().optional(),
+      estimatedRiskUsd: z.number().nullable().optional(),
+      estimatedRiskPct: z.number().nullable().optional(),
+      brokerExecutable: z.boolean(),
+      riskAcceptable: z.boolean(),
+    })
+    .nullable()
+    .optional(),
+  reasons: z.array(analysisReasonSchema),
+  blockingReasons: z.array(analysisReasonSchema),
+  candleTimestamp: z.string().nullable().optional(),
+  generatedAt: z.string(),
+  status: accountDataStatusSchema,
+  strategySignal: z.enum(["BUY", "SELL", "WAIT"]).nullable().optional(),
+  contextAssessment: z
+    .enum(["PASS", "CAUTION", "BLOCKED", "NOT_APPLICABLE"])
+    .nullable()
+    .optional(),
+  structure: z
+    .object({
+      classification: z.enum(["BULLISH", "BEARISH", "RANGE", "UNDETERMINED"]),
+      latestSwingHigh: z.number().nullable().optional(),
+      latestSwingLow: z.number().nullable().optional(),
+      sequence: z.array(z.string()).default([]),
+      nearestSupport: z.number().nullable().optional(),
+      nearestResistance: z.number().nullable().optional(),
+      distanceToSupport: z.number().nullable().optional(),
+      distanceToResistance: z.number().nullable().optional(),
+      distanceToSupportAtr: z.number().nullable().optional(),
+      distanceToResistanceAtr: z.number().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+});
+export type TradeAnalysis = z.infer<typeof tradeAnalysisSchema>;
+
+export const mtfVolumeSchema = z.object({
+  source: z.string(),
+  current: z.number().nullable().optional(),
+  average: z.number().nullable().optional(),
+  ratio: z.number().nullable().optional(),
+  state: z.string(),
+});
+
+export const mtfPatternSchema = z.object({
+  type: z.string(),
+  confidence: z.number(),
+  evidence: z.array(z.string()).default([]),
+});
+
+export const mtfScoreSchema = z.object({
+  trendScore: z.number(),
+  structureScore: z.number(),
+  momentumScore: z.number(),
+  locationScore: z.number(),
+  volumeScore: z.number(),
+  totalScore: z.number(),
+});
+
+export const mtfTimeframeSchema = z.object({
+  timeframe: z.string(),
+  candleTimestamp: z.string().nullable().optional(),
+  close: z.number().nullable().optional(),
+  trend: z.string(),
+  signal: z.enum(["LONG", "SHORT", "NEUTRAL"]),
+  confidence: z.number(),
+  score: mtfScoreSchema.nullable().optional(),
+  ema20: z.number().nullable().optional(),
+  ema50: z.number().nullable().optional(),
+  ema200: z.number().nullable().optional(),
+  rsi14: z.number().nullable().optional(),
+  atr14: z.number().nullable().optional(),
+  macd: z.number().nullable().optional(),
+  macdSignal: z.number().nullable().optional(),
+  macdHistogram: z.number().nullable().optional(),
+  macdMomentum: z.string(),
+  structureClassification: z.string(),
+  sequence: z.array(z.string()).default([]),
+  nearestSupport: z.number().nullable().optional(),
+  nearestResistance: z.number().nullable().optional(),
+  volume: mtfVolumeSchema,
+  pattern: mtfPatternSchema,
+  status: z.string(),
+  reasons: z.array(analysisReasonSchema).default([]),
+});
+
+export const mtfTakeProfitSchema = z.object({
+  level: z.number().int(),
+  price: z.number(),
+  allocationPct: z.number(),
+  rr: z.number(),
+  reason: z.string(),
+});
+
+export const mtfSetupSchema = z.object({
+  type: z.string(),
+  state: z.enum([
+    "NO_SETUP",
+    "WAITING_FOR_ENTRY",
+    "ENTRY_ZONE",
+    "INVALIDATED",
+    "EXPIRED",
+  ]),
+  entryType: z.string(),
+  entryPrice: z.number().nullable().optional(),
+  entryZoneLow: z.number().nullable().optional(),
+  entryZoneHigh: z.number().nullable().optional(),
+  entryReason: z.string(),
+  stopLoss: z.number().nullable().optional(),
+  slReason: z.string(),
+  slDistance: z.number().nullable().optional(),
+  slDistanceAtr: z.number().nullable().optional(),
+  takeProfits: z.array(mtfTakeProfitSchema).default([]),
+  distanceToEntry: z.number().nullable().optional(),
+});
+
+export const multiTimeframeAnalysisSchema = z.object({
+  symbol: z.string(),
+  brokerSymbol: z.string(),
+  currentPrice: z.number().nullable().optional(),
+  timeframes: z.record(z.string(), mtfTimeframeSchema),
+  finalSignal: z.enum(["LONG", "SHORT", "WAIT"]),
+  confidenceScore: z.number(),
+  confidenceMeaning: z.literal("EVIDENCE_ALIGNMENT"),
+  trend: z.string(),
+  structureSummary: z.string(),
+  keySupports: z.array(z.number()).default([]),
+  keyResistances: z.array(z.number()).default([]),
+  setup: mtfSetupSchema.nullable().optional(),
+  sizing: z
+    .object({
+      equity: z.number(),
+      riskPercent: z.number(),
+      riskBudgetUsd: z.number(),
+      rawVolume: z.number().nullable().optional(),
+      normalizedVolume: z.number().nullable().optional(),
+      brokerMinVolume: z.number().nullable().optional(),
+      brokerMaxVolume: z.number().nullable().optional(),
+      brokerVolumeStep: z.number().nullable().optional(),
+      estimatedRiskUsd: z.number().nullable().optional(),
+      estimatedRiskPct: z.number().nullable().optional(),
+      brokerExecutable: z.boolean(),
+      riskAcceptable: z.boolean(),
+    })
+    .nullable()
+    .optional(),
+  executionAssessment: z.enum(["READY", "BLOCKED", "NOT_APPLICABLE"]),
+  reasons: z.array(analysisReasonSchema).default([]),
+  warnings: z.array(analysisReasonSchema).default([]),
+  summaryVi: z.array(z.string()).default([]),
+  generatedAt: z.string(),
+  freshness: z.string(),
+});
+export type MultiTimeframeAnalysis = z.infer<typeof multiTimeframeAnalysisSchema>;
+
+export const executionCandidateSchema = z.object({
+  candidateId: z.string(),
+  setupId: z.string(),
+  analysisFingerprint: z.string(),
+  symbol: z.string(),
+  brokerSymbol: z.string(),
+  side: z.enum(["LONG", "SHORT"]),
+  entry: z.number(),
+  stopLoss: z.number(),
+  takeProfits: z
+    .array(
+      z.object({
+        level: z.number().int(),
+        price: z.number(),
+        allocationPct: z.number(),
+        rr: z.number(),
+        reason: z.string(),
+      }),
+    )
+    .default([]),
+  proposedVolume: z.number().nullable().optional(),
+  estimatedRiskUsd: z.number().nullable().optional(),
+  estimatedRiskPct: z.number().nullable().optional(),
+  brokerExecutable: z.boolean(),
+  riskAcceptable: z.boolean(),
+  createdAt: z.string(),
+});
+
+export const executionCandidateStatusSchema = z.object({
+  eligible: z.boolean(),
+  setupState: z.enum([
+    "NO_SETUP",
+    "WAITING_FOR_ENTRY",
+    "ENTRY_ZONE",
+    "INVALIDATED",
+    "EXPIRED",
+    "SUPERSEDED",
+  ]),
+  setupId: z.string().nullable().optional(),
+  analysisFingerprint: z.string().nullable().optional(),
+  candidate: executionCandidateSchema.nullable().optional(),
+  reasons: z.array(z.string()).default([]),
+  warnings: z.array(z.string()).default([]),
+  strategyId: z.string(),
+  confidenceScore: z.number().nullable().optional(),
+  confidenceMeaning: z.literal("EVIDENCE_ALIGNMENT"),
+  generatedAt: z.string(),
+});
+export type ExecutionCandidateStatus = z.infer<typeof executionCandidateStatusSchema>;

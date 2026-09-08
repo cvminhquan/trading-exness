@@ -122,6 +122,9 @@ class SymbolInfo(BaseModel):
     # None = broker did not expose / not mapped — never assume zero for live stops.
     stops_level: int | None = None
     freeze_level: int | None = None
+    # Optional MT5 tick metadata for monetary risk (prefer over hardcoding).
+    trade_tick_size: float | None = None
+    trade_tick_value: float | None = None
 
     model_config = {"frozen": True}
 

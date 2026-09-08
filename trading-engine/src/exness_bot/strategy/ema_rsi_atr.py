@@ -1,4 +1,15 @@
-"""EMA + RSI + ATR trend strategy for XAUUSD M15."""
+"""EMA + RSI + ATR trend strategy for XAUUSD M15.
+
+LEGACY / NON-EXECUTABLE-FOR-PHASE-17
+------------------------------------
+This strategy remains the signal source for current paper trading and
+backtest paths only.
+
+Phase 16.3 ExecutionCandidate MUST originate from Phase 16.2 MTF
+(``mtf_technical_v1``) via ``market_analysis.contract``.
+
+Do NOT wire this class into Phase 17 DEMO execution candidate generation.
+"""
 
 from __future__ import annotations
 
@@ -12,6 +23,7 @@ from exness_bot.domain.models import IndicatorSnapshot, Signal
 from exness_bot.indicators.calculator import IndicatorCalculator
 
 STRATEGY_NAME = "ema_rsi_atr_v1"
+LEGACY_NON_EXECUTABLE_FOR_PHASE_17 = True
 
 
 class EmaRsiAtrStrategy:
@@ -19,7 +31,11 @@ class EmaRsiAtrStrategy:
     Deterministic EMA trend strategy with RSI confirmation.
 
     Produces BUY, SELL, or HOLD signals. Never places orders.
+
+    Legacy for Phase 17: paper/backtest only — see module docstring.
     """
+
+    legacy_non_executable_for_phase_17 = True
 
     def __init__(self, settings: Settings | None = None) -> None:
         settings = settings or Settings()

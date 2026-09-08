@@ -67,7 +67,27 @@ export const AccountSwitcher = ({ variant = "compact" }: AccountSwitcherProps) =
 
   const demo = data.profiles.find((item) => item.id === "demo");
   const live = data.profiles.find((item) => item.id === "live");
+  const active = data.profiles.find((item) => item.id === data.activeProfile);
   const errorMessage = mutation.error?.message;
+
+  const maskLogin = (login: number | null | undefined): string | null => {
+    if (login == null) return null;
+    const text = String(Math.abs(login));
+    return text.length <= 4 ? `***${text}` : `***${text.slice(-4)}`;
+  };
+
+  const activeSummary =
+    active?.configured && (active.server || active.login != null) ? (
+      <span
+        className="max-w-[14rem] truncate text-xs tabular-nums text-slate-600 sm:max-w-none"
+        title={ACCOUNT_SWITCH.activeAccount}
+        aria-label={ACCOUNT_SWITCH.activeAccount}
+      >
+        {[active.server, maskLogin(active.login)].filter(Boolean).join(" · ")}
+      </span>
+    ) : (
+      <span className="text-xs text-slate-400">{ACCOUNT_SWITCH.notConfigured}</span>
+    );
   const switcher = (
     <div
       className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5"
@@ -153,6 +173,7 @@ export const AccountSwitcher = ({ variant = "compact" }: AccountSwitcherProps) =
     return (
       <div className="flex flex-wrap items-center gap-2">
         {switcher}
+        {activeSummary}
         {mutation.isPending ? (
           <span className="text-xs text-slate-500">{ACCOUNT_SWITCH.switching}</span>
         ) : null}

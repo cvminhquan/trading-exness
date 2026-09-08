@@ -128,6 +128,47 @@ class AccountSnapshotDTO(ApiModel):
     margin_level: float | None = Field(default=None, alias="marginLevel")
 
 
+class AccountSafetyDTO(ApiModel):
+    """Status-only safety panel — no mutation controls."""
+
+    trade_mode: str = Field(alias="tradeMode")
+    server: str | None = None
+    mt5_status: str = Field(alias="mt5Status")
+    algo_trading: str = Field(alias="algoTrading")
+    kill_switch: str = Field(alias="killSwitch")
+    execution_mode: str = Field(alias="executionMode")
+
+
+class AccountOverviewDTO(ApiModel):
+    """Phase 15.X account overview — separate from legacy AccountSnapshotDTO."""
+
+    status: str
+    balance: float | None = None
+    equity: float | None = None
+    margin: float | None = None
+    free_margin: float | None = Field(default=None, alias="freeMargin")
+    margin_level: float | None = Field(default=None, alias="marginLevel")
+    currency: str | None = None
+    unrealized_pnl: float | None = Field(default=None, alias="unrealizedPnl")
+    realized_pnl_today: float | None = Field(default=None, alias="realizedPnlToday")
+    total_pnl_today: float | None = Field(default=None, alias="totalPnlToday")
+    daily_return_pct: float | None = Field(default=None, alias="dailyReturnPct")
+    daily_return_available: bool = Field(default=False, alias="dailyReturnAvailable")
+    open_positions_count: int = Field(default=0, alias="openPositionsCount")
+    server: str | None = None
+    trade_mode: str | None = Field(default=None, alias="tradeMode")
+    login_masked: str | None = Field(default=None, alias="loginMasked")
+    updated_at: str = Field(alias="updatedAt")
+    age_seconds: float = Field(alias="ageSeconds")
+    message: str | None = None
+    safety: AccountSafetyDTO
+
+
+class DailyRealizedPnlDTO(ApiModel):
+    date: str
+    realized_pnl: float = Field(alias="realizedPnl")
+
+
 class EquityPointDTO(ApiModel):
     timestamp: str
     equity: float
@@ -427,3 +468,239 @@ class BacktestReportDTO(ApiModel):
     trades: list[BacktestTradeRecordDTO]
     monthly_performance: list[MonthlyPerformanceDTO] = Field(alias="monthlyPerformance")
     r_analysis: BacktestRAnalysisDTO | None = Field(alias="rAnalysis")
+
+
+# --- Phase 16: Market Analysis / Trade Proposal (read-only) ---
+
+
+class AnalysisReasonDTO(ApiModel):
+    code: str
+    passed: bool
+    message: str
+
+
+class AnalysisMarketDTO(ApiModel):
+    bid: float | None = None
+    ask: float | None = None
+    spread_points: float | None = Field(default=None, alias="spreadPoints")
+    quote_timestamp: str | None = Field(default=None, alias="quoteTimestamp")
+    quote_age_seconds: float | None = Field(default=None, alias="quoteAgeSeconds")
+
+
+class AnalysisIndicatorsDTO(ApiModel):
+    ema20: float | None = None
+    ema50: float | None = None
+    ema200: float | None = None
+    rsi14: float | None = None
+    atr14: float | None = None
+    close: float | None = None
+
+
+class AnalysisTradePlanDTO(ApiModel):
+    entry: float
+    stop_loss: float = Field(alias="stopLoss")
+    take_profit: float = Field(alias="takeProfit")
+    risk_reward_ratio: float = Field(alias="riskRewardRatio")
+
+
+class AnalysisSizingDTO(ApiModel):
+    equity: float
+    risk_percent: float = Field(alias="riskPercent")
+    risk_budget_usd: float = Field(alias="riskBudgetUsd")
+    raw_volume: float | None = Field(default=None, alias="rawVolume")
+    normalized_volume: float | None = Field(default=None, alias="normalizedVolume")
+    broker_min_volume: float | None = Field(default=None, alias="brokerMinVolume")
+    broker_max_volume: float | None = Field(default=None, alias="brokerMaxVolume")
+    broker_volume_step: float | None = Field(default=None, alias="brokerVolumeStep")
+    estimated_risk_usd: float | None = Field(default=None, alias="estimatedRiskUsd")
+    estimated_risk_pct: float | None = Field(default=None, alias="estimatedRiskPct")
+    broker_executable: bool = Field(alias="brokerExecutable")
+    risk_acceptable: bool = Field(alias="riskAcceptable")
+
+
+class AnalysisStructureDTO(ApiModel):
+    classification: str
+    latest_swing_high: float | None = Field(default=None, alias="latestSwingHigh")
+    latest_swing_low: float | None = Field(default=None, alias="latestSwingLow")
+    sequence: list[str] = Field(default_factory=list)
+    nearest_support: float | None = Field(default=None, alias="nearestSupport")
+    nearest_resistance: float | None = Field(default=None, alias="nearestResistance")
+    distance_to_support: float | None = Field(default=None, alias="distanceToSupport")
+    distance_to_resistance: float | None = Field(
+        default=None, alias="distanceToResistance"
+    )
+    distance_to_support_atr: float | None = Field(
+        default=None, alias="distanceToSupportAtr"
+    )
+    distance_to_resistance_atr: float | None = Field(
+        default=None, alias="distanceToResistanceAtr"
+    )
+
+
+class TradeAnalysisDTO(ApiModel):
+    symbol: str
+    broker_symbol: str = Field(alias="brokerSymbol")
+    timeframe: str
+    strategy: str = "ema_rsi_atr_v1"
+    market: AnalysisMarketDTO
+    indicators: AnalysisIndicatorsDTO
+    regime: str
+    signal: str
+    execution_status: str = Field(alias="executionStatus")
+    trade: AnalysisTradePlanDTO | None = None
+    sizing: AnalysisSizingDTO | None = None
+    reasons: list[AnalysisReasonDTO]
+    blocking_reasons: list[AnalysisReasonDTO] = Field(alias="blockingReasons")
+    candle_timestamp: str | None = Field(default=None, alias="candleTimestamp")
+    generated_at: str = Field(alias="generatedAt")
+    status: str
+    # Phase 16.1 additive (optional for older clients)
+    strategy_signal: str | None = Field(default=None, alias="strategySignal")
+    context_assessment: str | None = Field(default=None, alias="contextAssessment")
+    structure: AnalysisStructureDTO | None = None
+
+
+# --- Phase 16.2 Multi-Timeframe Analysis ---
+
+
+class MtfVolumeDTO(ApiModel):
+    source: str
+    current: float | None = None
+    average: float | None = None
+    ratio: float | None = None
+    state: str
+
+
+class MtfPatternDTO(ApiModel):
+    type: str
+    confidence: float
+    evidence: list[str] = Field(default_factory=list)
+
+
+class MtfScoreDTO(ApiModel):
+    trend_score: float = Field(alias="trendScore")
+    structure_score: float = Field(alias="structureScore")
+    momentum_score: float = Field(alias="momentumScore")
+    location_score: float = Field(alias="locationScore")
+    volume_score: float = Field(alias="volumeScore")
+    total_score: float = Field(alias="totalScore")
+
+
+class MtfTimeframeDTO(ApiModel):
+    timeframe: str
+    candle_timestamp: str | None = Field(default=None, alias="candleTimestamp")
+    close: float | None = None
+    trend: str
+    signal: str
+    confidence: float
+    score: MtfScoreDTO | None = None
+    ema20: float | None = None
+    ema50: float | None = None
+    ema200: float | None = None
+    rsi14: float | None = None
+    atr14: float | None = None
+    macd: float | None = None
+    macd_signal: float | None = Field(default=None, alias="macdSignal")
+    macd_histogram: float | None = Field(default=None, alias="macdHistogram")
+    macd_momentum: str = Field(alias="macdMomentum")
+    structure_classification: str = Field(alias="structureClassification")
+    sequence: list[str] = Field(default_factory=list)
+    nearest_support: float | None = Field(default=None, alias="nearestSupport")
+    nearest_resistance: float | None = Field(default=None, alias="nearestResistance")
+    volume: MtfVolumeDTO
+    pattern: MtfPatternDTO
+    status: str
+    reasons: list[AnalysisReasonDTO] = Field(default_factory=list)
+
+
+class MtfTakeProfitDTO(ApiModel):
+    level: int
+    price: float
+    allocation_pct: float = Field(alias="allocationPct")
+    rr: float
+    reason: str
+
+
+class MtfSetupDTO(ApiModel):
+    type: str
+    state: str
+    entry_type: str = Field(alias="entryType")
+    entry_price: float | None = Field(default=None, alias="entryPrice")
+    entry_zone_low: float | None = Field(default=None, alias="entryZoneLow")
+    entry_zone_high: float | None = Field(default=None, alias="entryZoneHigh")
+    entry_reason: str = Field(alias="entryReason")
+    stop_loss: float | None = Field(default=None, alias="stopLoss")
+    sl_reason: str = Field(alias="slReason")
+    sl_distance: float | None = Field(default=None, alias="slDistance")
+    sl_distance_atr: float | None = Field(default=None, alias="slDistanceAtr")
+    take_profits: list[MtfTakeProfitDTO] = Field(default_factory=list, alias="takeProfits")
+    distance_to_entry: float | None = Field(default=None, alias="distanceToEntry")
+
+
+class MultiTimeframeAnalysisDTO(ApiModel):
+    symbol: str
+    broker_symbol: str = Field(alias="brokerSymbol")
+    current_price: float | None = Field(default=None, alias="currentPrice")
+    timeframes: dict[str, MtfTimeframeDTO]
+    final_signal: str = Field(alias="finalSignal")
+    confidence_score: float = Field(alias="confidenceScore")
+    confidence_meaning: str = Field(alias="confidenceMeaning")
+    trend: str
+    structure_summary: str = Field(alias="structureSummary")
+    key_supports: list[float] = Field(default_factory=list, alias="keySupports")
+    key_resistances: list[float] = Field(default_factory=list, alias="keyResistances")
+    setup: MtfSetupDTO | None = None
+    sizing: AnalysisSizingDTO | None = None
+    execution_assessment: str = Field(alias="executionAssessment")
+    reasons: list[AnalysisReasonDTO] = Field(default_factory=list)
+    warnings: list[AnalysisReasonDTO] = Field(default_factory=list)
+    summary_vi: list[str] = Field(default_factory=list, alias="summaryVi")
+    generated_at: str = Field(alias="generatedAt")
+    freshness: str
+
+
+# --- Phase 16.3 Execution Candidate (read-only) ---
+
+
+class ExecutionCandidateTakeProfitDTO(ApiModel):
+    level: int
+    price: float
+    allocation_pct: float = Field(alias="allocationPct")
+    rr: float
+    reason: str
+
+
+class ExecutionCandidateDTO(ApiModel):
+    candidate_id: str = Field(alias="candidateId")
+    setup_id: str = Field(alias="setupId")
+    analysis_fingerprint: str = Field(alias="analysisFingerprint")
+    symbol: str
+    broker_symbol: str = Field(alias="brokerSymbol")
+    side: str
+    entry: float
+    stop_loss: float = Field(alias="stopLoss")
+    take_profits: list[ExecutionCandidateTakeProfitDTO] = Field(
+        default_factory=list, alias="takeProfits"
+    )
+    proposed_volume: float | None = Field(default=None, alias="proposedVolume")
+    estimated_risk_usd: float | None = Field(default=None, alias="estimatedRiskUsd")
+    estimated_risk_pct: float | None = Field(default=None, alias="estimatedRiskPct")
+    broker_executable: bool = Field(alias="brokerExecutable")
+    risk_acceptable: bool = Field(alias="riskAcceptable")
+    created_at: str = Field(alias="createdAt")
+
+
+class ExecutionCandidateStatusDTO(ApiModel):
+    eligible: bool
+    setup_state: str = Field(alias="setupState")
+    setup_id: str | None = Field(default=None, alias="setupId")
+    analysis_fingerprint: str | None = Field(
+        default=None, alias="analysisFingerprint"
+    )
+    candidate: ExecutionCandidateDTO | None = None
+    reasons: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    strategy_id: str = Field(alias="strategyId")
+    confidence_score: float | None = Field(default=None, alias="confidenceScore")
+    confidence_meaning: str = Field(alias="confidenceMeaning")
+    generated_at: str = Field(alias="generatedAt")

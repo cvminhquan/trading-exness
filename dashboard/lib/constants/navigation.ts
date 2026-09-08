@@ -40,5 +40,15 @@ export const NAV_ICONS: Record<NavItem["id"], LucideIcon> = {
   settings: Settings,
 };
 
-export const getNavMeta = (pathname: string): NavItem | undefined =>
-  NAV_ITEMS.find((item) => item.href === pathname);
+export const getNavMeta = (pathname: string): NavItem | undefined => {
+  if (pathname === "/dashboard" || /^\/dashboard\/[A-Z0-9]+$/i.test(pathname)) {
+    const reserved = ["positions", "trades", "strategy", "risk", "backtest", "paper", "settings"];
+    const seg = pathname.split("/")[2]?.toLowerCase();
+    if (!seg || !reserved.includes(seg)) {
+      return NAV_ITEMS.find((item) => item.id === "overview");
+    }
+  }
+  return NAV_ITEMS.find(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+  );
+};

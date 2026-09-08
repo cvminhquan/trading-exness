@@ -134,6 +134,43 @@ class Settings(BaseSettings):
     rsi_short_min: float = Field(default=30.0, alias="RSI_SHORT_MIN", ge=0, le=100)
     rsi_short_max: float = Field(default=50.0, alias="RSI_SHORT_MAX", ge=0, le=100)
 
+    # --- Phase 16.1 market structure / S-R (analysis only) ---
+    swing_left_bars: int = Field(default=2, alias="SWING_LEFT_BARS", ge=1, le=10)
+    swing_right_bars: int = Field(default=2, alias="SWING_RIGHT_BARS", ge=1, le=10)
+    sr_cluster_atr_multiplier: float = Field(
+        default=0.25, alias="SR_CLUSTER_ATR_MULTIPLIER", gt=0, le=5
+    )
+    sr_near_atr_threshold: float = Field(
+        default=0.5, alias="SR_NEAR_ATR_THRESHOLD", gt=0, le=10
+    )
+    sr_caution_atr_threshold: float = Field(
+        default=1.0, alias="SR_CAUTION_ATR_THRESHOLD", gt=0, le=20
+    )
+
+    # --- Phase 16.2 multi-timeframe analysis ---
+    macd_fast: int = Field(default=12, alias="MACD_FAST", ge=1, le=50)
+    macd_slow: int = Field(default=26, alias="MACD_SLOW", ge=2, le=100)
+    macd_signal: int = Field(default=9, alias="MACD_SIGNAL", ge=1, le=50)
+    volume_avg_period: int = Field(default=20, alias="VOLUME_AVG_PERIOD", ge=5, le=100)
+    volume_high_ratio: float = Field(default=1.5, alias="VOLUME_HIGH_RATIO", gt=0)
+    volume_low_ratio: float = Field(default=0.7, alias="VOLUME_LOW_RATIO", gt=0)
+    mtf_weight_m15: float = Field(default=0.20, alias="MTF_WEIGHT_M15", ge=0, le=1)
+    mtf_weight_h1: float = Field(default=0.30, alias="MTF_WEIGHT_H1", ge=0, le=1)
+    mtf_weight_h4: float = Field(default=0.30, alias="MTF_WEIGHT_H4", ge=0, le=1)
+    mtf_weight_d1: float = Field(default=0.20, alias="MTF_WEIGHT_D1", ge=0, le=1)
+    tp1_allocation_pct: float = Field(default=30.0, alias="TP1_ALLOCATION_PCT", ge=0, le=100)
+    tp2_allocation_pct: float = Field(default=40.0, alias="TP2_ALLOCATION_PCT", ge=0, le=100)
+    tp3_allocation_pct: float = Field(default=30.0, alias="TP3_ALLOCATION_PCT", ge=0, le=100)
+
+    # --- Phase 16.3 analysis → execution contract ---
+    setup_max_candles: int = Field(default=8, alias="SETUP_MAX_CANDLES", ge=1, le=100)
+    account_snapshot_max_age_seconds: int = Field(
+        default=10,
+        alias="ACCOUNT_SNAPSHOT_MAX_AGE_SECONDS",
+        ge=1,
+        le=300,
+    )
+
     # --- Database ---
     database_url: str = Field(
         default="sqlite:///exness_bot.db",

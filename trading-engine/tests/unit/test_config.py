@@ -29,7 +29,7 @@ class TestSettingsDefaults:
         assert settings.timeframe == "M15"
 
     def test_candle_engine_defaults(self) -> None:
-        settings = Settings()
+        settings = Settings(_env_file=None)
         assert settings.candle_engine_enabled is False
         assert settings.candle_timeframe == "M15"
         assert settings.candle_poll_interval_seconds == 3

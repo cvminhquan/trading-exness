@@ -1,8 +1,10 @@
 import type { TradingRepository } from "./trading-repository";
 import {
+  accountOverviewSchema,
   accountSnapshotSchema,
   accountSwitchStateSchema,
   backtestReportSchema,
+  dailyRealizedPnlSchema,
   dashboardOverviewSchema,
   positionSchema,
   quoteSchema,
@@ -12,6 +14,9 @@ import {
   systemSettingsSchema,
   tradeSchema,
   paperTradingSchema,
+  tradeAnalysisSchema,
+  multiTimeframeAnalysisSchema,
+  executionCandidateStatusSchema,
 } from "@/domain/schemas";
 import { buildBacktestQueryString, buildTradeQueryString } from "@/domain/api/params";
 import type { ApiClient } from "@/lib/api/client";
@@ -28,6 +33,16 @@ export class ApiTradingRepository implements TradingRepository {
 
   getAccountSnapshot() {
     return this.client.get(API_V1.account, accountSnapshotSchema);
+  }
+
+  getAccountOverview() {
+    return this.client.get(API_V1.accountOverview, accountOverviewSchema);
+  }
+
+  getDailyRealizedPnl(days = 7) {
+    return this.client.get(API_V1.accountPnlDaily, dailyRealizedPnlSchema.array(), {
+      query: `?days=${days}`,
+    });
   }
 
   getDashboardOverview() {
@@ -85,11 +100,33 @@ export class ApiTradingRepository implements TradingRepository {
     return this.client.get(API_V1.status, sessionContextSchema);
   }
 
-  getQuotes() {
-    return this.client.get(API_V1.quotes, quoteSchema.array());
+  getQuotes(symbols?: string[]) {
+    const query =
+      symbols && symbols.length > 0
+        ? `?symbols=${encodeURIComponent(symbols.join(","))}`
+        : "";
+    return this.client.get(API_V1.quotes, quoteSchema.array(), { query });
   }
 
   getPaperTrading() {
     return this.client.get(API_V1.paper, paperTradingSchema);
+  }
+
+  getTradeAnalysis(symbol = "XAUUSD") {
+    return this.client.get(API_V1.analysisSymbol(symbol), tradeAnalysisSchema);
+  }
+
+  getMultiTimeframeAnalysis(symbol = "XAUUSD") {
+    return this.client.get(
+      API_V1.multiTimeframeAnalysis(symbol),
+      multiTimeframeAnalysisSchema,
+    );
+  }
+
+  getExecutionCandidateStatus(symbol = "XAUUSD") {
+    return this.client.get(
+      API_V1.executionCandidate(symbol),
+      executionCandidateStatusSchema,
+    );
   }
 }

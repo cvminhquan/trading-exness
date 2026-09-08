@@ -1,9 +1,11 @@
 import type {
   AccountSnapshot,
+  AccountOverview,
   AccountProfileId,
   AccountSwitchState,
   BacktestReport,
   BotStatus,
+  DailyRealizedPnl,
   DashboardOverview,
   Position,
   RiskSnapshot,
@@ -13,12 +15,17 @@ import type {
   Trade,
   Quote,
   PaperTrading,
+  TradeAnalysis,
+  MultiTimeframeAnalysis,
+  ExecutionCandidateStatus,
 } from "@/domain";
 import type { BacktestListParams, TradeListParams } from "@/domain/api/params";
 
 export interface TradingRepository {
   getBotStatus(): Promise<BotStatus>;
   getAccountSnapshot(): Promise<AccountSnapshot>;
+  getAccountOverview(): Promise<AccountOverview>;
+  getDailyRealizedPnl(days?: number): Promise<DailyRealizedPnl[]>;
   getDashboardOverview(): Promise<DashboardOverview>;
   getPositions(): Promise<Position[]>;
   getTrades(params?: TradeListParams): Promise<Trade[]>;
@@ -30,6 +37,9 @@ export interface TradingRepository {
   getAccountSwitchState(): Promise<AccountSwitchState>;
   setActiveAccount(profile: AccountProfileId): Promise<AccountSwitchState>;
   getSessionContext(): Promise<SessionContext>;
-  getQuotes(): Promise<Quote[]>;
+  getQuotes(symbols?: string[]): Promise<Quote[]>;
   getPaperTrading(): Promise<PaperTrading>;
+  getTradeAnalysis(symbol?: string): Promise<TradeAnalysis>;
+  getMultiTimeframeAnalysis(symbol?: string): Promise<MultiTimeframeAnalysis>;
+  getExecutionCandidateStatus(symbol?: string): Promise<ExecutionCandidateStatus>;
 }

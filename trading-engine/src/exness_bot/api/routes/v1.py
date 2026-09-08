@@ -9,12 +9,16 @@ from fastapi import APIRouter, Depends, Query
 from exness_bot.api.dependencies import get_read_service
 from exness_bot.api.schemas.common import DataEnvelope, PaginatedEnvelope
 from exness_bot.api.schemas.dashboard import (
+    AccountOverviewDTO,
     AccountSnapshotDTO,
     AccountSwitchStateDTO,
     ActivateAccountRequest,
     BacktestReportDTO,
+    DailyRealizedPnlDTO,
     DashboardOverviewDTO,
+    ExecutionCandidateStatusDTO,
     LiveReadinessDTO,
+    MultiTimeframeAnalysisDTO,
     PaperTradingDTO,
     PositionDTO,
     QuoteDTO,
@@ -22,6 +26,7 @@ from exness_bot.api.schemas.dashboard import (
     SessionContextDTO,
     StrategySnapshotDTO,
     SystemSettingsDTO,
+    TradeAnalysisDTO,
     TradeDTO,
 )
 from exness_bot.api.services.read_service import BacktestQuery, ReadService, TradeQuery
@@ -89,6 +94,37 @@ def get_account(service: Annotated[ReadService, Depends(get_read_service)]) -> d
 
 
 @router.get(
+    "/account/overview",
+    summary="Tổng quan tài khoản & PnL (chỉ đọc)",
+    description=(
+        "Balance/equity/margin, realized/unrealized PnL hôm nay, freshness LIVE|STALE|"
+        "DISCONNECTED|UNAVAILABLE. Không đặt lệnh."
+    ),
+    response_model=DataEnvelope[AccountOverviewDTO],
+    response_model_by_alias=True,
+)
+def get_account_overview(
+    service: Annotated[ReadService, Depends(get_read_service)],
+) -> dict[str, object]:
+    return _envelope(service.get_account_overview().model_dump(by_alias=True))
+
+
+@router.get(
+    "/account/pnl/daily",
+    summary="Lịch sử realized PnL theo ngày (UTC)",
+    description="Chỉ realized từ deals đã đóng — không bịa equity lịch sử.",
+    response_model=DataEnvelope[list[DailyRealizedPnlDTO]],
+    response_model_by_alias=True,
+)
+def get_account_pnl_daily(
+    service: Annotated[ReadService, Depends(get_read_service)],
+    days: Annotated[int, Query(ge=1, le=90, description="Số ngày UTC gần nhất")] = 7,
+) -> dict[str, object]:
+    rows = service.get_daily_realized_pnl(days=days)
+    return _envelope([item.model_dump(by_alias=True) for item in rows])
+
+
+@router.get(
     "/overview",
     summary="Tổng quan Dashboard",
     response_model=DataEnvelope[DashboardOverviewDTO],
@@ -120,6 +156,75 @@ def get_quotes(
     requested = [item.strip() for item in symbols.split(",")] if symbols else None
     quotes = service.get_quotes(requested)
     return _envelope([item.model_dump(by_alias=True) for item in quotes])
+
+
+@router.get(
+    "/analysis",
+    summary="Phân tích thị trường & đề xuất giao dịch (chỉ đọc)",
+    description=(
+        "Closed M15 → indicators → regime → BUY/SELL/WAIT + sizing. "
+        "Chỉ đọc: không gửi lệnh, không khớp DEMO/LIVE."
+    ),
+    response_model=DataEnvelope[TradeAnalysisDTO],
+    response_model_by_alias=True,
+)
+def get_analysis(
+    service: Annotated[ReadService, Depends(get_read_service)],
+    symbol: Annotated[str | None, Query(description="Canonical symbol, mặc định XAUUSD")] = None,
+) -> dict[str, object]:
+    return _envelope(service.get_trade_analysis(symbol).model_dump(by_alias=True))
+
+
+@router.get(
+    "/analysis/{symbol}/execution-candidate",
+    summary="Trạng thái ExecutionCandidate (chỉ đọc)",
+    description=(
+        "Phase 16.3 contract: MTF → CanonicalTradeSetup → eligibility. "
+        "Không gửi lệnh. Candidate chỉ từ mtf_technical_v1."
+    ),
+    response_model=DataEnvelope[ExecutionCandidateStatusDTO],
+    response_model_by_alias=True,
+)
+def get_execution_candidate(
+    symbol: str,
+    service: Annotated[ReadService, Depends(get_read_service)],
+) -> dict[str, object]:
+    return _envelope(
+        service.get_execution_candidate_status(symbol).model_dump(by_alias=True)
+    )
+
+
+@router.get(
+    "/analysis/{symbol}/multi-timeframe",
+    summary="Phân tích đa khung thời gian (chỉ đọc)",
+    description=(
+        "M15/H1/H4/D1 closed-candle analysis + aggregation. "
+        "Confidence = EVIDENCE_ALIGNMENT, không phải xác suất thắng. "
+        "Chỉ đọc — không gửi lệnh."
+    ),
+    response_model=DataEnvelope[MultiTimeframeAnalysisDTO],
+    response_model_by_alias=True,
+)
+def get_multi_timeframe_analysis(
+    symbol: str,
+    service: Annotated[ReadService, Depends(get_read_service)],
+) -> dict[str, object]:
+    return _envelope(
+        service.get_multi_timeframe_analysis(symbol).model_dump(by_alias=True)
+    )
+
+
+@router.get(
+    "/analysis/{symbol}",
+    summary="Phân tích thị trường theo symbol (chỉ đọc)",
+    response_model=DataEnvelope[TradeAnalysisDTO],
+    response_model_by_alias=True,
+)
+def get_analysis_by_symbol(
+    symbol: str,
+    service: Annotated[ReadService, Depends(get_read_service)],
+) -> dict[str, object]:
+    return _envelope(service.get_trade_analysis(symbol).model_dump(by_alias=True))
 
 
 @router.get(

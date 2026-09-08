@@ -14,7 +14,7 @@ from exness_bot.data.models import (
     TradeHistoryResult,
 )
 from exness_bot.domain.enums import Timeframe
-from exness_bot.domain.models import Candle, ClosedTrade, Tick
+from exness_bot.domain.models import Candle, ClosedTrade, SymbolInfo, Tick
 from exness_bot.market_data.candles import timeframe_duration
 
 _MOCK_LAST: dict[str, float] = {
@@ -70,6 +70,36 @@ class MockTradingDataProvider:
             timestamp=datetime.now(tz=UTC),
         )
 
+    def get_symbol_info(self, symbol: str | None = None) -> SymbolInfo | None:
+        tick = self.get_tick(symbol)
+        if tick is None:
+            return None
+        spread_points = round(abs(tick.ask - tick.bid) / 0.01)
+        return SymbolInfo(
+            symbol=tick.symbol,
+            bid=tick.bid,
+            ask=tick.ask,
+            point=0.01,
+            digits=2,
+            volume_min=0.01,
+            volume_max=100.0,
+            volume_step=0.01,
+            trade_contract_size=100.0,
+            spread=max(spread_points, 1),
+            trade_mode=4,
+            visible=True,
+            stops_level=0,
+            freeze_level=0,
+            trade_tick_size=0.01,
+            trade_tick_value=1.0,
+        )
+
+    def resolve_broker_symbol(self, symbol: str | None = None) -> str:
+        target = (symbol or self._settings.symbol).strip().upper()
+        if target == "XAUUSD":
+            return "XAUUSDm"
+        return target
+
     def get_trade_history(self, query: TradeHistoryQuery) -> TradeHistoryResult:
         trades = self._filter_trades(mock_closed_trades(), query)
         total = len(trades)
@@ -81,6 +111,11 @@ class MockTradingDataProvider:
             total=total,
             updated_at=datetime.now(tz=UTC),
         )
+
+    def get_balance_cashflow(self, start: datetime, end: datetime) -> float:
+        """Mock: no deposits/withdrawals in the window."""
+        _ = (start, end)
+        return 0.0
 
     @staticmethod
     def _filter_trades(trades: list[ClosedTrade], query: TradeHistoryQuery) -> list[ClosedTrade]:

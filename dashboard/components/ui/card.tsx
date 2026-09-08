@@ -1,19 +1,20 @@
 import { cn } from "@/lib/utils";
 import type { HTMLAttributes } from "react";
 
+/** Minimal surface — prefer section separators over nested cards. */
 export const Card = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("rounded-xl border border-slate-200 bg-white shadow-sm", className)}
+    className={cn("rounded border border-slate-200 bg-white", className)}
     {...props}
   />
 );
 
 export const CardHeader = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col gap-1.5 p-5 pb-0", className)} {...props} />
+  <div className={cn("flex flex-col gap-1 px-3 pt-3 pb-0", className)} {...props} />
 );
 
 export const CardTitle = ({ className, ...props }: HTMLAttributes<HTMLHeadingElement>) => (
-  <h3 className={cn("text-sm font-semibold tracking-wide text-slate-900", className)} {...props} />
+  <h3 className={cn("text-xs font-semibold uppercase tracking-wide text-slate-500", className)} {...props} />
 );
 
 export const CardDescription = ({ className, ...props }: HTMLAttributes<HTMLParagraphElement>) => (
@@ -21,5 +22,5 @@ export const CardDescription = ({ className, ...props }: HTMLAttributes<HTMLPara
 );
 
 export const CardContent = ({ className, ...props }: HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("p-5", className)} {...props} />
+  <div className={cn("px-3 py-3", className)} {...props} />
 );

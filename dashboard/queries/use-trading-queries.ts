@@ -19,6 +19,41 @@ export const useAccountSnapshot = () =>
     refetchInterval: 5_000,
   });
 
+export const useAccountOverview = () =>
+  useQuery({
+    queryKey: tradingKeys.accountOverview(),
+    queryFn: () => tradingRepository.getAccountOverview(),
+    refetchInterval: 3_000,
+  });
+
+export const useDailyRealizedPnl = (days = 7) =>
+  useQuery({
+    queryKey: tradingKeys.accountPnlDaily(days),
+    queryFn: () => tradingRepository.getDailyRealizedPnl(days),
+    refetchInterval: 60_000,
+  });
+
+export const useTradeAnalysis = (symbol = "XAUUSD") =>
+  useQuery({
+    queryKey: tradingKeys.analysis(symbol),
+    queryFn: () => tradingRepository.getTradeAnalysis(symbol),
+    refetchInterval: 5_000,
+  });
+
+export const useMultiTimeframeAnalysis = (symbol = "XAUUSD") =>
+  useQuery({
+    queryKey: tradingKeys.mtfAnalysis(symbol),
+    queryFn: () => tradingRepository.getMultiTimeframeAnalysis(symbol),
+    refetchInterval: 5_000,
+  });
+
+export const useExecutionCandidateStatus = (symbol = "XAUUSD") =>
+  useQuery({
+    queryKey: tradingKeys.executionCandidate(symbol),
+    queryFn: () => tradingRepository.getExecutionCandidateStatus(symbol),
+    refetchInterval: 5_000,
+  });
+
 export const useSessionContext = () =>
   useQuery({
     queryKey: tradingKeys.session(),
@@ -26,10 +61,13 @@ export const useSessionContext = () =>
     refetchInterval: 5_000,
   });
 
-export const useQuotes = () =>
+export const useQuotes = (symbols?: string[]) =>
   useQuery({
-    queryKey: tradingKeys.quotes(),
-    queryFn: () => tradingRepository.getQuotes(),
+    queryKey:
+      symbols && symbols.length > 0
+        ? tradingKeys.quotesFor(symbols)
+        : tradingKeys.quotes(),
+    queryFn: () => tradingRepository.getQuotes(symbols),
     refetchInterval: 2_000,
     staleTime: 1_000,
   });

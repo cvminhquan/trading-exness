@@ -1,7 +1,6 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -32,10 +31,10 @@ export default function StrategyPage() {
   const { data, isLoading, isError, error, refetch } = useStrategySnapshot();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title={NAV.strategy.label}
-        description={NAV.strategy.description}
+        description="Logic đánh giá thị trường đang dùng (production) và candidate research."
         badge={data ? <BotStatusIndicator status={data.status} /> : undefined}
       />
 
@@ -48,79 +47,114 @@ export default function StrategyPage() {
         section={SECTION_LABELS.strategy}
       >
         {data ? (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
+          <div className="space-y-4">
+            <section className="border-b border-slate-200 pb-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                  <CardTitle>{data.name}</CardTitle>
-                  <p className="text-sm text-slate-600">
-                    {data.symbol} · {data.timeframe}
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    {data.name}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {data.symbol} · {data.timeframe} · mtf_technical_v1 · CURRENT /
+                    PRODUCTION ANALYSIS
                   </p>
                 </div>
-                <Badge variant="info" className="normal-case">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                   {UI.activeStrategy}
-                </Badge>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {INDICATOR_DEFS.map((ind) => (
-                    <Badge key={ind.key} variant="default" className="normal-case">
-                      {ind.label}
-                    </Badge>
-                  ))}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Indicators: {INDICATOR_DEFS.map((i) => i.label).join(" · ")}
+              </p>
+            </section>
+
+            <section className="border-b border-slate-200 pb-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    mtf_technical_v2_candidate
+                  </h2>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    M15-first research — không dùng cho execution.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <Badge variant="warning">RESEARCH ONLY</Badge>
+              </div>
+              <dl className="mt-2 space-y-1 text-sm text-slate-700">
+                <div>
+                  <dt className="inline text-xs text-slate-500">TF roles · </dt>
+                  <dd className="inline">
+                    M15 PRIMARY · H1 CONFIRMATION · H4 CONTEXT · D1 MACRO
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline text-xs text-slate-500">Weights · </dt>
+                  <dd className="inline tabular-nums">
+                    TF 0.50/0.30/0.15/0.05 · components
+                    0.25/0.15/0.20/0.10/0.10/0.20 · ±20 · dampen 0.35
+                  </dd>
+                </div>
+              </dl>
+              <p className="mt-2 text-[11px] text-slate-400">
+                Không có Activate / Use Strategy.
+              </p>
+            </section>
 
             <SignalCard signal={data.currentSignal} />
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{UI.indicatorSnapshot}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-                  {INDICATOR_DEFS.map((ind) => (
-                    <div key={ind.key}>
-                      <dt className="text-xs uppercase text-slate-500">{ind.label}</dt>
-                      <dd className="mt-1 tabular-nums text-lg font-medium text-slate-900">
-                        {formatPrice(data.currentSignal.indicators[ind.key])}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardContent>
-            </Card>
+            <section className="border-t border-slate-200 pt-3">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {UI.indicatorSnapshot}
+              </h3>
+              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-5">
+                {INDICATOR_DEFS.map((ind) => (
+                  <div key={ind.key}>
+                    <dt className="text-[10px] uppercase text-slate-400">
+                      {ind.label}
+                    </dt>
+                    <dd className="text-sm font-medium tabular-nums text-slate-900">
+                      {formatPrice(data.currentSignal.indicators[ind.key])}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{UI.recentSignals}</CardTitle>
-              </CardHeader>
-              <CardContent>
+            <section className="border-t border-slate-200 pt-3">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {UI.recentSignals}
+              </h3>
+              <div className="mt-1">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>{UI.time}</TableHead>
-                      <TableHead>{UI.action}</TableHead>
-                      <TableHead>{UI.direction}</TableHead>
-                      <TableHead>{UI.summary}</TableHead>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="h-8 text-[11px]">{UI.time}</TableHead>
+                      <TableHead className="h-8 text-[11px]">{UI.action}</TableHead>
+                      <TableHead className="h-8 text-[11px]">{UI.direction}</TableHead>
+                      <TableHead className="h-8 text-[11px]">{UI.summary}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {data.recentSignals.map((signal) => (
                       <TableRow key={`${signal.timestamp}-${signal.action}`}>
-                        <TableCell>{formatDateTime(signal.timestamp)}</TableCell>
-                        <TableCell>
+                        <TableCell className="py-1.5 text-sm">
+                          {formatDateTime(signal.timestamp)}
+                        </TableCell>
+                        <TableCell className="py-1.5">
                           <DirectionIndicator direction={signal.action} />
                         </TableCell>
-                        <TableCell>{signal.direction}</TableCell>
-                        <TableCell className="max-w-xl text-slate-600">{signal.summary}</TableCell>
+                        <TableCell className="py-1.5 text-sm">
+                          {signal.direction}
+                        </TableCell>
+                        <TableCell className="max-w-xl py-1.5 text-sm text-slate-600">
+                          {signal.summary}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           </div>
         ) : null}
       </QueryState>

@@ -2,7 +2,9 @@ import type { TradingRepository } from "./trading-repository";
 import type { AccountProfileId, AccountSwitchState, SessionContext } from "@/domain";
 import {
   mockAccount,
+  mockAccountOverview,
   mockBotStatus,
+  mockDailyRealizedPnl,
   mockDashboardOverview,
   mockPositions,
   mockRisk,
@@ -12,6 +14,9 @@ import {
   mockTrades,
   mockQuotes,
   mockPaperTrading,
+  mockTradeAnalysis,
+  mockMultiTimeframeAnalysis,
+  mockExecutionCandidateStatus,
   simulateDelay,
 } from "@/mocks/data";
 import { mockBacktestReports } from "@/mocks/backtest-data";
@@ -59,6 +64,16 @@ export class MockTradingRepository implements TradingRepository {
   async getAccountSnapshot() {
     await simulateDelay();
     return mockAccount;
+  }
+
+  async getAccountOverview() {
+    await simulateDelay();
+    return mockAccountOverview;
+  }
+
+  async getDailyRealizedPnl(days = 7) {
+    await simulateDelay();
+    return mockDailyRealizedPnl.slice(-days);
   }
 
   async getDashboardOverview() {
@@ -124,13 +139,45 @@ export class MockTradingRepository implements TradingRepository {
     return { ...mockSession, accountProfile: "demo" };
   }
 
-  async getQuotes() {
+  async getQuotes(symbols?: string[]) {
     await simulateDelay(80);
-    return mockQuotes;
+    if (!symbols?.length) return mockQuotes;
+    const wanted = new Set(symbols.map((s) => s.toUpperCase()));
+    const found = mockQuotes.filter((q) => wanted.has(q.symbol));
+    const missing = symbols
+      .map((s) => s.toUpperCase())
+      .filter((s) => !found.some((q) => q.symbol === s))
+      .map((symbol) => ({
+        symbol,
+        bid: null,
+        ask: null,
+        last: null,
+        spread: null,
+        digits: 5,
+        available: false,
+        updatedAt: new Date().toISOString(),
+        freshness: "UNAVAILABLE" as const,
+      }));
+    return [...found, ...missing];
   }
 
   async getPaperTrading() {
     await simulateDelay(80);
     return mockPaperTrading;
+  }
+
+  async getTradeAnalysis() {
+    await simulateDelay(80);
+    return mockTradeAnalysis;
+  }
+
+  async getMultiTimeframeAnalysis() {
+    await simulateDelay(80);
+    return mockMultiTimeframeAnalysis;
+  }
+
+  async getExecutionCandidateStatus() {
+    await simulateDelay(80);
+    return mockExecutionCandidateStatus;
   }
 }

@@ -94,7 +94,7 @@ class TestRiskManagerRejections:
         assert decision.reason == "Maximum drawdown exceeded"
 
     def test_spread_rejected(self) -> None:
-        decision = _manager().assess(
+        decision = _manager(MAX_SPREAD_POINTS=50).assess(
             make_buy_signal(),
             make_account(),
             make_xauusd_symbol(spread=100),

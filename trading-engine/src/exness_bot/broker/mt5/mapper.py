@@ -138,6 +138,10 @@ def map_symbol_info(raw: Any) -> SymbolInfo:
         freeze_raw = getattr(raw, "freeze_level", None)
     stops_level = int(stops_raw) if stops_raw is not None else None
     freeze_level = int(freeze_raw) if freeze_raw is not None else None
+    tick_size_raw = getattr(raw, "trade_tick_size", None)
+    tick_value_raw = getattr(raw, "trade_tick_value", None)
+    trade_tick_size = float(tick_size_raw) if tick_size_raw is not None else None
+    trade_tick_value = float(tick_value_raw) if tick_value_raw is not None else None
     return SymbolInfo(
         symbol=str(raw.name),
         bid=float(raw.bid),
@@ -153,6 +157,8 @@ def map_symbol_info(raw: Any) -> SymbolInfo:
         visible=bool(raw.visible),
         stops_level=stops_level,
         freeze_level=freeze_level,
+        trade_tick_size=trade_tick_size,
+        trade_tick_value=trade_tick_value,
     )
 
 
@@ -433,10 +439,16 @@ def map_closed_trades_from_deals(
 
         exit_price = float(out_deal.price)
         volume = float(out_deal.volume)
-        commission = float(getattr(out_deal, "commission", 0.0))
-        swap = float(getattr(out_deal, "swap", 0.0))
-        gross_pnl = float(getattr(out_deal, "profit", 0.0))
-        net_pnl = round(gross_pnl + commission + swap, 2)
+        commission = float(getattr(out_deal, "commission", 0.0) or 0.0)
+        swap = float(getattr(out_deal, "swap", 0.0) or 0.0)
+        fee = float(getattr(out_deal, "fee", 0.0) or 0.0)
+        if in_deal is not None:
+            commission += float(getattr(in_deal, "commission", 0.0) or 0.0)
+            swap += float(getattr(in_deal, "swap", 0.0) or 0.0)
+            fee += float(getattr(in_deal, "fee", 0.0) or 0.0)
+        gross_pnl = float(getattr(out_deal, "profit", 0.0) or 0.0)
+        # NET = profit + swap + commission + fee (fee when broker exposes it)
+        net_pnl = round(gross_pnl + commission + swap + fee, 2)
 
         risk = abs(entry_price - exit_price) if entry_price != exit_price else None
         r_multiple = None

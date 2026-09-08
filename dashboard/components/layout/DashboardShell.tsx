@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { TopHeader } from "@/components/layout/TopHeader";
-import { NAV_ICONS, NAV_ITEMS } from "@/lib/constants/navigation";
+import { NAV_ICONS, NAV_ITEMS, getNavMeta } from "@/lib/constants/navigation";
 import { A11Y, UI } from "@/lib/i18n/vi";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,14 @@ export const DashboardShell = ({ children }: { children: React.ReactNode }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLink = (href: string, id: (typeof NAV_ITEMS)[number]["id"], label: string, onNavigate?: () => void) => {
-    const active = pathname === href;
+    const active =
+      id === "overview"
+        ? pathname === "/dashboard" ||
+          (/^\/dashboard\/[A-Za-z0-9]+$/.test(pathname) &&
+            !["positions", "trades", "strategy", "risk", "backtest", "paper", "settings"].includes(
+              pathname.split("/")[2]?.toLowerCase() ?? "",
+            ))
+        : pathname === href || pathname.startsWith(`${href}/`);
     const Icon = NAV_ICONS[id];
     return (
       <Link
@@ -23,10 +30,10 @@ export const DashboardShell = ({ children }: { children: React.ReactNode }) => {
         href={href}
         onClick={onNavigate}
         className={cn(
-          "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500",
+          "flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400",
           active
-            ? "bg-slate-900 text-white"
-            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+            ? "bg-slate-100 font-semibold text-slate-900"
+            : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900",
         )}
         aria-current={active ? "page" : undefined}
       >
@@ -89,12 +96,12 @@ export const DashboardShell = ({ children }: { children: React.ReactNode }) => {
               <Menu className="h-4 w-4" />
             </Button>
             <p className="text-sm font-medium text-slate-700">
-              {NAV_ITEMS.find((n) => n.href === pathname)?.label ?? UI.appName}
+              {getNavMeta(pathname)?.label ?? UI.appName}
             </p>
           </div>
 
           <TopHeader />
-          <main className="flex-1 px-4 py-6 md:px-6 lg:px-8">{children}</main>
+          <main className="flex-1 px-3 py-4 md:px-5 lg:px-6">{children}</main>
         </div>
       </div>
     </div>

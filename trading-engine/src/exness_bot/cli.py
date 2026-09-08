@@ -105,6 +105,84 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    candidate_smoke = subparsers.add_parser(
+        "candidate-execution-smoke",
+        help=(
+            "Phase 17.1 Fake-only ExecutionCandidate → Orchestrator smoke. "
+            "Never calls LiveMT5 / order_send. No --live option."
+        ),
+    )
+    candidate_smoke.add_argument(
+        "--symbol",
+        type=str,
+        default="XAUUSD",
+        help="Canonical symbol (default XAUUSD)",
+    )
+
+    candidate_demo = subparsers.add_parser(
+        "candidate-demo-execution-smoke",
+        help=(
+            "Phase 17.2 controlled DEMO: ExecutionCandidate → GatedMT5. "
+            "Default is READ-ONLY preview (no order_send). "
+            "Human-only mutate: --execute --confirm DEMO-EXECUTE. "
+            "AI/Cursor agents must NEVER pass --execute --confirm."
+        ),
+    )
+    candidate_demo.add_argument(
+        "--symbol",
+        type=str,
+        default="XAUUSD",
+        help="Canonical symbol (default XAUUSD)",
+    )
+    candidate_demo.add_argument(
+        "--execute",
+        action="store_true",
+        help="Allow the single broker submission after all gates pass (HUMAN ONLY)",
+    )
+    candidate_demo.add_argument(
+        "--confirm",
+        type=str,
+        default="",
+        help="Must be exactly DEMO-EXECUTE to authorize submission",
+    )
+
+    candidate_watch = subparsers.add_parser(
+        "candidate-demo-watch",
+        help=(
+            "Phase 17.2.2 READ-ONLY MTF setup watcher. "
+            "Never calls order_send / ExecutionOrchestrator. "
+            "No --execute / --confirm flags."
+        ),
+    )
+    candidate_watch.add_argument(
+        "--symbol",
+        type=str,
+        default="XAUUSD",
+        help="Canonical symbol (default XAUUSD)",
+    )
+    candidate_watch.add_argument(
+        "--interval-seconds",
+        type=float,
+        default=15.0,
+        help="Poll interval seconds (default 15, minimum 5)",
+    )
+    candidate_watch.add_argument(
+        "--verbose-analysis",
+        action="store_true",
+        help="Print full per-timeframe indicator/score diagnostics (read-only)",
+    )
+    candidate_watch.add_argument(
+        "--beep",
+        action="store_true",
+        help="Play a terminal/Windows beep on directional or READY alerts",
+    )
+    candidate_watch.add_argument(
+        "--alert-log",
+        type=str,
+        default="",
+        help="Optional path to append alert lines (no credentials)",
+    )
+
     subparsers.add_parser(
         "live-preflight",
         help=(
@@ -755,6 +833,34 @@ def main(argv: list[str] | None = None) -> int:
         from exness_bot.execution.smoke_cli import run_orchestration_smoke
 
         return run_orchestration_smoke()
+    if args.command == "candidate-execution-smoke":
+        from exness_bot.execution.integration.smoke_cli import (
+            run_candidate_execution_smoke,
+        )
+
+        return run_candidate_execution_smoke(symbol=str(args.symbol or "XAUUSD"))
+    if args.command == "candidate-demo-execution-smoke":
+        from exness_bot.execution.integration.demo_cli import (
+            handle_candidate_demo_execution_smoke,
+        )
+
+        return handle_candidate_demo_execution_smoke(
+            symbol=str(args.symbol or "XAUUSD"),
+            execute=bool(args.execute),
+            confirm=str(args.confirm or ""),
+        )
+    if args.command == "candidate-demo-watch":
+        from exness_bot.execution.integration.demo_watch import (
+            handle_candidate_demo_watch,
+        )
+
+        return handle_candidate_demo_watch(
+            symbol=str(args.symbol or "XAUUSD"),
+            interval_seconds=float(args.interval_seconds or 15.0),
+            verbose_analysis=bool(args.verbose_analysis),
+            beep=bool(args.beep),
+            alert_log=str(args.alert_log or "") or None,
+        )
     if args.command == "live-preflight":
         return handle_live_preflight()
     if args.command == "demo-execution-smoke":

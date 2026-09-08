@@ -47,13 +47,30 @@ export const BotStatusIndicator = ({ status, compact = false, className }: BotSt
 type ConnectionIndicatorProps = {
   status: ConnectionStatus;
   className?: string;
+  compact?: boolean;
 };
 
-export const ConnectionIndicator = ({ status, className }: ConnectionIndicatorProps) => {
+export const ConnectionIndicator = ({
+  status,
+  className,
+  compact = false,
+}: ConnectionIndicatorProps) => {
   const meta = CONNECTION_VARIANT[status];
+  const label = CONNECTION_LABELS[status];
   return (
-    <Badge variant={meta.variant} className={cn("normal-case", className)}>
-      {CONNECTION_LABELS[status]}
+    <Badge
+      variant={meta.variant}
+      className={cn("normal-case", className)}
+      title={label}
+      aria-label={label}
+    >
+      {compact
+        ? status === "CONNECTED"
+          ? "MT5"
+          : status === "RECONNECTING"
+            ? "…"
+            : "MT5?"
+        : label}
     </Badge>
   );
 };

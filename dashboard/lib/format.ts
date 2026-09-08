@@ -51,6 +51,43 @@ export const formatMarketPrice = (
   digits = 5,
 ): string => formatPrice(value, digits);
 
+/** Giá gọn kiểu danh sách thịnh hành (CMC-like), không đổi đơn vị tiền tệ gốc. */
+export const formatCompactMarketPrice = (
+  value: number | null | undefined,
+  digits = 2,
+): string => {
+  if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toLocaleString("vi-VN", {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 2,
+    })}B`;
+  }
+  if (abs >= 1_000_000) {
+    return `${(value / 1_000_000).toLocaleString("vi-VN", {
+      maximumFractionDigits: 2,
+      minimumFractionDigits: 2,
+    })}M`;
+  }
+  if (abs >= 1_000) {
+    return value.toLocaleString("vi-VN", {
+      maximumFractionDigits: Math.min(digits, 2),
+      minimumFractionDigits: 0,
+    });
+  }
+  return value.toLocaleString("vi-VN", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: Math.min(2, digits),
+  });
+};
+
+export const formatSignedPercentChange = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
+  const sign = value > 0 ? "+" : value < 0 ? "" : "";
+  return `${sign}${value.toFixed(2)}%`;
+};
+
 export const formatVolume = (value: number | null | undefined): string => {
   if (value === null || value === undefined || Number.isNaN(value)) return UNAVAILABLE;
   return `${compactNumberFormatter.format(value)} lots`;

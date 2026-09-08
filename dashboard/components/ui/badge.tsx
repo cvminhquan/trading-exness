@@ -2,16 +2,17 @@ import { cn } from "@/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import type { HTMLAttributes } from "react";
 
+/** Compact state chips — only for real states, not decorative labels. */
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide",
+  "inline-flex items-center rounded-sm border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
   {
     variants: {
       variant: {
-        default: "border-slate-200 bg-slate-100 text-slate-700",
-        success: "border-emerald-200 bg-emerald-50 text-emerald-700",
-        warning: "border-amber-200 bg-amber-50 text-amber-800",
-        danger: "border-rose-200 bg-rose-50 text-rose-700",
-        info: "border-sky-200 bg-sky-50 text-sky-700",
+        default: "border-slate-200 bg-transparent text-slate-600",
+        success: "border-emerald-300 bg-transparent text-emerald-800",
+        warning: "border-amber-300 bg-transparent text-amber-800",
+        danger: "border-rose-300 bg-transparent text-rose-800",
+        info: "border-slate-300 bg-transparent text-slate-700",
       },
     },
     defaultVariants: {
