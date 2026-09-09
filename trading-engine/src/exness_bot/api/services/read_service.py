@@ -167,6 +167,10 @@ class ReadService:
     def provider(self) -> TradingDataProvider:
         return self._provider
 
+    @property
+    def account_runtime(self) -> AccountRuntime:
+        return self._account_runtime
+
     def attach_candle_engine(self, engine: CandleEngine | None) -> None:
         self._candle_engine = engine
 
@@ -226,6 +230,8 @@ class ReadService:
         return "DISCONNECTED"
 
     def get_session_context(self) -> SessionContextDTO:
+        # Reconcile stored profile vs connected MT5 before exposing accountProfile.
+        self._account_runtime.snapshot()
         snapshot = self._snapshot()
         account_label = "Chưa kết nối"
         if snapshot.account is not None:
@@ -1439,6 +1445,30 @@ class ReadService:
 
     def get_account_switch_state(self) -> AccountSwitchStateDTO:
         return self._account_runtime.snapshot()
+
+    def get_auto_demo_status(self) -> dict[str, object]:
+        """Read-only Phase 17.3 status — never starts the loop or sends orders."""
+        from pathlib import Path
+
+        from exness_bot.execution.auto_demo.decision_store import SqliteAutoDemoDecisionStore
+        from exness_bot.execution.auto_demo.status import build_auto_demo_status
+
+        store = SqliteAutoDemoDecisionStore.from_settings_database_url(
+            self._settings.database_url,
+            fallback=Path("auto_demo_decisions.db"),
+        )
+        account = None
+        try:
+            snapshot = self._snapshot()
+            account = snapshot.account
+        except Exception:
+            account = None
+        return build_auto_demo_status(
+            self._settings,
+            store,
+            broker_login=None if account is None else account.login,
+            account_trade_mode=None if account is None else account.trade_mode,
+        )
 
     def set_active_account(self, profile: str) -> AccountSwitchStateDTO:
         try:

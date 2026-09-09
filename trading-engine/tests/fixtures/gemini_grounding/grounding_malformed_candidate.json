@@ -1,0 +1,13 @@
+{
+  "fixture_id": "grounding_malformed_candidate",
+  "description": "Missing candidates and empty text",
+  "response": {
+    "text": "",
+    "candidates": null
+  },
+  "expected": {
+    "ok": false,
+    "status_hint": "UNAVAILABLE",
+    "error": "malformed_response"
+  }
+}

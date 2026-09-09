@@ -1,0 +1,45 @@
+{
+  "case_id": "A_mtf_conflicting_wait",
+  "schema_version": "1.0",
+  "symbol": "XAUUSD",
+  "generated_at": "2026-09-09T08:40:00+00:00",
+  "current_price": 2655.25,
+  "freshness": {"status": "FRESH"},
+  "bot_analysis": {
+    "signal": "WAIT",
+    "production_strategy": "mtf_technical_v1",
+    "setup_state": "NO_SETUP",
+    "execution_status": "NOT_READY",
+    "mtf_score": 0.15
+  },
+  "mtf_summary": {"alignment": "CONFLICTING", "primary_bias": "BULLISH"},
+  "timeframes": {
+    "M15": {
+      "role": "PRIMARY",
+      "trend": "BULLISH",
+      "structure": "BULLISH",
+      "last_closed_candle_timestamp": "2026-09-09T08:15:00+00:00",
+      "nearest_support": 2648.0,
+      "nearest_resistance": 2662.0,
+      "indicators": {"rsi14": 58.0, "ema20": 2652.0}
+    },
+    "H1": {
+      "role": "CONFIRMATION",
+      "trend": "BEARISH",
+      "structure": "BEARISH",
+      "last_closed_candle_timestamp": "2026-09-09T07:00:00+00:00"
+    },
+    "H4": {
+      "role": "CONTEXT",
+      "trend": "NEUTRAL",
+      "structure": "RANGE",
+      "last_closed_candle_timestamp": "2026-09-09T04:00:00+00:00"
+    },
+    "D1": {
+      "role": "MACRO_CONTEXT",
+      "trend": "BEARISH",
+      "structure": "BEARISH",
+      "last_closed_candle_timestamp": "2026-09-08T00:00:00+00:00"
+    }
+  }
+}

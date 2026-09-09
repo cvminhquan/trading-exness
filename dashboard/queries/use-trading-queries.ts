@@ -2,6 +2,7 @@
 
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { AccountProfileId } from "@/domain";
+import type { TradeListParams } from "@/domain/api/params";
 import { tradingRepository } from "@/repositories";
 import { tradingKeys } from "./keys";
 
@@ -122,10 +123,15 @@ export const usePositions = () =>
     refetchInterval: 3_000,
   });
 
-export const useTrades = () =>
+export const useTrades = (params?: TradeListParams) =>
   useQuery({
-    queryKey: tradingKeys.trades(),
-    queryFn: () => tradingRepository.getTrades(),
+    queryKey: tradingKeys.trades(params),
+    queryFn: () =>
+      tradingRepository.getTrades({
+        page: 1,
+        pageSize: 200,
+        ...params,
+      }),
     refetchInterval: 15_000,
   });
 
@@ -167,6 +173,7 @@ export const useAccountSwitchState = () =>
   useQuery({
     queryKey: tradingKeys.accounts(),
     queryFn: () => tradingRepository.getAccountSwitchState(),
+    refetchInterval: 5_000,
   });
 
 export const useSetActiveAccount = () => {
@@ -179,3 +186,35 @@ export const useSetActiveAccount = () => {
     },
   });
 };
+
+export const useClosePosition = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; confirm: string }) =>
+      tradingRepository.closePosition(input.id, { confirm: input.confirm }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: tradingKeys.all });
+    },
+  });
+};
+
+export const useClosePositions = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      confirm: string;
+      positionIds?: string[];
+      closeAll?: boolean;
+    }) => tradingRepository.closePositions(input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: tradingKeys.all });
+    },
+  });
+};
+
+/** Phase 16.3.5 — analysis-only chat (not a broker mutation). */
+export const useMarketAnalystChat = (symbol: string) =>
+  useMutation({
+    mutationFn: (input: { message: string; sessionId?: string | null }) =>
+      tradingRepository.postAnalystChat(symbol, input),
+  });

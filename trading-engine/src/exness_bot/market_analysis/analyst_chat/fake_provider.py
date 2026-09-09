@@ -15,14 +15,14 @@ class FakeMarketAnalystProvider:
     def __init__(
         self,
         *,
-        answer: str | None = None,
+        canned_answer: str | None = None,
         answer_type: str = "GENERAL_MARKET_QUESTION",
         source_refs: list[str] | None = None,
         invent_url: bool = False,
         claim_execution: bool = False,
         raise_error: bool = False,
     ) -> None:
-        self.answer = answer
+        self.canned_answer = canned_answer
         self.answer_type = answer_type
         self.source_refs = source_refs
         self.invent_url = invent_url
@@ -57,7 +57,7 @@ class FakeMarketAnalystProvider:
                 model="fake",
                 latency_ms=1.0,
             )
-        text = self.answer or (
+        text = self.canned_answer or (
             f"Fake analyst for {context.symbol}: bot="
             f"{context.technical.get('bot_signal')}. Q={message[:80]}"
         )

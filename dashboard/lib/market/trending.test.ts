@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatCompactMarketPrice, formatSignedPercentChange } from "@/lib/format";
 import { computePositionPriceMovePct } from "@/lib/market/position-move";
-import { computeSessionChangePct, quoteMidPrice } from "@/lib/market/quote-price";
+import { computeSessionChangePct, quoteMidPrice, resolveDisplayPrice } from "@/lib/market/quote-price";
 import { computeQuoteSessionMove } from "@/lib/market/session-move";
 import { mergeWatchSymbols, normalizeSymbol, TRENDING_SYMBOLS } from "@/lib/market/trending";
 import type { Quote } from "@/domain";
@@ -35,6 +35,12 @@ describe("quote mid + session change", () => {
 
   it("uses mid from bid/ask", () => {
     expect(quoteMidPrice(quote)).toBe(101);
+  });
+
+  it("prefers live quote over analysis snapshot price", () => {
+    expect(resolveDisplayPrice(quote, 999)).toBe(101);
+    expect(resolveDisplayPrice(undefined, 999)).toBe(999);
+    expect(resolveDisplayPrice(undefined, null)).toBeNull();
   });
 
   it("computes session change percent", () => {

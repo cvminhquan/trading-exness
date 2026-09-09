@@ -1,0 +1,35 @@
+{
+  "fixture_id": "grounding_normal",
+  "description": "Normal grounded response with two canonical sources",
+  "response": {
+    "text": "{\"external_bias\":\"BULLISH_FOR_GOLD\",\"evidence_strength\":\"MODERATE\",\"event_risk\":\"MEDIUM\",\"claims\":[{\"category\":\"USD\",\"claim_type\":\"FACT\",\"text\":\"USD softens in synthetic fixture.\",\"direction_for_gold\":\"BULLISH_FOR_GOLD\",\"source_urls\":[\"https://www.reuters.com/markets/gold-fixture-1\"]}],\"drivers\":[{\"driver\":\"USD\",\"direction_for_gold\":\"BULLISH_FOR_GOLD\",\"summary\":\"Softer dollar supports gold (fixture).\",\"evidence_strength\":\"MODERATE\",\"source_urls\":[\"https://www.reuters.com/markets/gold-fixture-1\"]}],\"events\":[{\"event_name\":\"FOMC\",\"event_type\":\"CENTRAL_BANK\",\"importance\":\"HIGH\",\"status\":\"UPCOMING\",\"scheduled_at\":null,\"note\":\"Synthetic event\",\"source_urls\":[\"https://www.federalreserve.gov/fixture-fomc\"]}],\"supporting_factors\":[\"USD soft\"],\"conflicting_factors\":[],\"unknowns\":[]}",
+    "candidates": [
+      {
+        "grounding_metadata": {
+          "web_search_queries": ["XAUUSD gold USD yields fixture"],
+          "grounding_chunks": [
+            {
+              "web": {
+                "uri": "https://www.reuters.com/markets/gold-fixture-1",
+                "title": "Synthetic Reuters gold note"
+              }
+            },
+            {
+              "web": {
+                "uri": "https://www.federalreserve.gov/fixture-fomc",
+                "title": "Synthetic Fed calendar"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "min_sources": 2,
+    "status_hint": "AVAILABLE",
+    "external_bias": "BULLISH_FOR_GOLD",
+    "has_search_queries": true
+  }
+}

@@ -18,6 +18,7 @@ import {
   mockMultiTimeframeAnalysis,
   mockExecutionCandidateStatus,
   mockMarketSynthesis,
+  mockAnalystChatResponse,
   simulateDelay,
 } from "@/mocks/data";
 import { mockBacktestReports } from "@/mocks/backtest-data";
@@ -56,6 +57,7 @@ const buildMockAccountState = (active: AccountProfileId): AccountSwitchState => 
 
 export class MockTradingRepository implements TradingRepository {
   private activeProfile: AccountProfileId = "demo";
+  private openPositions = [...mockPositions];
 
   async getBotStatus() {
     await simulateDelay();
@@ -84,7 +86,67 @@ export class MockTradingRepository implements TradingRepository {
 
   async getPositions() {
     await simulateDelay();
-    return mockPositions;
+    return [...this.openPositions];
+  }
+
+  async closePosition(id: string, body: { confirm: string }) {
+    await simulateDelay(80);
+    if (body.confirm !== "CLOSE" && body.confirm !== "LIVE-CLOSE") {
+      throw new Error("Cần nhập đúng cụm xác nhận để đóng vị thế.");
+    }
+    const target = this.openPositions.find((p) => p.id === id);
+    if (!target) {
+      throw new Error("Không tìm thấy vị thế.");
+    }
+    this.openPositions = this.openPositions.filter((p) => p.id !== id);
+    return {
+      requested: 1,
+      closed: 1,
+      failed: 0,
+      accountProfile: this.activeProfile,
+      results: [
+        {
+          positionId: id,
+          symbol: target.symbol,
+          success: true,
+          dryRun: false,
+          executionPrice: target.currentPrice,
+          volume: target.volume,
+          errorMessage: null,
+        },
+      ],
+    };
+  }
+
+  async closePositions(body: {
+    confirm: string;
+    positionIds?: string[];
+    closeAll?: boolean;
+  }) {
+    await simulateDelay(100);
+    if (body.confirm !== "CLOSE-ALL" && body.confirm !== "LIVE-CLOSE-ALL") {
+      throw new Error("Cần nhập đúng cụm xác nhận để đóng vị thế.");
+    }
+    const ids = body.closeAll
+      ? this.openPositions.map((p) => p.id)
+      : (body.positionIds ?? []);
+    const closing = this.openPositions.filter((p) => ids.includes(p.id));
+    this.openPositions = this.openPositions.filter((p) => !ids.includes(p.id));
+    return {
+      requested: closing.length,
+      closed: closing.length,
+      failed: 0,
+      accountProfile: this.activeProfile,
+      results: closing.map((p) => ({
+        positionId: p.id,
+        symbol: p.symbol,
+        success: true,
+        dryRun: false,
+        executionPrice: p.currentPrice,
+        volume: p.volume,
+        errorMessage: null,
+      })),
+    };
   }
 
   async getTrades() {
@@ -185,5 +247,10 @@ export class MockTradingRepository implements TradingRepository {
   async getMarketSynthesis() {
     await simulateDelay(100);
     return mockMarketSynthesis;
+  }
+
+  async postAnalystChat(symbol: string, body: { message: string; sessionId?: string | null }) {
+    await simulateDelay(120);
+    return mockAnalystChatResponse(symbol, body.message, body.sessionId);
   }
 }

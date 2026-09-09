@@ -7,7 +7,7 @@ order_send remains only inside LiveMT5ExecutionTransport.
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 import structlog
@@ -29,6 +29,8 @@ from exness_bot.paper_execution.contract import AckStatus, ExecutionAck, Executi
 logger = structlog.get_logger(__name__)
 
 SnapshotProvider = Callable[[], GatedExecutionSnapshot]
+EnablementEvaluator = Callable[[DemoPreflightContext], DemoEnablementResult]
+SettingsProvider = Callable[[], Settings]
 
 
 class GatedExecutionBlocked(Exception):
@@ -53,12 +55,21 @@ class GatedMT5ExecutionPort:
     executor: MT5Executor
     snapshot_provider: SnapshotProvider
     raise_on_block: bool = False
+    enablement_evaluator: EnablementEvaluator = field(
+        default=evaluate_demo_controlled_enablement
+    )
+    settings_provider: SettingsProvider | None = None
 
     def __post_init__(self) -> None:
         self.submit_count = 0
         self.executor_submit_count = 0
         self.last_block_reason: str | None = None
         self.last_enablement: DemoEnablementResult | None = None
+
+    def _effective_settings(self) -> Settings:
+        if self.settings_provider is not None:
+            return self.settings_provider()
+        return self.settings
 
     def submit(self, intent: ExecutionIntent, *, quote: SymbolInfo) -> ExecutionAck:
         self.submit_count += 1
@@ -95,12 +106,13 @@ class GatedMT5ExecutionPort:
         quote: SymbolInfo,
         snapshot: GatedExecutionSnapshot,
     ) -> DemoEnablementResult:
+        settings = self._effective_settings()
         approval = snapshot.approval
         if approval is None:
-            approval = OneShotApproval(active=self.settings.live_demo_approval)
+            approval = OneShotApproval(active=settings.live_demo_approval)
 
         context = DemoPreflightContext(
-            settings=self.settings,
+            settings=settings,
             symbol_info=quote,
             intents=snapshot.intents,
             intent_store_error=snapshot.intent_store_error,
@@ -114,8 +126,8 @@ class GatedMT5ExecutionPort:
             approval=approval,
             prior_submission_count=snapshot.prior_submission_count,
         )
-        result = evaluate_demo_controlled_enablement(context)
-        symbol_block = _check_symbol_allowlist(self.settings, intent.symbol)
+        result = self.enablement_evaluator(context)
+        symbol_block = _check_symbol_allowlist(settings, intent.symbol)
         if symbol_block is None:
             return result
         extra = DemoGateResult(DemoGateName.SYMBOL_METADATA, False, symbol_block)

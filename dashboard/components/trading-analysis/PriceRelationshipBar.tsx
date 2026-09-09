@@ -7,16 +7,21 @@ import { cn } from "@/lib/utils";
 
 type PriceRelationshipBarProps = {
   analysis: MultiTimeframeAnalysis;
+  /** Giá live đồng bộ tabs/hero; fallback analysis.currentPrice. */
+  currentPrice?: number | null;
 };
 
 /**
  * Tóm tắt thứ tự quan hệ giá — không lặp lại số đã hiện ở trên.
  */
-export const PriceRelationshipBar = ({ analysis }: PriceRelationshipBarProps) => {
+export const PriceRelationshipBar = ({
+  analysis,
+  currentPrice,
+}: PriceRelationshipBarProps) => {
   const setup = analysis.setup;
   if (!setup || setup.state === "NO_SETUP") return null;
 
-  const current = analysis.currentPrice;
+  const current = currentPrice ?? analysis.currentPrice;
   const tp1 = setup.takeProfits.find((t) => t.level === 1)?.price ?? null;
   const sl = setup.stopLoss ?? null;
   const zoneLow = setup.entryZoneLow ?? null;

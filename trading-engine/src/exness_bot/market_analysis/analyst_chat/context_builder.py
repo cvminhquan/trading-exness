@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any, Callable
+from typing import Any
 
 from exness_bot.config.settings import Settings
 from exness_bot.market_analysis.analyst_chat.models import (

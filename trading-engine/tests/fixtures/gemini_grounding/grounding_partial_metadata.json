@@ -1,0 +1,24 @@
+{
+  "fixture_id": "grounding_partial_metadata",
+  "description": "Chunk missing title; optional fields absent",
+  "response": {
+    "text": "{\"external_bias\":\"NEUTRAL\",\"evidence_strength\":\"WEAK\",\"event_risk\":\"LOW\",\"claims\":[],\"drivers\":[],\"events\":[],\"supporting_factors\":[],\"conflicting_factors\":[],\"unknowns\":[\"partial metadata\"]}",
+    "candidates": [
+      {
+        "grounding_metadata": {
+          "grounding_chunks": [
+            {
+              "web": {
+                "uri": "https://apnews.com/article/gold-partial-fixture"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "min_sources": 1
+  }
+}

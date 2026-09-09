@@ -2,6 +2,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import type { ExecutionCandidateStatus, MultiTimeframeAnalysis } from "@/domain";
+import { useWatchlistQuotes } from "@/hooks/use-watchlist-quotes";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { MULTI_TIMEFRAME_ANALYSIS as L } from "@/lib/i18n/vi";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,8 @@ export const MultiTimeframeAnalysisCard = ({
   analysis,
   eligibility,
 }: MultiTimeframeAnalysisCardProps) => {
+  const { displayPriceOf } = useWatchlistQuotes();
+  const displayPrice = displayPriceOf(analysis.symbol, analysis.currentPrice);
   const setup = analysis.setup;
   const sizing = analysis.sizing;
   const primary = analysis.timeframes.M15 ?? Object.values(analysis.timeframes)[0];
@@ -130,7 +133,7 @@ export const MultiTimeframeAnalysisCard = ({
               <Metric label={L.setupState} value={setupState} />
               <Metric
                 label={L.currentPrice}
-                value={formatOrDash(analysis.currentPrice, 2)}
+                value={formatOrDash(displayPrice, 2)}
               />
               <Metric label={L.entry} value={formatOrDash(setup.entryPrice, 2)} />
               <Metric

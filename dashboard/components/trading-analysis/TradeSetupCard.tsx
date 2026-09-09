@@ -2,6 +2,7 @@
 
 import { PriceRelationshipBar } from "@/components/trading-analysis/PriceRelationshipBar";
 import type { MultiTimeframeAnalysis } from "@/domain";
+import { useWatchlistQuotes } from "@/hooks/use-watchlist-quotes";
 import { formatNumber } from "@/lib/format";
 import { TRADE_ANALYSIS_UX as L } from "@/lib/i18n/vi";
 import { hasDirectionalSetup } from "@/lib/trading-analysis/mtf-display";
@@ -12,6 +13,8 @@ type TradeSetupCardProps = {
 };
 
 export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
+  const { displayPriceOf } = useWatchlistQuotes();
+  const displayPrice = displayPriceOf(analysis.symbol, analysis.currentPrice);
   const setup = analysis.setup;
   const hasSetup = hasDirectionalSetup(analysis);
 
@@ -73,9 +76,7 @@ export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
         <MetricRow
           label={L.currentPrice}
           value={
-            analysis.currentPrice == null
-              ? L.dash
-              : formatNumber(analysis.currentPrice, 2)
+            displayPrice == null ? L.dash : formatNumber(displayPrice, 2)
           }
         />
         <MetricRow
@@ -128,7 +129,7 @@ export const TradeSetupCard = ({ analysis }: TradeSetupCardProps) => {
           }
         />
 
-        <PriceRelationshipBar analysis={analysis} />
+        <PriceRelationshipBar analysis={analysis} currentPrice={displayPrice} />
       </div>
     </section>
   );

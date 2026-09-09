@@ -320,11 +320,66 @@ class ActivateAccountRequest(ApiModel):
     profile: str
 
 
+class ClosePositionRequest(ApiModel):
+    """Xác nhận đóng một vị thế — bắt buộc confirm phrase."""
+
+    confirm: str
+
+
+class ClosePositionsBulkRequest(ApiModel):
+    """Đóng nhiều vị thế hoặc đóng tất cả."""
+
+    confirm: str
+    position_ids: list[str] | None = Field(default=None, alias="positionIds")
+    close_all: bool = Field(default=False, alias="closeAll")
+
+
+class ClosePositionItemResultDTO(ApiModel):
+    position_id: str = Field(alias="positionId")
+    symbol: str
+    success: bool
+    dry_run: bool = Field(default=False, alias="dryRun")
+    execution_price: float | None = Field(default=None, alias="executionPrice")
+    volume: float | None = None
+    error_message: str | None = Field(default=None, alias="errorMessage")
+
+
+class ClosePositionsResultDTO(ApiModel):
+    requested: int
+    closed: int
+    failed: int
+    account_profile: str = Field(alias="accountProfile")
+    results: list[ClosePositionItemResultDTO]
+
+
 class AnalystChatRequest(ApiModel):
     """Phase 16.3.5 — analysis-only chat body (no market facts as truth)."""
 
     message: str
     session_id: str | None = Field(default=None, alias="sessionId")
+
+
+class AutoDemoStatusDTO(ApiModel):
+    """Phase 17.3 — read-only autonomous DEMO status (no secrets)."""
+
+    enabled: bool
+    default_enabled: bool = Field(alias="defaultEnabled")
+    trading_env: str = Field(alias="tradingEnv")
+    kill_switch: bool = Field(alias="killSwitch")
+    demo_approval: bool = Field(alias="demoApproval")
+    allowlist_configured: bool = Field(alias="allowlistConfigured")
+    allowlist_match: bool = Field(alias="allowlistMatch")
+    account_login_masked: str | None = Field(default=None, alias="accountLoginMasked")
+    account_trade_mode: str | None = Field(default=None, alias="accountTradeMode")
+    demo_verified: bool = Field(alias="demoVerified")
+    symbol: str
+    timeframe: str
+    latest_closed_m15: str | None = Field(default=None, alias="latestClosedM15")
+    last_decision_id: str | None = Field(default=None, alias="lastDecisionId")
+    last_execution_state: str | None = Field(default=None, alias="lastExecutionState")
+    last_blocked_reason: str | None = Field(default=None, alias="lastBlockedReason")
+    last_signal: str | None = Field(default=None, alias="lastSignal")
+    note: str
 
 
 class DashboardOverviewDTO(ApiModel):

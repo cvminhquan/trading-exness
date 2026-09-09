@@ -14,10 +14,10 @@ from exness_bot.config.settings import Settings
 from exness_bot.market_analysis.analyst_chat.context_builder import (
     MarketAnalystContextBuilder,
 )
-from exness_bot.market_analysis.analyst_chat.fallback import build_fallback_answer
 from exness_bot.market_analysis.analyst_chat.fake_provider import (
     FakeMarketAnalystProvider,
 )
+from exness_bot.market_analysis.analyst_chat.fallback import build_fallback_answer
 from exness_bot.market_analysis.analyst_chat.gemini_provider import (
     GeminiMarketAnalystProvider,
 )
@@ -180,11 +180,27 @@ class MarketAnalystChatService:
                     warnings.append("ai_chat_disabled")
                 else:
                     warnings.append("ai_provider_unavailable")
+                try:
+                    from exness_bot.market_analysis.integration.metrics import (
+                        get_integration_metrics,
+                    )
+
+                    get_integration_metrics().inc("analyst_chat_fallbacks")
+                except Exception:  # pragma: no cover
+                    pass
         else:
             try:
                 raw = provider.answer(
                     context=context, conversation=history, message=msg
                 )
+                try:
+                    from exness_bot.market_analysis.integration.metrics import (
+                        get_integration_metrics,
+                    )
+
+                    get_integration_metrics().inc("analyst_chat_provider_calls")
+                except Exception:  # pragma: no cover
+                    pass
                 try:
                     (
                         answer_text,
@@ -219,7 +235,7 @@ class MarketAnalystChatService:
                         latency_ms=raw.latency_ms,
                         error_type=ve.reason,
                     )
-            except Exception as exc:  # noqa: BLE001 — provider isolation
+            except Exception as exc:
                 warnings.append("provider_failure")
                 logger.warning(
                     "analyst_chat_provider_failed",
@@ -246,15 +262,12 @@ class MarketAnalystChatService:
         if isinstance(tech_fresh, dict) and str(tech_fresh.get("status")).upper() == "STALE":
             warnings.append("technical_stale")
         ext_fresh = context.freshness.get("external")
-        if isinstance(ext_fresh, dict) and str(ext_fresh.get("status")).upper() == "STALE":
+        ext_status = str(context.external.get("status") or "").upper()
+        if (
+            (isinstance(ext_fresh, dict) and str(ext_fresh.get("status")).upper() == "STALE")
+            or ext_status == "STALE"
+        ):
             warnings.append("external_stale")
-        elif str(context.external.get("status") or "").upper() in {
-            "STALE",
-            "UNAVAILABLE",
-            "DISABLED",
-        }:
-            if str(context.external.get("status")).upper() == "STALE":
-                warnings.append("external_stale")
 
         used = self._used_context_for_intent(intent)
 
@@ -318,4 +331,5 @@ class MarketAnalystChatService:
             sources=sources,
             warnings=list(dict.fromkeys(warnings)),
             provider_metadata=provider_meta,
+            chat_enabled=bool(self._settings.ai_market_analyst_chat_enabled),
         )

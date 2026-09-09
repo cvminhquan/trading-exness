@@ -18,8 +18,12 @@ import type {
   MultiTimeframeAnalysis,
   ExecutionCandidateStatus,
   MarketSynthesis,
+  MarketAnalystChatResponse,
 } from "@/domain";
-import { marketSynthesisSchema } from "@/domain/schemas";
+import {
+  marketAnalystChatResponseSchema,
+  marketSynthesisSchema,
+} from "@/domain/schemas";
 
 const now = new Date();
 const iso = (offsetHours: number): string =>
@@ -394,6 +398,7 @@ export const mockMarketSynthesis: MarketSynthesis = marketSynthesisSchema.parse(
     conflicting_factors: ["Stronger USD"],
     source_count: 2,
     freshness: "RECENT",
+    provider_chips: ["BLS", "FED", "RSS"],
   },
   synthesis: {
     state: "TECHNICAL_EXTERNAL_CONFLICT",
@@ -450,6 +455,52 @@ export const mockMarketSynthesis: MarketSynthesis = marketSynthesisSchema.parse(
   cache: { hit: false, age_seconds: 0 },
   note: "MarketSynthesis is human-facing analysis only. It does not generate or approve trades.",
 });
+
+export const mockAnalystChatResponse = (
+  symbol: string,
+  message: string,
+  sessionId?: string | null,
+): MarketAnalystChatResponse =>
+  marketAnalystChatResponseSchema.parse({
+    schema_version: "1.0",
+    message_id: `msg_mock_${Date.now()}`,
+    session_id: sessionId || `sess_mock_${symbol}`,
+    symbol,
+    created_at: iso(0),
+    answer:
+      "Bot signal hiện tại dựa trên technical strategy mtf_technical_v1. " +
+      "External context không tham gia tính signal. " +
+      `Câu hỏi: ${message.slice(0, 120)}`,
+    answer_type: "BOT_SIGNAL_EXPLANATION",
+    intent: "WHY_BOT_SIGNAL",
+    context_status: "AVAILABLE",
+    context_changed: false,
+    used_context: { technical: true, external: true, synthesis: true },
+    technical_fingerprint: "tech_mock",
+    external_fingerprint: "ext_mock",
+    synthesis_fingerprint: "syn_mock",
+    source_refs: ["src_1"],
+    sources: [
+      {
+        source_id: "src_1",
+        title: "Geopolitical risks support safe-haven gold demand",
+        domain: "apnews.com",
+        url: "https://apnews.com/article/gold-geopolitics-example",
+        freshness: "RECENT",
+      },
+    ],
+    warnings: ["ai_chat_disabled"],
+    provider_metadata: {
+      provider: null,
+      model: null,
+      used: false,
+      fallback_used: true,
+      latency_ms: null,
+      error_type: null,
+    },
+    chat_enabled: false,
+    note: "AI Market Analyst cannot execute or approve trades. Analysis / explanation only.",
+  });
 
 export const mockDailyRealizedPnl: DailyRealizedPnl[] = [
   { date: "2026-09-01", realizedPnl: 0.11 },

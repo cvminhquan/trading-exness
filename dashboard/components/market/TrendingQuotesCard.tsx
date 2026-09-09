@@ -11,17 +11,16 @@ import {
   formatSignedPercentChange,
 } from "@/lib/format";
 import { A11Y, SECTION_LABELS, TRENDING_QUOTES, UI } from "@/lib/i18n/vi";
+import { useWatchlistQuotes } from "@/hooks/use-watchlist-quotes";
 import { computeSessionChangePct, quoteMidPrice } from "@/lib/market/quote-price";
 import {
   MAX_EXTRA_SYMBOLS,
   TRENDING_SYMBOLS,
   loadExtraSymbols,
-  mergeWatchSymbols,
   normalizeSymbol,
   saveExtraSymbols,
 } from "@/lib/market/trending";
 import { cn } from "@/lib/utils";
-import { useQuotes } from "@/queries/use-trading-queries";
 
 const EMPTY_QUOTES: Quote[] = [];
 
@@ -129,7 +128,6 @@ const QuoteRow = ({ rank, quote, changePct, removable, onRemove }: RowProps) => 
 };
 
 export const TrendingQuotesCard = () => {
-  const [extras, setExtras] = useState(() => loadExtraSymbols());
   const [draft, setDraft] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [midSnapshot, setMidSnapshot] = useState<{
@@ -138,19 +136,26 @@ export const TrendingQuotesCard = () => {
     mids: Record<string, number>;
   }>({ quotesKey: "", changes: {}, mids: {} });
 
-  const symbols = mergeWatchSymbols(extras);
-  const quotesQuery = useQuotes(symbols);
-  const quotes = quotesQuery.data ?? EMPTY_QUOTES;
-  const bySymbol = new Map(quotes.map((q) => [q.symbol, q]));
+  const {
+    symbols,
+    quotes,
+    bySymbol,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useWatchlistQuotes();
+  const extras = loadExtraSymbols();
+  const quotesList = quotes.length > 0 ? quotes : EMPTY_QUOTES;
 
-  const quotesKey = quotes
+  const quotesKey = quotesList
     .map((q) => `${q.symbol}:${q.bid}:${q.ask}:${q.last}`)
     .join("|");
 
   if (quotesKey !== midSnapshot.quotesKey) {
     const nextChanges: Record<string, number | null> = {};
     const nextMids: Record<string, number> = { ...midSnapshot.mids };
-    for (const quote of quotes) {
+    for (const quote of quotesList) {
       const mid = quoteMidPrice(quote);
       if (mid == null) {
         nextChanges[quote.symbol] = null;
@@ -182,17 +187,13 @@ export const TrendingQuotesCard = () => {
       setFormError(TRENDING_QUOTES.maxExtras);
       return;
     }
-    const next = [...extras, symbol];
-    setExtras(next);
-    saveExtraSymbols(next);
+    saveExtraSymbols([...extras, symbol]);
     setDraft("");
     setFormError(null);
   };
 
   const handleRemove = (symbol: string) => {
-    const next = extras.filter((item) => item !== symbol);
-    setExtras(next);
-    saveExtraSymbols(next);
+    saveExtraSymbols(extras.filter((item) => item !== symbol));
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -204,10 +205,10 @@ export const TrendingQuotesCard = () => {
 
   return (
     <QueryState
-      isLoading={quotesQuery.isLoading && quotes.length === 0}
-      isError={quotesQuery.isError}
-      errorMessage={quotesQuery.error?.message}
-      onRetry={() => void quotesQuery.refetch()}
+      isLoading={isLoading && quotesList.length === 0}
+      isError={isError}
+      errorMessage={error?.message}
+      onRetry={() => void refetch()}
       section={SECTION_LABELS.quotes}
       isEmpty={false}
     >

@@ -14,26 +14,23 @@ import { Plus, X } from "lucide-react";
 import { MarketMove } from "@/components/market/MarketMove";
 import { MiniSparkline } from "@/components/market/MiniSparkline";
 import { useSessionQuoteMoves } from "@/hooks/use-session-quote-moves";
+import { useWatchlistQuotes } from "@/hooks/use-watchlist-quotes";
+import { formatCompactMarketPrice } from "@/lib/format";
+import { SYMBOL_TABS, TRENDING_QUOTES } from "@/lib/i18n/vi";
 import {
-  useDashboardSymbolSignals,
-  useQuotes,
-} from "@/queries/use-trading-queries";
+  MAX_EXTRA_SYMBOLS,
+  loadExtraSymbols,
+  normalizeSymbol,
+  saveExtraSymbols,
+} from "@/lib/market/trending";
+import { quoteMidPrice } from "@/lib/market/quote-price";
 import {
   DASHBOARD_SYMBOLS,
   dashboardSymbolHref,
   isValidMarketSymbol,
   normalizeDashboardSymbol,
 } from "@/lib/symbols/config";
-import {
-  MAX_EXTRA_SYMBOLS,
-  loadExtraSymbols,
-  mergeWatchSymbols,
-  normalizeSymbol,
-  saveExtraSymbols,
-} from "@/lib/market/trending";
-import { formatCompactMarketPrice } from "@/lib/format";
-import { quoteMidPrice } from "@/lib/market/quote-price";
-import { SYMBOL_TABS, TRENDING_QUOTES } from "@/lib/i18n/vi";
+import { useDashboardSymbolSignals } from "@/queries/use-trading-queries";
 import { cn } from "@/lib/utils";
 
 type SymbolTabsProps = {
@@ -50,19 +47,16 @@ export const SymbolTabs = ({
 }: SymbolTabsProps) => {
   const router = useRouter();
   const sparkUid = useId().replace(/:/g, "");
-  const [extras, setExtras] = useState(() => loadExtraSymbols());
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const activeRef = useRef<HTMLAnchorElement | null>(null);
 
-  const symbols = mergeWatchSymbols(extras);
-  const quotesQuery = useQuotes(symbols);
-  const quotes = quotesQuery.data ?? [];
-  const bySymbol = new Map(quotes.map((q) => [q.symbol, q] as const));
+  const { symbols, bySymbol, quotes } = useWatchlistQuotes();
   const session = useSessionQuoteMoves(quotes);
   const fetchedSignals = useDashboardSymbolSignals(symbols);
+  const extras = loadExtraSymbols();
   const extrasSet = new Set(extras);
 
   useEffect(() => {
@@ -92,9 +86,7 @@ export const SymbolTabs = ({
       setFormError(TRENDING_QUOTES.maxExtras);
       return;
     }
-    const next = [...extras, symbol];
-    setExtras(next);
-    saveExtraSymbols(next);
+    saveExtraSymbols([...extras, symbol]);
     setDraft("");
     setFormError(null);
     setAdding(false);
@@ -102,9 +94,7 @@ export const SymbolTabs = ({
   };
 
   const handleRemove = (symbol: string) => {
-    const next = extras.filter((item) => item !== symbol);
-    setExtras(next);
-    saveExtraSymbols(next);
+    saveExtraSymbols(extras.filter((item) => item !== symbol));
     if (normalizeDashboardSymbol(activeSymbol) === symbol) {
       router.push(hrefForSymbol(DASHBOARD_SYMBOLS[0]));
     }

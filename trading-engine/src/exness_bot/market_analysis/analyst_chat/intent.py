@@ -10,7 +10,7 @@ _EXEC_PATTERNS = (
     r"\bmở lệnh\b",
     r"\bđặt lệnh\b",
     r"\bexecute\b",
-    r"\border_send\b",
+    r"\border[\s_]*send\b",
     r"\bbuy now\b",
     r"\bsell now\b",
     r"\bopen (a )?(long|short|position)\b",
@@ -80,9 +80,9 @@ def classify_intent(message: str) -> ChatIntent:
         (_PRICE, ChatIntent.CURRENT_PRICE),
         (_EVENT, ChatIntent.EVENT_RISK),
         (_WATCH, ChatIntent.WHAT_TO_WATCH),
-        (_SR, ChatIntent.SUPPORT_RESISTANCE),
-        (_TF_CONFLICT, ChatIntent.TIMEFRAME_CONFLICT),
         (_EXTERNAL, ChatIntent.EXTERNAL_CONTEXT),
+        (_TF_CONFLICT, ChatIntent.TIMEFRAME_CONFLICT),
+        (_SR, ChatIntent.SUPPORT_RESISTANCE),
         (_TECH, ChatIntent.TECHNICAL_STATE),
     ):
         for pat in group:

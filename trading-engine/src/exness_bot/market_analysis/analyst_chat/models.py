@@ -168,6 +168,7 @@ class MarketAnalystChatResponse:
             provider=None, model=None, used=False, fallback_used=True
         )
     )
+    chat_enabled: bool = False
     note: str = (
         "AI Market Analyst cannot execute or approve trades. "
         "Analysis / explanation only."
@@ -193,5 +194,6 @@ class MarketAnalystChatResponse:
             "sources": [s.to_dict() for s in self.sources],
             "warnings": list(self.warnings),
             "provider_metadata": self.provider_metadata.to_dict(),
+            "chat_enabled": self.chat_enabled,
             "note": self.note,
         }

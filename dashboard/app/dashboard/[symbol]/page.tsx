@@ -86,8 +86,6 @@ export default function DashboardSymbolPage({ params }: PageProps) {
         ) : null}
       </QueryState>
 
-      <MarketContextSection symbol={symbol} />
-
       <div className="grid gap-4 xl:grid-cols-12">
         <section
           className="surface-card px-5 py-4 xl:col-span-8"
@@ -129,6 +127,8 @@ export default function DashboardSymbolPage({ params }: PageProps) {
           <RealizedPnlChart />
         </div>
       </div>
+
+      <MarketContextSection symbol={symbol} />
     </div>
   );
 }

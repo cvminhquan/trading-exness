@@ -1,0 +1,27 @@
+{
+  "fixture_id": "grounding_missing_published_at",
+  "description": "Grounded source without publication timestamp",
+  "response": {
+    "text": "{\"external_bias\":\"NEUTRAL\",\"evidence_strength\":\"WEAK\",\"event_risk\":\"LOW\",\"claims\":[{\"category\":\"GOLD_MARKET\",\"claim_type\":\"COMMENTARY\",\"text\":\"No published_at available in fixture.\",\"direction_for_gold\":\"NEUTRAL\",\"source_urls\":[\"https://www.bloomberg.com/markets/gold-undated-fixture\"]}],\"drivers\":[],\"events\":[],\"supporting_factors\":[],\"conflicting_factors\":[],\"unknowns\":[\"published_at missing\"]}",
+    "candidates": [
+      {
+        "grounding_metadata": {
+          "grounding_chunks": [
+            {
+              "web": {
+                "uri": "https://www.bloomberg.com/markets/gold-undated-fixture",
+                "title": "Undated synthetic Bloomberg note"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "min_sources": 1,
+    "published_at_null": true,
+    "freshness": "UNDATED"
+  }
+}

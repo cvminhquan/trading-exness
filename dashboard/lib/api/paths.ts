@@ -14,7 +14,12 @@ export const API_V1 = {
     `/api/v1/analysis/${encodeURIComponent(symbol)}/execution-candidate`,
   marketSynthesis: (symbol: string) =>
     `/api/v1/analysis/${encodeURIComponent(symbol)}/market-synthesis`,
+  analystChat: (symbol: string) =>
+    `/api/v1/analysis/${encodeURIComponent(symbol)}/analyst-chat`,
   positions: "/api/v1/positions",
+  positionClose: (id: string) =>
+    `/api/v1/positions/${encodeURIComponent(id)}/close`,
+  positionsClose: "/api/v1/positions/close",
   trades: "/api/v1/trades",
   strategy: "/api/v1/strategy",
   risk: "/api/v1/risk",

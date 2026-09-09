@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from exness_bot.api.services.account_runtime import AccountRuntime
+from exness_bot.api.services.position_close_service import PositionCloseService
 from exness_bot.api.services.read_service import ReadService
 from exness_bot.config.account_profiles import AccountProfileStore
 from exness_bot.config.settings import Settings, get_settings
@@ -43,3 +44,13 @@ def get_read_service() -> ReadService:
                 account_runtime=runtime,
             )
         return _read_service
+
+
+def get_position_close_service() -> PositionCloseService:
+    """Operator close service — shares provider/runtime with ReadService."""
+    service = get_read_service()
+    return PositionCloseService(
+        get_cached_settings(),
+        service.provider,
+        service.account_runtime,
+    )

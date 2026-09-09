@@ -1,0 +1,37 @@
+{
+  "fixture_id": "grounding_duplicate_sources",
+  "description": "Same canonical URL appears twice in grounding chunks + with utm",
+  "response": {
+    "text": "{\"external_bias\":\"BEARISH_FOR_GOLD\",\"evidence_strength\":\"MODERATE\",\"event_risk\":\"LOW\",\"claims\":[{\"category\":\"USD\",\"claim_type\":\"FACT\",\"text\":\"Duplicate URL mapping fixture.\",\"direction_for_gold\":\"BEARISH_FOR_GOLD\",\"source_urls\":[\"https://www.reuters.com/markets/gold-dup\",\"https://www.reuters.com/markets/gold-dup?utm_source=test\"]}],\"drivers\":[],\"events\":[],\"supporting_factors\":[],\"conflicting_factors\":[],\"unknowns\":[]}",
+    "candidates": [
+      {
+        "grounding_metadata": {
+          "grounding_chunks": [
+            {
+              "web": {
+                "uri": "https://www.reuters.com/markets/gold-dup",
+                "title": "Dup A"
+              }
+            },
+            {
+              "web": {
+                "uri": "https://www.reuters.com/markets/gold-dup?utm_source=test",
+                "title": "Dup B"
+              }
+            },
+            {
+              "web": {
+                "uri": "https://www.reuters.com/markets/gold-dup",
+                "title": "Dup C"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "exact_source_count": 1
+  }
+}

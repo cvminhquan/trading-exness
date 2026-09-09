@@ -6,7 +6,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query
 
-from exness_bot.api.dependencies import get_read_service
+from exness_bot.api.dependencies import get_position_close_service, get_read_service
 from exness_bot.api.schemas.common import DataEnvelope, PaginatedEnvelope
 from exness_bot.api.schemas.dashboard import (
     AccountOverviewDTO,
@@ -14,7 +14,11 @@ from exness_bot.api.schemas.dashboard import (
     AccountSwitchStateDTO,
     ActivateAccountRequest,
     AnalystChatRequest,
+    AutoDemoStatusDTO,
     BacktestReportDTO,
+    ClosePositionRequest,
+    ClosePositionsBulkRequest,
+    ClosePositionsResultDTO,
     DailyRealizedPnlDTO,
     DashboardOverviewDTO,
     ExecutionCandidateStatusDTO,
@@ -30,6 +34,7 @@ from exness_bot.api.schemas.dashboard import (
     TradeAnalysisDTO,
     TradeDTO,
 )
+from exness_bot.api.services.position_close_service import PositionCloseService
 from exness_bot.api.services.read_service import BacktestQuery, ReadService, TradeQuery
 
 router = APIRouter(prefix="/api/v1", tags=["Dashboard API v1"])
@@ -330,6 +335,22 @@ def get_analysis_by_symbol(
 
 
 @router.get(
+    "/execution/auto-demo/status",
+    summary="Trạng thái vòng lặp autonomous DEMO (chỉ đọc)",
+    description=(
+        "Phase 17.3 read-only status. Không start/stop loop, không order_send. "
+        "Operator điều khiển process: python -m exness_bot.execution.auto_demo"
+    ),
+    response_model=DataEnvelope[AutoDemoStatusDTO],
+    response_model_by_alias=True,
+)
+def get_auto_demo_status(
+    service: Annotated[ReadService, Depends(get_read_service)],
+) -> dict[str, object]:
+    return _envelope(service.get_auto_demo_status())
+
+
+@router.get(
     "/positions",
     summary="Vị thế đang mở",
     response_model=PaginatedEnvelope[PositionDTO],
@@ -342,6 +363,47 @@ def get_positions(
 ) -> dict[str, object]:
     items, meta = service.get_positions(page=page, page_size=page_size)
     return _paginated([item.model_dump(by_alias=True) for item in items], meta)
+
+
+@router.post(
+    "/positions/close",
+    summary="Đóng nhiều vị thế hoặc đóng tất cả",
+    description=(
+        "closeAll=true hoặc positionIds[]. Confirm: CLOSE-ALL (DEMO) "
+        "hoặc LIVE-CLOSE-ALL (LIVE)."
+    ),
+    response_model=DataEnvelope[ClosePositionsResultDTO],
+    response_model_by_alias=True,
+)
+def close_positions_bulk(
+    body: ClosePositionsBulkRequest,
+    closer: Annotated[PositionCloseService, Depends(get_position_close_service)],
+) -> dict[str, object]:
+    result = closer.close_many(
+        confirm=body.confirm,
+        position_ids=body.position_ids,
+        close_all=body.close_all,
+    )
+    return _envelope(result.model_dump(by_alias=True))
+
+
+@router.post(
+    "/positions/{position_id}/close",
+    summary="Đóng một vị thế đang mở",
+    description=(
+        "Đóng vị thế theo ticket. Yêu cầu DASHBOARD_ALLOW_CLOSE_POSITION=true "
+        "và confirm: CLOSE (DEMO) hoặc LIVE-CLOSE (LIVE + allow_live + kill switch off)."
+    ),
+    response_model=DataEnvelope[ClosePositionsResultDTO],
+    response_model_by_alias=True,
+)
+def close_position(
+    position_id: str,
+    body: ClosePositionRequest,
+    closer: Annotated[PositionCloseService, Depends(get_position_close_service)],
+) -> dict[str, object]:
+    result = closer.close_one(position_id, body.confirm)
+    return _envelope(result.model_dump(by_alias=True))
 
 
 @router.get(

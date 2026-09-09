@@ -7,6 +7,7 @@ import {
   dailyRealizedPnlSchema,
   dashboardOverviewSchema,
   positionSchema,
+  closePositionsResultSchema,
   quoteSchema,
   riskSnapshotSchema,
   sessionContextSchema,
@@ -18,12 +19,13 @@ import {
   multiTimeframeAnalysisSchema,
   executionCandidateStatusSchema,
   marketSynthesisSchema,
+  marketAnalystChatResponseSchema,
 } from "@/domain/schemas";
 import { buildBacktestQueryString, buildTradeQueryString } from "@/domain/api/params";
 import type { ApiClient } from "@/lib/api/client";
 import { API_V1 } from "@/lib/api/paths";
 import { ApiError } from "@/lib/api/errors";
-import type { MarketSynthesisQuery } from "./trading-repository";
+import type { AnalystChatRequest, MarketSynthesisQuery } from "./trading-repository";
 
 export class ApiTradingRepository implements TradingRepository {
   constructor(private readonly client: ApiClient) {}
@@ -52,7 +54,27 @@ export class ApiTradingRepository implements TradingRepository {
   }
 
   getPositions() {
-    return this.client.getList(API_V1.positions, positionSchema);
+    return this.client.getList(API_V1.positions, positionSchema, {
+      query: "?page=1&pageSize=200",
+    });
+  }
+
+  closePosition(id: string, body: { confirm: string }) {
+    return this.client.post(API_V1.positionClose(id), closePositionsResultSchema, {
+      confirm: body.confirm,
+    });
+  }
+
+  closePositions(body: {
+    confirm: string;
+    positionIds?: string[];
+    closeAll?: boolean;
+  }) {
+    return this.client.post(API_V1.positionsClose, closePositionsResultSchema, {
+      confirm: body.confirm,
+      positionIds: body.positionIds,
+      closeAll: body.closeAll ?? false,
+    });
   }
 
   getTrades(params?: Parameters<TradingRepository["getTrades"]>[0]) {
@@ -141,5 +163,16 @@ export class ApiTradingRepository implements TradingRepository {
     return this.client.get(API_V1.marketSynthesis(symbol), marketSynthesisSchema, {
       query: qs ? `?${qs}` : "",
     });
+  }
+
+  postAnalystChat(symbol: string, body: AnalystChatRequest) {
+    return this.client.post(
+      API_V1.analystChat(symbol),
+      marketAnalystChatResponseSchema,
+      {
+        message: body.message,
+        session_id: body.sessionId ?? undefined,
+      },
+    );
   }
 }

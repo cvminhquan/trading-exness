@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import uuid
 from dataclasses import dataclass, field
@@ -107,10 +108,8 @@ class ChatSessionStore:
 
     def _persist(self, session: ChatSession) -> None:
         path = self._path(session.session_id)
-        try:
+        with contextlib.suppress(OSError):
             path.write_text(
                 json.dumps(session.to_dict(), ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
-        except OSError:
-            pass

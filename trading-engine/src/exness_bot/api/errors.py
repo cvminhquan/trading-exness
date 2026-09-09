@@ -33,4 +33,8 @@ ERROR_MESSAGES: dict[str, str] = {
     "ANALYST_CHAT_RATE_LIMITED": "Bạn gửi quá nhanh. Vui lòng thử lại sau.",
     "ANALYST_CHAT_MESSAGE_TOO_LONG": "Tin nhắn quá dài.",
     "ANALYST_CHAT_MESSAGE_REQUIRED": "Tin nhắn không được để trống.",
+    "CLOSE_DISABLED": "Đóng vị thế từ dashboard đang tắt.",
+    "CLOSE_CONFIRM_REQUIRED": "Cần nhập đúng cụm xác nhận để đóng vị thế.",
+    "LIVE_CLOSE_BLOCKED": "Không được đóng vị thế trên tài khoản thật với cấu hình hiện tại.",
+    "POSITION_NOT_FOUND": "Không tìm thấy vị thế.",
 }

@@ -1,0 +1,33 @@
+{
+  "fixture_id": "grounding_conflicting_sources",
+  "description": "External bearish evidence vs bullish M15 technical fixture",
+  "response": {
+    "text": "{\"external_bias\":\"BEARISH_FOR_GOLD\",\"evidence_strength\":\"MODERATE\",\"event_risk\":\"HIGH\",\"claims\":[{\"category\":\"USD\",\"claim_type\":\"FACT\",\"text\":\"Stronger USD pressures gold (fixture).\",\"direction_for_gold\":\"BEARISH_FOR_GOLD\",\"source_urls\":[\"https://www.reuters.com/markets/gold-conflict-fixture\"]}],\"drivers\":[{\"driver\":\"USD\",\"direction_for_gold\":\"BEARISH_FOR_GOLD\",\"summary\":\"USD strength fixture\",\"evidence_strength\":\"MODERATE\",\"source_urls\":[\"https://www.reuters.com/markets/gold-conflict-fixture\"]}],\"events\":[{\"event_name\":\"NFP\",\"event_type\":\"MACRO\",\"importance\":\"HIGH\",\"status\":\"UPCOMING\",\"scheduled_at\":null,\"note\":null,\"source_urls\":[\"https://www.bls.gov/fixture-nfp\"]}],\"supporting_factors\":[],\"conflicting_factors\":[\"M15 bullish technical\"],\"unknowns\":[]}",
+    "candidates": [
+      {
+        "grounding_metadata": {
+          "grounding_chunks": [
+            {
+              "web": {
+                "uri": "https://www.reuters.com/markets/gold-conflict-fixture",
+                "title": "Conflict fixture A"
+              }
+            },
+            {
+              "web": {
+                "uri": "https://www.bls.gov/fixture-nfp",
+                "title": "Conflict fixture B"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "min_sources": 2,
+    "external_bias": "BEARISH_FOR_GOLD",
+    "alignment_with_case_a": "CONFLICT"
+  }
+}

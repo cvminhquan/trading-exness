@@ -4,9 +4,9 @@ import { MarketMove } from "@/components/market/MarketMove";
 import { MtfScoreBar } from "@/components/trading-analysis/MtfScoreBar";
 import type { ExecutionCandidateStatus, MultiTimeframeAnalysis } from "@/domain";
 import { useSessionQuoteMoves } from "@/hooks/use-session-quote-moves";
+import { useWatchlistQuotes } from "@/hooks/use-watchlist-quotes";
 import { formatMarketPrice, formatScore } from "@/lib/format";
 import { TRADE_ANALYSIS_UX as L } from "@/lib/i18n/vi";
-import { quoteMidPrice } from "@/lib/market/quote-price";
 import {
   DASHBOARD_SYMBOL_LABELS,
   type DashboardSymbol,
@@ -20,7 +20,6 @@ import {
   hasDirectionalSetup,
   structureBiasLabel,
 } from "@/lib/trading-analysis/mtf-display";
-import { useQuotes } from "@/queries/use-trading-queries";
 import { cn } from "@/lib/utils";
 
 type TradeDecisionHeroProps = {
@@ -45,14 +44,12 @@ export const TradeDecisionHero = ({
   const m15 = analysis.timeframes.M15;
   const freshness = analysis.freshness;
 
-  const quotesQuery = useQuotes([analysis.symbol]);
-  const quotes = quotesQuery.data ?? [];
+  const { quotes, quoteOf, displayPriceOf } = useWatchlistQuotes();
   const moves = useSessionQuoteMoves(quotes);
   const move = moves[analysis.symbol]?.move ?? null;
-  const quote = quotes[0];
+  const quote = quoteOf(analysis.symbol);
   const digits = quote?.digits ?? 2;
-  const displayPrice =
-    analysis.currentPrice ?? (quote ? quoteMidPrice(quote) : null);
+  const displayPrice = displayPriceOf(analysis.symbol, analysis.currentPrice);
 
   const decisionTitle =
     signal === "WAIT"

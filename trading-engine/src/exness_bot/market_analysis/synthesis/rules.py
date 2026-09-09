@@ -107,8 +107,12 @@ def build_external_view(external: dict[str, Any] | None) -> dict[str, Any]:
             "conflicting_factors": [],
             "source_count": 0,
             "freshness": "UNDATED",
+            "provider_chips": [],
         }
     drivers = external.get("market_drivers") or external.get("top_market_drivers") or []
+    chips = external.get("provider_chips")
+    if not isinstance(chips, list):
+        chips = []
     return {
         "status": external.get("status"),
         "external_bias": external.get("external_bias"),
@@ -121,6 +125,7 @@ def build_external_view(external: dict[str, Any] | None) -> dict[str, Any]:
         "conflicting_factors": list(external.get("conflicting_factors") or [])[:5],
         "source_count": len(external.get("sources") or []),
         "freshness": external.get("freshness"),
+        "provider_chips": [str(c) for c in chips if c],
     }
 
 

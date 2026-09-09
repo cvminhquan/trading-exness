@@ -1,0 +1,19 @@
+{
+  "fixture_id": "grounding_no_sources",
+  "description": "Model text with URLs but no grounding metadata — must not invent sources",
+  "response": {
+    "text": "{\"external_bias\":\"BULLISH_FOR_GOLD\",\"evidence_strength\":\"STRONG\",\"event_risk\":\"LOW\",\"claims\":[{\"category\":\"GOLD_MARKET\",\"claim_type\":\"FACT\",\"text\":\"Model invented URL must not become grounded source.\",\"direction_for_gold\":\"BULLISH_FOR_GOLD\",\"source_urls\":[\"https://fake-example.invalid/invented\"]}],\"drivers\":[],\"events\":[],\"supporting_factors\":[],\"conflicting_factors\":[],\"unknowns\":[]}",
+    "candidates": [
+      {
+        "grounding_metadata": {
+          "grounding_chunks": []
+        }
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "exact_source_count": 0,
+    "status_hint": "INSUFFICIENT_EVIDENCE"
+  }
+}

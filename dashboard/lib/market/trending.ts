@@ -5,6 +5,9 @@ export const TRENDING_SYMBOLS = DASHBOARD_SYMBOLS;
 
 export const TRENDING_STORAGE_KEY = "exness.dashboard.extraSymbols";
 
+/** Event nội bộ khi watchlist đổi (cùng tab). */
+export const WATCHLIST_CHANGED_EVENT = "exness.dashboard.watchlist";
+
 export const MAX_EXTRA_SYMBOLS = 12;
 
 export const normalizeSymbol = (raw: string): string =>
@@ -30,6 +33,7 @@ export const loadExtraSymbols = (): string[] => {
 export const saveExtraSymbols = (symbols: string[]): void => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(TRENDING_STORAGE_KEY, JSON.stringify(symbols));
+  window.dispatchEvent(new Event(WATCHLIST_CHANGED_EVENT));
 };
 
 export const mergeWatchSymbols = (extras: string[]): string[] => {

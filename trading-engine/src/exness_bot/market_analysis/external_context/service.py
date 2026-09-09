@@ -34,6 +34,15 @@ from exness_bot.market_analysis.external_context.provider_base import (
     ExternalIntelligenceProvider,
     ExternalIntelligenceRequest,
 )
+from exness_bot.market_analysis.external_context.providers.bls import BlsProvider
+from exness_bot.market_analysis.external_context.providers.composite import (
+    FreeSourcesCompositeProvider,
+)
+from exness_bot.market_analysis.external_context.providers.federal_reserve import (
+    FederalReserveProvider,
+)
+from exness_bot.market_analysis.external_context.providers.fred import FredProvider
+from exness_bot.market_analysis.external_context.providers.rss import RssProvider
 from exness_bot.market_analysis.technical_snapshot import TechnicalSnapshotBuilder
 
 logger = structlog.get_logger(__name__)
@@ -73,21 +82,55 @@ class ExternalContextService:
         )
         self._provider = provider or self._build_default_provider()
 
+    def _build_free_sources_provider(self) -> FreeSourcesCompositeProvider:
+        s = self._settings
+        return FreeSourcesCompositeProvider(
+            bls=BlsProvider(
+                enabled=bool(getattr(s, "bls_enabled", True)),
+                api_key=str(getattr(s, "bls_api_key", "") or ""),
+            ),
+            fred=FredProvider(
+                enabled=bool(getattr(s, "fred_enabled", False)),
+                api_key=str(getattr(s, "fred_api_key", "") or ""),
+            ),
+            federal_reserve=FederalReserveProvider(
+                enabled=bool(getattr(s, "federal_reserve_enabled", True)),
+            ),
+            rss=RssProvider(
+                enabled=bool(getattr(s, "external_rss_enabled", True)),
+            ),
+        )
+
     def _build_default_provider(self) -> ExternalIntelligenceProvider:
         name = str(
-            getattr(self._settings, "external_intelligence_provider", "gemini_google")
+            getattr(self._settings, "external_intelligence_provider", "free_sources")
         ).lower()
         if name == "fake":
             return FakeExternalIntelligenceProvider()
-        model = str(
-            getattr(
-                self._settings,
-                "external_intelligence_model",
-                "gemini-2.5-flash",
+        if name in {"free_sources", "free"}:
+            return self._build_free_sources_provider()
+        if name == "gemini_google":
+            model = str(
+                getattr(
+                    self._settings,
+                    "external_intelligence_model",
+                    "gemini-2.5-flash",
+                )
             )
-        )
-        key = str(getattr(self._settings, "gemini_api_key", "") or "")
-        return GeminiGoogleGroundedProvider(api_key=key, model=model)
+            key = str(getattr(self._settings, "gemini_api_key", "") or "")
+            return GeminiGoogleGroundedProvider(api_key=key, model=model)
+        # Unknown provider name — prefer free sources over Gemini
+        if bool(getattr(self._settings, "free_external_sources_enabled", True)):
+            return self._build_free_sources_provider()
+        return FakeExternalIntelligenceProvider()
+
+    def free_sources_provider(self) -> FreeSourcesCompositeProvider | None:
+        if isinstance(self._provider, FreeSourcesCompositeProvider):
+            return self._provider
+        return None
+
+    def _intelligence_enabled(self) -> bool:
+        return bool(getattr(self._settings, "external_intelligence_enabled", False))
 
     def _load_compact_snapshot(self, symbol: str) -> dict[str, Any]:
         if self._snapshot_loader is not None:
@@ -103,15 +146,14 @@ class ExternalContextService:
         *,
         force_refresh: bool = False,
         compact: bool = False,
+        bypass_enabled_gate: bool = False,
     ) -> dict[str, Any]:
         canonical = (symbol or self._settings.symbol).strip().upper() or "XAUUSD"
         now = self._clock()
         if now.tzinfo is None:
             now = now.replace(tzinfo=UTC)
 
-        enabled = bool(
-            getattr(self._settings, "external_intelligence_enabled", False)
-        )
+        enabled = self._intelligence_enabled() or bypass_enabled_gate
         if not enabled:
             ctx = disabled_context(
                 symbol=canonical,
@@ -142,13 +184,16 @@ class ExternalContextService:
             snapshot=snapshot,
         )
         provider_name = getattr(self._provider, "name", "unknown")
-        model = str(
-            getattr(
-                self._settings,
-                "external_intelligence_model",
-                getattr(self._provider, "model", None) or "unknown",
+        if provider_name == "free_sources":
+            model = str(getattr(self._provider, "model", "free_sources_v1"))
+        else:
+            model = str(
+                getattr(
+                    self._settings,
+                    "external_intelligence_model",
+                    getattr(self._provider, "model", None) or "unknown",
+                )
             )
-        )
 
         if not force_refresh:
             cached, age, expires = self._cache.get(
@@ -171,8 +216,15 @@ class ExternalContextService:
                     symbol=canonical,
                     age_seconds=age,
                 )
+                try:
+                    from exness_bot.market_analysis.integration.metrics import (
+                        get_integration_metrics,
+                    )
+
+                    get_integration_metrics().inc("external_cache_hits")
+                except Exception:  # pragma: no cover
+                    pass
                 if compact:
-                    # Rebuild compact from cached full if needed
                     return {
                         "symbol": out.get("symbol"),
                         "generated_at": out.get("generated_at"),
@@ -196,10 +248,11 @@ class ExternalContextService:
                         ],
                         "freshness": out.get("freshness"),
                         "cache": out.get("cache"),
+                        "provider_chips": out.get("provider_chips"),
                     }
                 return out
 
-        # API key gate for live provider
+        # API key gate for live Gemini grounding only
         if provider_name == "gemini_google" and not str(
             getattr(self._settings, "gemini_api_key", "") or ""
         ).strip():
@@ -212,6 +265,17 @@ class ExternalContextService:
             ctx.status = ContextStatus.DISABLED.value
             return ctx.to_compact_context() if compact else ctx.to_dict()
 
+        if provider_name == "gemini_google" and not bool(
+            getattr(self._settings, "google_grounding_enabled", False)
+        ):
+            ctx = disabled_context(
+                symbol=canonical,
+                reason="GOOGLE_GROUNDING_ENABLED=false",
+                fingerprint=fingerprint,
+                now=now,
+            )
+            return ctx.to_compact_context() if compact else ctx.to_dict()
+
         plan = plan_search(symbol=canonical, snapshot=snapshot, now=now)
         request = ExternalIntelligenceRequest(
             symbol=canonical,
@@ -220,11 +284,17 @@ class ExternalContextService:
             utc_now_iso=now.isoformat(),
             technical_fingerprint=fingerprint,
         )
+        try:
+            from exness_bot.market_analysis.integration.metrics import (
+                get_integration_metrics,
+            )
+
+            get_integration_metrics().inc("external_cache_misses")
+            get_integration_metrics().inc("external_provider_calls")
+        except Exception:  # pragma: no cover
+            pass
         result = self._provider.fetch_context(request)
         tech_ts = snapshot.get("generated_at")
-        if isinstance(snapshot.get("freshness"), dict):
-            # keep generated_at as technical timestamp when present
-            pass
         context = normalize_provider_result(
             result=result,
             symbol=canonical,
@@ -241,6 +311,38 @@ class ExternalContextService:
             now=now,
         )
         payload = context.to_dict()
+        # Optional provider chips for dashboard (no secrets)
+        chips: list[str] = []
+        for src in payload.get("sources") or []:
+            domain = str(src.get("domain") or "").lower()
+            if "bls.gov" in domain and "BLS" not in chips:
+                chips.append("BLS")
+            if "stlouisfed.org" in domain and "FRED" not in chips:
+                chips.append("FRED")
+            if "federalreserve.gov" in domain and "FED" not in chips:
+                chips.append("FED")
+            if (
+                "treasury.gov" in domain
+                and "RSS" not in chips
+                and "FED" not in chips
+                and "BLS" not in chips
+            ):
+                chips.append("RSS")
+        if provider_name == "free_sources":
+            # Always surface active free providers that contributed
+            fs = self.free_sources_provider()
+            if fs is not None:
+                for row in fs.provider_health(now=now):
+                    if row.get("status") == "OK" and row.get("item_count"):
+                        label = {
+                            "bls": "BLS",
+                            "fred": "FRED",
+                            "federal_reserve": "FED",
+                            "rss": "RSS",
+                        }.get(str(row.get("provider")), "")
+                        if label and label not in chips:
+                            chips.append(label)
+        payload["provider_chips"] = chips
         entry = self._cache.put(
             symbol=canonical,
             provider=provider_name,
@@ -262,4 +364,9 @@ class ExternalContextService:
             source_count=len(payload.get("sources") or []),
             provider=provider_name,
         )
-        return context.to_compact_context() if compact else payload
+        if compact:
+            compact_out = context.to_compact_context()
+            compact_out["cache"] = payload["cache"]
+            compact_out["provider_chips"] = chips
+            return compact_out
+        return payload

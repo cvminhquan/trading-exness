@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { QueryState } from "@/components/shared/States";
 import { Skeleton } from "@/components/shared/Skeletons";
+import { MarketAnalystChat } from "@/components/market-context/MarketAnalystChat";
 import type { MarketSynthesis } from "@/domain";
 import { MARKET_CONTEXT as L } from "@/lib/i18n/vi";
 import {
@@ -359,10 +360,14 @@ const MarketContextBody = ({
   data,
   onRefresh,
   refreshing,
+  expanded,
+  onToggle,
 }: {
   data: MarketSynthesis;
   onRefresh: () => void;
   refreshing: boolean;
+  expanded: boolean;
+  onToggle: () => void;
 }) => {
   const extStatus = data.externalView.status;
   const showExternalHint =
@@ -372,11 +377,11 @@ const MarketContextBody = ({
 
   return (
     <section
-      className="surface-card space-y-4 px-5 py-4"
+      className="surface-card px-5 py-4"
       aria-label={L.title}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-[16px] font-semibold text-[var(--foreground)]">
               {L.title}
@@ -387,90 +392,118 @@ const MarketContextBody = ({
             <span className="text-[12px] font-medium text-[var(--foreground-secondary)]">
               {data.symbol}
             </span>
+            <TonePill tone={biasTone(data.externalView.externalBias)}>
+              {biasLabel(data.externalView.externalBias)}
+            </TonePill>
+            <TonePill tone={alignmentTone(data.externalView.alignmentWithTechnical)}>
+              {alignmentLabel(data.externalView.alignmentWithTechnical)}
+            </TonePill>
           </div>
-          <p className="mt-1 text-[12px] text-[var(--muted)]">{L.subtitle}</p>
-          <p className="mt-1 text-[11px] text-[var(--muted)]">
+          <p className="mt-1 text-[12px] text-[var(--muted)]">
             {L.updated} {formatRelativeAgo(data.generatedAt)} · {L.readOnlyNote}
+            {data.externalView.providerChips.length > 0
+              ? ` · ${data.externalView.providerChips.join(" · ")}`
+              : ""}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshing}
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[13px] font-semibold text-[var(--accent)] transition-colors hover:border-[var(--accent-muted)] hover:bg-[var(--accent-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-60"
-          aria-label={L.refresh}
-        >
-          {refreshing ? L.refreshing : L.refresh}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[13px] font-semibold text-[var(--accent)] transition-colors hover:border-[var(--accent-muted)] hover:bg-[var(--accent-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-60"
+            aria-label={L.refresh}
+          >
+            {refreshing ? L.refreshing : L.refresh}
+          </button>
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={expanded}
+            aria-controls={`market-context-details-${data.symbol}`}
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[13px] font-semibold text-[var(--foreground-secondary)] transition-colors hover:border-[var(--accent-muted)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          >
+            {expanded ? L.hideDetails : L.showDetails}
+          </button>
+        </div>
       </div>
 
-      {showExternalHint ? (
-        <p
-          className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-[13px] text-[var(--foreground-secondary)]"
-          role="status"
+      {expanded ? (
+        <div
+          id={`market-context-details-${data.symbol}`}
+          className="mt-4 space-y-4 border-t border-[var(--border)] pt-4"
         >
-          {extStatus === "DISABLED"
-            ? L.externalDisabled
-            : L.externalUnavailable}
-        </p>
+          <p className="text-[12px] text-[var(--muted)]">{L.subtitle}</p>
+
+          {showExternalHint ? (
+            <p
+              className="rounded-xl border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-[13px] text-[var(--foreground-secondary)]"
+              role="status"
+            >
+              {extStatus === "DISABLED"
+                ? L.externalDisabled
+                : L.externalUnavailable}
+            </p>
+          ) : null}
+
+          <TechnicalExternalComparison data={data} />
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
+                {L.drivers}
+              </h3>
+              <DriversPanel data={data} />
+            </div>
+            <div>
+              <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
+                {L.eventRisk}
+              </h3>
+              <EventRiskPanel data={data} />
+            </div>
+          </div>
+
+          <AiSynthesisPanel data={data} />
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
+                {L.uncertainties}
+              </h3>
+              {data.synthesis.uncertainties.length === 0 ? (
+                <p className="text-[13px] text-[var(--muted)]">—</p>
+              ) : (
+                <ul className="list-disc space-y-1 pl-5 text-[13px] text-[var(--foreground-secondary)]">
+                  {data.synthesis.uncertainties.map((u: string) => (
+                    <li key={u}>{u}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
+                {L.whatToWatch}
+              </h3>
+              {data.synthesis.whatToWatch.length === 0 ? (
+                <p className="text-[13px] text-[var(--muted)]">—</p>
+              ) : (
+                <ul className="list-disc space-y-1 pl-5 text-[13px] text-[var(--foreground-secondary)]">
+                  {data.synthesis.whatToWatch.map((w: string) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
+              {L.sources}
+            </h3>
+            <SourcesPanel data={data} />
+          </div>
+        </div>
       ) : null}
-
-      <TechnicalExternalComparison data={data} />
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div>
-          <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
-            {L.drivers}
-          </h3>
-          <DriversPanel data={data} />
-        </div>
-        <div>
-          <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
-            {L.eventRisk}
-          </h3>
-          <EventRiskPanel data={data} />
-        </div>
-      </div>
-
-      <AiSynthesisPanel data={data} />
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
-            {L.uncertainties}
-          </h3>
-          {data.synthesis.uncertainties.length === 0 ? (
-            <p className="text-[13px] text-[var(--muted)]">—</p>
-          ) : (
-            <ul className="list-disc space-y-1 pl-5 text-[13px] text-[var(--foreground-secondary)]">
-              {data.synthesis.uncertainties.map((u: string) => (
-                <li key={u}>{u}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div>
-          <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
-            {L.whatToWatch}
-          </h3>
-          {data.synthesis.whatToWatch.length === 0 ? (
-            <p className="text-[13px] text-[var(--muted)]">—</p>
-          ) : (
-            <ul className="list-disc space-y-1 pl-5 text-[13px] text-[var(--foreground-secondary)]">
-              {data.synthesis.whatToWatch.map((w: string) => (
-                <li key={w}>{w}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="mb-2 text-[14px] font-semibold text-[var(--foreground)]">
-          {L.sources}
-        </h3>
-        <SourcesPanel data={data} />
-      </div>
     </section>
   );
 };
@@ -479,6 +512,8 @@ export const MarketContextSection = ({ symbol }: MarketContextSectionProps) => {
   const query = useMarketSynthesis(symbol);
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [chatExpanded, setChatExpanded] = useState(false);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -493,21 +528,30 @@ export const MarketContextSection = ({ symbol }: MarketContextSectionProps) => {
   }, [queryClient, symbol]);
 
   return (
-    <QueryState
-      isLoading={query.isLoading}
-      isError={query.isError}
-      errorMessage={query.error?.message ?? L.unavailable}
-      onRetry={() => void query.refetch()}
-      loadingFallback={<MarketContextSkeleton />}
-      section="bối cảnh thị trường"
-    >
-      {query.data ? (
-        <MarketContextBody
-          data={query.data}
-          onRefresh={() => void handleRefresh()}
-          refreshing={refreshing}
-        />
-      ) : null}
-    </QueryState>
+    <div className="space-y-3">
+      <QueryState
+        isLoading={query.isLoading}
+        isError={query.isError}
+        errorMessage={query.error?.message ?? L.unavailable}
+        onRetry={() => void query.refetch()}
+        loadingFallback={<MarketContextSkeleton />}
+        section="bối cảnh thị trường"
+      >
+        {query.data ? (
+          <MarketContextBody
+            data={query.data}
+            onRefresh={() => void handleRefresh()}
+            refreshing={refreshing}
+            expanded={expanded}
+            onToggle={() => setExpanded((v) => !v)}
+          />
+        ) : null}
+      </QueryState>
+      <MarketAnalystChat
+        symbol={symbol}
+        expanded={chatExpanded}
+        onToggle={() => setChatExpanded((v) => !v)}
+      />
+    </div>
   );
 };

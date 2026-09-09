@@ -98,6 +98,25 @@ export const positionSchema = z.object({
 });
 export type Position = z.infer<typeof positionSchema>;
 
+export const closePositionItemResultSchema = z.object({
+  positionId: z.string(),
+  symbol: z.string(),
+  success: z.boolean(),
+  dryRun: z.boolean().default(false),
+  executionPrice: z.number().nullable().optional(),
+  volume: z.number().nullable().optional(),
+  errorMessage: z.string().nullable().optional(),
+});
+
+export const closePositionsResultSchema = z.object({
+  requested: z.number(),
+  closed: z.number(),
+  failed: z.number(),
+  accountProfile: z.string(),
+  results: z.array(closePositionItemResultSchema),
+});
+export type ClosePositionsResult = z.infer<typeof closePositionsResultSchema>;
+
 export const tradeSchema = z.object({
   id: z.string(),
   closedAt: z.string().datetime(),
@@ -1020,6 +1039,36 @@ export const marketSynthesisSchema = z
         freshness: String(
           externalView.freshness ?? "UNDATED",
         ).toUpperCase(),
+        providerChips: (() => {
+          const rawChips = (externalView.provider_chips ??
+            externalView.providerChips ??
+            []) as unknown[];
+          if (Array.isArray(rawChips) && rawChips.length > 0) {
+            return rawChips.map((c) => String(c)).filter(Boolean);
+          }
+          const domains = (raw.sources ?? []).map((s) =>
+            String(s.domain ?? "").toLowerCase(),
+          );
+          const chips: string[] = [];
+          if (domains.some((d) => d.includes("bls.gov"))) chips.push("BLS");
+          if (domains.some((d) => d.includes("stlouisfed.org"))) chips.push("FRED");
+          if (domains.some((d) => d.includes("federalreserve.gov")))
+            chips.push("FED");
+          if (
+            domains.some(
+              (d) =>
+                d.includes("treasury.gov") ||
+                (d.length > 0 &&
+                  !d.includes("bls.gov") &&
+                  !d.includes("stlouisfed.org") &&
+                  !d.includes("federalreserve.gov")),
+            )
+          ) {
+            // Chỉ gắn RSS khi có domain ngoài BLS/FRED/FED và nằm trong allowlist công khai
+            if (domains.some((d) => d.includes("treasury.gov"))) chips.push("RSS");
+          }
+          return chips;
+        })(),
       },
       synthesis: {
         state: String(
@@ -1070,3 +1119,129 @@ export type MarketDriver = MarketSynthesis["externalView"]["topDrivers"][number]
 export type MarketContextSource = MarketSynthesis["sources"][number];
 export type ImportantMarketEvent =
   MarketSynthesis["externalView"]["importantEvents"][number];
+
+/** Phase 16.3.5 — AI Market Analyst Chat. */
+const analystSourceSchema = z
+  .object({
+    source_id: z.string().optional(),
+    sourceId: z.string().optional(),
+    title: z.string().optional().default(""),
+    domain: z.string().optional().default(""),
+    url: z.string().optional().default(""),
+    freshness: z.string().nullable().optional(),
+  })
+  .transform((s) => ({
+    sourceId: s.sourceId ?? s.source_id ?? "",
+    title: s.title ?? "",
+    domain: s.domain ?? "",
+    url: s.url ?? "",
+    freshness: s.freshness ?? null,
+  }));
+
+export const marketAnalystChatResponseSchema = z
+  .object({
+    schema_version: z.string().optional(),
+    schemaVersion: z.string().optional(),
+    message_id: z.string().optional(),
+    messageId: z.string().optional(),
+    session_id: z.string().optional(),
+    sessionId: z.string().optional(),
+    symbol: z.string(),
+    created_at: z.string().optional(),
+    createdAt: z.string().optional(),
+    answer: z.string(),
+    answer_type: z.string().optional(),
+    answerType: z.string().optional(),
+    intent: z.string().optional().default("GENERAL"),
+    context_status: z.string().optional(),
+    contextStatus: z.string().optional(),
+    context_changed: z.boolean().optional(),
+    contextChanged: z.boolean().optional(),
+    used_context: z
+      .object({
+        technical: z.boolean().optional().default(false),
+        external: z.boolean().optional().default(false),
+        synthesis: z.boolean().optional().default(false),
+      })
+      .optional(),
+    usedContext: z
+      .object({
+        technical: z.boolean().optional().default(false),
+        external: z.boolean().optional().default(false),
+        synthesis: z.boolean().optional().default(false),
+      })
+      .optional(),
+    technical_fingerprint: z.string().nullable().optional(),
+    technicalFingerprint: z.string().nullable().optional(),
+    external_fingerprint: z.string().nullable().optional(),
+    externalFingerprint: z.string().nullable().optional(),
+    synthesis_fingerprint: z.string().nullable().optional(),
+    synthesisFingerprint: z.string().nullable().optional(),
+    source_refs: z.array(z.string()).optional(),
+    sourceRefs: z.array(z.string()).optional(),
+    sources: z.array(analystSourceSchema).optional().default([]),
+    warnings: z.array(z.string()).optional().default([]),
+    provider_metadata: z.record(z.string(), z.unknown()).optional(),
+    providerMetadata: z.record(z.string(), z.unknown()).optional(),
+    chat_enabled: z.boolean().optional(),
+    chatEnabled: z.boolean().optional(),
+    note: z.string().optional().nullable(),
+  })
+  .transform((raw) => {
+    const used = raw.usedContext ?? raw.used_context ?? {
+      technical: false,
+      external: false,
+      synthesis: false,
+    };
+    const metaRaw = (raw.providerMetadata ??
+      raw.provider_metadata ??
+      {}) as Record<string, unknown>;
+    return {
+      schemaVersion: raw.schemaVersion ?? raw.schema_version ?? "1.0",
+      messageId: raw.messageId ?? raw.message_id ?? "",
+      sessionId: raw.sessionId ?? raw.session_id ?? "",
+      symbol: raw.symbol,
+      createdAt: raw.createdAt ?? raw.created_at ?? "",
+      answer: raw.answer,
+      answerType: raw.answerType ?? raw.answer_type ?? "GENERAL_MARKET_QUESTION",
+      intent: raw.intent ?? "GENERAL",
+      contextStatus: raw.contextStatus ?? raw.context_status ?? "UNKNOWN",
+      contextChanged: Boolean(raw.contextChanged ?? raw.context_changed ?? false),
+      usedContext: {
+        technical: Boolean(used.technical),
+        external: Boolean(used.external),
+        synthesis: Boolean(used.synthesis),
+      },
+      technicalFingerprint:
+        raw.technicalFingerprint ?? raw.technical_fingerprint ?? null,
+      externalFingerprint:
+        raw.externalFingerprint ?? raw.external_fingerprint ?? null,
+      synthesisFingerprint:
+        raw.synthesisFingerprint ?? raw.synthesis_fingerprint ?? null,
+      sourceRefs: raw.sourceRefs ?? raw.source_refs ?? [],
+      sources: raw.sources ?? [],
+      warnings: raw.warnings ?? [],
+      providerMetadata: {
+        provider: (metaRaw.provider as string | null | undefined) ?? null,
+        model: (metaRaw.model as string | null | undefined) ?? null,
+        used: Boolean(metaRaw.used ?? false),
+        fallbackUsed: Boolean(
+          metaRaw.fallbackUsed ?? metaRaw.fallback_used ?? true,
+        ),
+        latencyMs:
+          (metaRaw.latencyMs as number | null | undefined) ??
+          (metaRaw.latency_ms as number | null | undefined) ??
+          null,
+        errorType:
+          (metaRaw.errorType as string | null | undefined) ??
+          (metaRaw.error_type as string | null | undefined) ??
+          null,
+      },
+      chatEnabled: Boolean(raw.chatEnabled ?? raw.chat_enabled ?? false),
+      note: raw.note ?? null,
+    };
+  });
+
+export type MarketAnalystChatResponse = z.infer<
+  typeof marketAnalystChatResponseSchema
+>;

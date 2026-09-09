@@ -84,6 +84,16 @@ class Settings(BaseSettings):
     # Demo account allowlist for controlled smoke (login ids). Empty → block.
     demo_account_allowlist: str = Field(default="", alias="DEMO_ACCOUNT_ALLOWLIST")
     demo_server_allowlist: str = Field(default="", alias="DEMO_SERVER_ALLOWLIST")
+    # Phase 17.3 — autonomous DEMO loop (default OFF). Never enables real-money autonomy.
+    auto_demo_execution_enabled: bool = Field(
+        default=False,
+        alias="AUTO_DEMO_EXECUTION_ENABLED",
+    )
+    # Dashboard operator close — opt-in. Close-only; does not enable bot entry loop.
+    dashboard_allow_close_position: bool = Field(
+        default=False,
+        alias="DASHBOARD_ALLOW_CLOSE_POSITION",
+    )
     loop_poll_seconds: int = Field(default=30, alias="LOOP_POLL_SECONDS", ge=5, le=3600)
     candle_history_count: int = Field(default=250, alias="CANDLE_HISTORY_COUNT", ge=50, le=5000)
 
@@ -200,12 +210,12 @@ class Settings(BaseSettings):
         le=300,
     )
 
-    # --- Phase 16.3.2 External Intelligence (read-only; default OFF) ---
+    # --- Phase 16.3.2 / 16.3.7 External Intelligence (read-only; default OFF) ---
     external_intelligence_enabled: bool = Field(
         default=False, alias="EXTERNAL_INTELLIGENCE_ENABLED"
     )
     external_intelligence_provider: str = Field(
-        default="gemini_google", alias="EXTERNAL_INTELLIGENCE_PROVIDER"
+        default="free_sources", alias="EXTERNAL_INTELLIGENCE_PROVIDER"
     )
     gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
     external_intelligence_model: str = Field(
@@ -217,6 +227,21 @@ class Settings(BaseSettings):
         alias="EXTERNAL_INTELLIGENCE_CACHE_TTL_SECONDS",
         ge=60,
         le=86_400,
+    )
+    # Free-sources-first (Phase 16.3.7) — Gemini / Google Grounding optional only
+    free_external_sources_enabled: bool = Field(
+        default=True, alias="FREE_EXTERNAL_SOURCES_ENABLED"
+    )
+    bls_enabled: bool = Field(default=True, alias="BLS_ENABLED")
+    bls_api_key: str = Field(default="", alias="BLS_API_KEY")
+    fred_enabled: bool = Field(default=False, alias="FRED_ENABLED")
+    fred_api_key: str = Field(default="", alias="FRED_API_KEY")
+    federal_reserve_enabled: bool = Field(
+        default=True, alias="FEDERAL_RESERVE_ENABLED"
+    )
+    external_rss_enabled: bool = Field(default=True, alias="EXTERNAL_RSS_ENABLED")
+    google_grounding_enabled: bool = Field(
+        default=False, alias="GOOGLE_GROUNDING_ENABLED"
     )
 
     # --- Phase 16.3.3 AI Market Synthesis (read-only; default OFF) ---
@@ -349,7 +374,15 @@ class Settings(BaseSettings):
         "live_kill_switch",
         "live_demo_approval",
         "dry_run",
+        "auto_demo_execution_enabled",
+        "dashboard_allow_close_position",
         "external_intelligence_enabled",
+        "free_external_sources_enabled",
+        "bls_enabled",
+        "fred_enabled",
+        "federal_reserve_enabled",
+        "external_rss_enabled",
+        "google_grounding_enabled",
         "ai_market_synthesis_enabled",
         "ai_market_analyst_chat_enabled",
         mode="before",

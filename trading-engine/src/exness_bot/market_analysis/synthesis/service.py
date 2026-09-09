@@ -258,6 +258,14 @@ class MarketSynthesisService:
                     fingerprint=syn_fp,
                 ).to_dict()
                 logger.info("market_synthesis_cache_hit", symbol=canonical)
+                try:
+                    from exness_bot.market_analysis.integration.metrics import (
+                        get_integration_metrics,
+                    )
+
+                    get_integration_metrics().inc("synthesis_cache_hits")
+                except Exception:  # pragma: no cover
+                    pass
                 if compact:
                     # Rebuild compact from full payload fields
                     syn = out.get("synthesis") or {}
@@ -362,6 +370,15 @@ class MarketSynthesisService:
                 payload=prompt_payload,
                 utc_now_iso=now.isoformat(),
             )
+            try:
+                from exness_bot.market_analysis.integration.metrics import (
+                    get_integration_metrics,
+                )
+
+                get_integration_metrics().inc("synthesis_cache_misses")
+                get_integration_metrics().inc("synthesis_provider_calls")
+            except Exception:  # pragma: no cover
+                pass
             try:
                 provider_result = self._provider.generate_explanation(request)
             except Exception as exc:

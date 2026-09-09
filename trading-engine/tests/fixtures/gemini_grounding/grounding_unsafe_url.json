@@ -1,0 +1,38 @@
+{
+  "fixture_id": "grounding_unsafe_url",
+  "description": "Unsafe schemes in grounding chunks must be rejected by normalizer",
+  "response": {
+    "text": "{\"external_bias\":\"NEUTRAL\",\"evidence_strength\":\"WEAK\",\"event_risk\":\"LOW\",\"claims\":[],\"drivers\":[],\"events\":[],\"supporting_factors\":[],\"conflicting_factors\":[],\"unknowns\":[]}",
+    "candidates": [
+      {
+        "grounding_metadata": {
+          "grounding_chunks": [
+            {
+              "web": {
+                "uri": "javascript:alert(1)",
+                "title": "unsafe js"
+              }
+            },
+            {
+              "web": {
+                "uri": "file:///etc/passwd",
+                "title": "unsafe file"
+              }
+            },
+            {
+              "web": {
+                "uri": "https://www.reuters.com/markets/gold-safe-fixture",
+                "title": "safe reuters"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "exact_source_count_after_normalize": 1,
+    "unsafe_rejected": true
+  }
+}

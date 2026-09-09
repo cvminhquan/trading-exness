@@ -1,0 +1,26 @@
+{
+  "fixture_id": "grounding_redirect_urls",
+  "description": "Intermediary vertex redirect-style URL preserved offline (no network resolve)",
+  "response": {
+    "text": "{\"external_bias\":\"MIXED\",\"evidence_strength\":\"WEAK\",\"event_risk\":\"UNKNOWN\",\"claims\":[{\"category\":\"OTHER\",\"claim_type\":\"COMMENTARY\",\"text\":\"Redirect provenance fixture.\",\"direction_for_gold\":\"MIXED\",\"source_urls\":[\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/fixture123\"]}],\"drivers\":[],\"events\":[],\"supporting_factors\":[],\"conflicting_factors\":[],\"unknowns\":[]}",
+    "candidates": [
+      {
+        "grounding_metadata": {
+          "grounding_chunks": [
+            {
+              "web": {
+                "uri": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/fixture123",
+                "title": "Grounding redirect fixture"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "expected": {
+    "ok": true,
+    "min_sources": 1,
+    "preserve_redirect_url": true
+  }
+}

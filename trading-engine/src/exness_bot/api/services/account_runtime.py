@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import dataclass
 
 import structlog
 
@@ -23,6 +24,12 @@ _OPERATOR_NOTE = (
     "Chuyển tài khoản chỉ đổi phiên đăng nhập MT5 để xem dữ liệu. "
     "Bot không được phép đặt lệnh live."
 )
+
+
+@dataclass(frozen=True)
+class _SessionIdentity:
+    login: int
+    server: str | None
 
 
 class AccountRuntime:
@@ -59,10 +66,17 @@ class AccountRuntime:
 
     def snapshot(self) -> AccountSwitchStateDTO:
         with self._lock:
+            session, reconciled = self._reconcile_with_session_locked()
             profiles = [
-                self._profile_dto(AccountProfile.DEMO),
-                self._profile_dto(AccountProfile.LIVE),
+                self._profile_dto(AccountProfile.DEMO, session=session),
+                self._profile_dto(AccountProfile.LIVE, session=session),
             ]
+            note = _OPERATOR_NOTE
+            if reconciled:
+                note = (
+                    "Phiên MT5 đang kết nối lệch profile đã chọn — "
+                    "đã đồng bộ badge theo tài khoản thực tế."
+                )
             return AccountSwitchStateDTO(
                 active_profile=self._profile.value,
                 trading_mode=self._settings.trading_mode.value.upper(),
@@ -70,7 +84,7 @@ class AccountRuntime:
                 read_only=True,
                 live_orders_enabled=False,
                 profiles=profiles,
-                note=_OPERATOR_NOTE,
+                note=note,
             )
 
     def switch(self, profile: AccountProfile) -> AccountSwitchStateDTO:
@@ -93,6 +107,16 @@ class AccountRuntime:
 
             previous = self._profile
             if profile == previous:
+                # Still force reconnect so intended credentials are applied.
+                try:
+                    self._apply_credentials(profile, reconnect=True)
+                except (MT5AuthenticationError, MT5ConnectionError) as exc:
+                    raise ApiAppError(
+                        code="ACCOUNT_SWITCH_FAILED",
+                        message="Không thể đăng nhập lại tài khoản MT5 đang chọn.",
+                        status_code=503,
+                        details=str(exc),
+                    ) from exc
                 return self.snapshot()
 
             try:
@@ -121,15 +145,82 @@ class AccountRuntime:
             )
             return self.snapshot()
 
-    def _profile_dto(self, profile: AccountProfile) -> AccountProfileDTO:
+    def _reconcile_with_session_locked(self) -> tuple[_SessionIdentity | None, bool]:
+        """Align stored profile with the MT5 session that is actually connected."""
+        session = self._read_session_identity_locked()
+        if session is None:
+            return None, False
+        inferred = self._infer_profile_from_login(session.login)
+        if inferred is None:
+            logger.warning(
+                "mt5_session_login_not_in_profiles",
+                login=session.login,
+                server=session.server,
+                stored_profile=self._profile.value,
+            )
+            return session, False
+        if inferred != self._profile:
+            logger.warning(
+                "mt5_profile_session_mismatch_reconciled",
+                stored_profile=self._profile.value,
+                actual_profile=inferred.value,
+                login=session.login,
+                server=session.server,
+            )
+            self._profile = inferred
+            self._store.save(inferred)
+            # Keep in-memory credentials aligned with the session already connected.
+            self._apply_credentials(inferred, reconnect=False)
+            return session, True
+        return session, False
+
+    def _read_session_identity_locked(self) -> _SessionIdentity | None:
+        try:
+            snapshot = self._provider.get_snapshot()
+        except Exception as exc:
+            logger.warning("mt5_session_identity_read_failed", error=str(exc))
+            return None
+        account = getattr(snapshot, "account", None)
+        if account is None:
+            return None
+        login = getattr(account, "login", None)
+        if login is None:
+            return None
+        try:
+            login_i = int(login)
+        except (TypeError, ValueError):
+            return None
+        server = getattr(account, "server", None) or getattr(snapshot, "broker_server", None)
+        return _SessionIdentity(login=login_i, server=None if server is None else str(server))
+
+    def _infer_profile_from_login(self, login: int) -> AccountProfile | None:
+        for profile in (AccountProfile.DEMO, AccountProfile.LIVE):
+            creds = self._settings.credentials_for(profile)
+            if creds.configured and creds.login == login:
+                return profile
+        return None
+
+    def _profile_dto(
+        self,
+        profile: AccountProfile,
+        *,
+        session: _SessionIdentity | None,
+    ) -> AccountProfileDTO:
         creds = self._settings.credentials_for(profile)
+        login = creds.login if creds.configured else None
+        server = creds.server if creds.configured else None
+        # Active pill must reflect the connected MT5 session, not stale .env-only labels.
+        if profile == self._profile and session is not None:
+            login = session.login
+            if session.server:
+                server = session.server
         return AccountProfileDTO(
             id=profile.value,
             kind=profile.value,
             label=PROFILE_LABELS[profile],
             configured=creds.configured,
-            login=creds.login if creds.configured else None,
-            server=creds.server if creds.configured else None,
+            login=login,
+            server=server,
             active=self._profile == profile,
         )
 

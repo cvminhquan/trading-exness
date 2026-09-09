@@ -14,6 +14,7 @@ export const UI = {
   liveData: "Nguồn API",
   readOnly: "Chỉ đọc",
   retry: "Thử lại",
+  cancel: "Hủy",
   loading: "Đang tải...",
   noData: "Chưa có dữ liệu",
   noDataDescription:
@@ -32,6 +33,8 @@ export const UI = {
   backtestBadge: "BACKTEST · MÔ PHỎNG LỊCH SỬ",
   drawdownMaxHint: "Giới hạn tối đa cấu hình 5%",
   tradeJournal: "Nhật ký giao dịch",
+  closedTrades: "Giao dịch đã đóng",
+  closedTradesHint: "Nguồn MT5 history deals",
   filterJournal: "Lọc nhật ký",
   symbolOrTradeId: "Symbol hoặc mã giao dịch",
   symbol: "Symbol",
@@ -83,6 +86,42 @@ export const UI = {
   riskUtilizationAria: (label: string, pct: string) => `Mức sử dụng ${label}: ${pct}%`,
   settingsConfigDisabled:
     "Thay đổi cấu hình bị vô hiệu hóa trong MVP này. Giá trị phản ánh cấu hình hiện tại của trading engine.",
+  openPositions: "Vị thế đang mở",
+  totalVolume: "Tổng khối lượng",
+  longPositions: "Vị thế Long",
+  shortPositions: "Vị thế Short",
+  totalPositions: "Tổng vị thế",
+  lots: "lots",
+  positionsCount: (n: number) => `${n} vị thế`,
+  close: "Đóng",
+  closeAll: "Đóng tất cả",
+  closeSelected: "Đóng đã chọn",
+  closeConfirmTitle: "Xác nhận đóng vị thế",
+  closeConfirmBodyOne: (symbol: string, id: string) =>
+    `Đóng vị thế ${symbol} (#${id}) trên tài khoản MT5 đang xem. Thao tác gửi lệnh thật tới broker.`,
+  closeConfirmBodyAll: (n: number) =>
+    `Đóng ${n} vị thế đang mở trên tài khoản MT5 đang xem. Thao tác gửi lệnh thật tới broker.`,
+  closeConfirmBodySelected: (n: number) =>
+    `Đóng ${n} vị thế đã chọn. Thao tác gửi lệnh thật tới broker.`,
+  closeConfirmHint: (phrase: string) => `Nhập ${phrase} để xác nhận`,
+  closeConfirmPhraseDemo: "CLOSE",
+  closeConfirmPhraseDemoAll: "CLOSE-ALL",
+  closeConfirmPhraseLive: "LIVE-CLOSE",
+  closeConfirmPhraseLiveAll: "LIVE-CLOSE-ALL",
+  closeSuccess: (closed: number, failed: number) =>
+    failed > 0
+      ? `Đã đóng ${closed}, thất bại ${failed}.`
+      : `Đã đóng ${closed} vị thế.`,
+  closeFailed: "Không thể đóng vị thế.",
+  closing: "Đang đóng...",
+  exportCsv: "Xuất CSV",
+  selectAll: "Chọn tất cả",
+  selectRow: "Chọn hàng",
+  pageOf: (page: number, total: number) => `Trang ${page} / ${total}`,
+  rowsPerPage: "Mỗi trang",
+  previous: "Trước",
+  next: "Sau",
+  operatorClose: "Đóng lệnh thủ công",
 } as const;
 
 export const ACCOUNT_SWITCH = {
@@ -679,6 +718,44 @@ export const MARKET_CONTEXT = {
   unavailable: "Không thể tải bối cảnh thị trường.",
   updated: "Cập nhật",
   readOnlyNote: "Chỉ đọc — không đặt lệnh",
+  providerSources: "Nguồn dữ liệu",
+  showDetails: "Xem chi tiết",
+  hideDetails: "Thu gọn",
+} as const;
+
+/** Phase 16.3.5 — AI Market Analyst Chat. */
+export const ANALYST_CHAT = {
+  title: "AI Market Analyst",
+  subtitle: (symbol: string) =>
+    `Hỏi về technical, MTF, external context và event risk của ${symbol}.`,
+  placeholder: "Nhập câu hỏi phân tích…",
+  send: "Gửi",
+  sending: "Đang phân tích…",
+  thinking: "Đang suy luận…",
+  emptyHint: "Chọn câu hỏi gợi ý hoặc nhập câu hỏi của bạn.",
+  disabled: "AI Market Analyst chưa được bật.",
+  disabledHint:
+    "Chat vẫn trả lời deterministic từ snapshot kỹ thuật / synthesis khi khả dụng.",
+  fallbackBadge: "Phân tích dự phòng",
+  contextUpdated: "Ngữ cảnh thị trường đã cập nhật.",
+  technicalStale: "Technical snapshot có thể đã cũ.",
+  externalStale: "External context đã cũ.",
+  sources: "Nguồn",
+  error: "Không thể gửi câu hỏi. Thử lại sau.",
+  rateLimited: "Bạn gửi quá nhanh. Vui lòng thử lại sau.",
+  readOnly: "Chỉ phân tích — không đặt lệnh",
+  showChat: "Mở chat",
+  hideChat: "Thu gọn chat",
+  badgeTechnical: "Technical",
+  badgeExternal: "External",
+  badgeSynthesis: "Synthesis",
+  suggested: [
+    "Tại sao bot đang WAIT?",
+    "M15 và H1 có đang cùng hướng không?",
+    "External context đang support hay conflict?",
+    "Có event risk nào đáng chú ý?",
+    "Giá đang gần vùng S/R nào?",
+  ],
 } as const;
 
 export const MARKET_CONTEXT_STATUS_LABELS: Record<string, string> = {

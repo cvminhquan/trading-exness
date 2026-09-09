@@ -44,6 +44,7 @@ def build_prompt_payload(
             "conflicting_factors": external_view.get("conflicting_factors"),
             "freshness": external_view.get("freshness"),
             "source_count": external_view.get("source_count"),
+            "provider_chips": external_view.get("provider_chips") or [],
         },
         "claims": [
             {

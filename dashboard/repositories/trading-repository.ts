@@ -8,6 +8,7 @@ import type {
   DailyRealizedPnl,
   DashboardOverview,
   Position,
+  ClosePositionsResult,
   RiskSnapshot,
   SessionContext,
   StrategySnapshot,
@@ -19,11 +20,27 @@ import type {
   MultiTimeframeAnalysis,
   ExecutionCandidateStatus,
   MarketSynthesis,
+  MarketAnalystChatResponse,
 } from "@/domain";
 import type { BacktestListParams, TradeListParams } from "@/domain/api/params";
 
 export type MarketSynthesisQuery = {
   forceRefresh?: boolean;
+};
+
+export type AnalystChatRequest = {
+  message: string;
+  sessionId?: string | null;
+};
+
+export type ClosePositionRequest = {
+  confirm: string;
+};
+
+export type ClosePositionsBulkRequest = {
+  confirm: string;
+  positionIds?: string[];
+  closeAll?: boolean;
 };
 
 export interface TradingRepository {
@@ -33,6 +50,8 @@ export interface TradingRepository {
   getDailyRealizedPnl(days?: number): Promise<DailyRealizedPnl[]>;
   getDashboardOverview(): Promise<DashboardOverview>;
   getPositions(): Promise<Position[]>;
+  closePosition(id: string, body: ClosePositionRequest): Promise<ClosePositionsResult>;
+  closePositions(body: ClosePositionsBulkRequest): Promise<ClosePositionsResult>;
   getTrades(params?: TradeListParams): Promise<Trade[]>;
   getStrategySnapshot(): Promise<StrategySnapshot>;
   getRiskSnapshot(): Promise<RiskSnapshot>;
@@ -51,4 +70,8 @@ export interface TradingRepository {
     symbol?: string,
     query?: MarketSynthesisQuery,
   ): Promise<MarketSynthesis>;
+  postAnalystChat(
+    symbol: string,
+    body: AnalystChatRequest,
+  ): Promise<MarketAnalystChatResponse>;
 }
