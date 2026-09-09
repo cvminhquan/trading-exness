@@ -57,8 +57,9 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="Exness Bot Read-only API",
         description=(
-            "API phục vụ Dashboard. Chỉ đọc dữ liệu giao dịch. "
-            "POST duy nhất được phép: chuyển tài khoản MT5 demo/thật (vẫn không đặt lệnh)."
+            "API phục vụ Dashboard. Chủ yếu chỉ đọc dữ liệu giao dịch. "
+            "POST được phép: chuyển tài khoản MT5 demo/thật; "
+            "AI Market Analyst Chat (chỉ phân tích, không đặt lệnh)."
         ),
         version="1.0.0",
         docs_url="/docs",

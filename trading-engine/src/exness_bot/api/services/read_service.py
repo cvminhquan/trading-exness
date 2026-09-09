@@ -16,7 +16,7 @@ from exness_bot.account_overview.pnl import (
     sum_unrealized_pnl,
     utc_day_bounds,
 )
-from exness_bot.api.errors import ApiAppError
+from exness_bot.api.errors import ERROR_MESSAGES, ApiAppError
 from exness_bot.api.schemas.common import PaginationMeta
 from exness_bot.api.schemas.dashboard import (
     AccountOverviewDTO,
@@ -744,6 +744,48 @@ class ReadService:
         return service.get_synthesis(
             symbol, force_refresh=force_refresh, compact=compact
         )
+
+    def post_analyst_chat(
+        self,
+        symbol: str | None,
+        *,
+        message: str,
+        session_id: str | None = None,
+    ) -> dict[str, object]:
+        """Phase 16.3.5 AI Market Analyst Chat — analysis only, never executes."""
+        from exness_bot.market_analysis.analyst_chat import MarketAnalystChatService
+
+        service = MarketAnalystChatService(
+            self._settings, data_source=self._provider
+        )
+        try:
+            result = service.chat(
+                symbol=symbol or self._settings.symbol,
+                message=message,
+                session_id=session_id,
+            )
+        except ValueError as exc:
+            code = str(exc)
+            if code == "message_too_long":
+                raise ApiAppError(
+                    code="ANALYST_CHAT_MESSAGE_TOO_LONG",
+                    message=ERROR_MESSAGES["ANALYST_CHAT_MESSAGE_TOO_LONG"],
+                    status_code=400,
+                ) from exc
+            raise ApiAppError(
+                code="ANALYST_CHAT_MESSAGE_REQUIRED",
+                message=ERROR_MESSAGES["ANALYST_CHAT_MESSAGE_REQUIRED"],
+                status_code=400,
+            ) from exc
+        except RuntimeError as exc:
+            if str(exc) == "rate_limited":
+                raise ApiAppError(
+                    code="ANALYST_CHAT_RATE_LIMITED",
+                    message=ERROR_MESSAGES["ANALYST_CHAT_RATE_LIMITED"],
+                    status_code=429,
+                ) from exc
+            raise
+        return result.to_dict()
 
     def get_execution_candidate_status(
         self, symbol: str | None = None

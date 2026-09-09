@@ -30,4 +30,7 @@ ERROR_MESSAGES: dict[str, str] = {
     ),
     "DEMO_ACCOUNT_NOT_CONFIGURED": "Chưa cấu hình tài khoản demo.",
     "ACCOUNT_SWITCH_FAILED": "Không thể chuyển tài khoản MT5.",
+    "ANALYST_CHAT_RATE_LIMITED": "Bạn gửi quá nhanh. Vui lòng thử lại sau.",
+    "ANALYST_CHAT_MESSAGE_TOO_LONG": "Tin nhắn quá dài.",
+    "ANALYST_CHAT_MESSAGE_REQUIRED": "Tin nhắn không được để trống.",
 }

@@ -243,6 +243,42 @@ class Settings(BaseSettings):
         le=120,
     )
 
+    # --- Phase 16.3.5 AI Market Analyst Chat (read-only; default OFF) ---
+    ai_market_analyst_chat_enabled: bool = Field(
+        default=False, alias="AI_MARKET_ANALYST_CHAT_ENABLED"
+    )
+    ai_market_analyst_chat_provider: str = Field(
+        default="gemini", alias="AI_MARKET_ANALYST_CHAT_PROVIDER"
+    )
+    ai_market_analyst_chat_model: str = Field(
+        default="gemini-2.5-flash",
+        alias="AI_MARKET_ANALYST_CHAT_MODEL",
+    )
+    ai_market_analyst_chat_timeout_seconds: int = Field(
+        default=30,
+        alias="AI_MARKET_ANALYST_CHAT_TIMEOUT_SECONDS",
+        ge=5,
+        le=120,
+    )
+    ai_market_analyst_chat_max_history_messages: int = Field(
+        default=12,
+        alias="AI_MARKET_ANALYST_CHAT_MAX_HISTORY_MESSAGES",
+        ge=2,
+        le=40,
+    )
+    ai_market_analyst_chat_max_message_length: int = Field(
+        default=3000,
+        alias="AI_MARKET_ANALYST_CHAT_MAX_MESSAGE_LENGTH",
+        ge=100,
+        le=8000,
+    )
+    ai_market_analyst_chat_rate_limit: int = Field(
+        default=20,
+        alias="AI_MARKET_ANALYST_CHAT_RATE_LIMIT",
+        ge=1,
+        le=120,
+    )
+
     # --- Live Candle Engine (Phase 11.1) ---
     candle_engine_enabled: bool = Field(default=False, alias="CANDLE_ENGINE_ENABLED")
     candle_timeframe: str = Field(default="M15", alias="CANDLE_TIMEFRAME")
@@ -315,6 +351,7 @@ class Settings(BaseSettings):
         "dry_run",
         "external_intelligence_enabled",
         "ai_market_synthesis_enabled",
+        "ai_market_analyst_chat_enabled",
         mode="before",
     )
     @classmethod

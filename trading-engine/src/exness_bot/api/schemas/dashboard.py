@@ -320,6 +320,13 @@ class ActivateAccountRequest(ApiModel):
     profile: str
 
 
+class AnalystChatRequest(ApiModel):
+    """Phase 16.3.5 — analysis-only chat body (no market facts as truth)."""
+
+    message: str
+    session_id: str | None = Field(default=None, alias="sessionId")
+
+
 class DashboardOverviewDTO(ApiModel):
     bot_status: str = Field(alias="botStatus")
     account: AccountSnapshotDTO

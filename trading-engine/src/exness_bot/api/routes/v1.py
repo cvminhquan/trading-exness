@@ -13,6 +13,7 @@ from exness_bot.api.schemas.dashboard import (
     AccountSnapshotDTO,
     AccountSwitchStateDTO,
     ActivateAccountRequest,
+    AnalystChatRequest,
     BacktestReportDTO,
     DailyRealizedPnlDTO,
     DashboardOverviewDTO,
@@ -288,6 +289,29 @@ def get_market_synthesis(
     return _envelope(
         service.get_market_synthesis(
             symbol, force_refresh=force_refresh, compact=compact
+        )
+    )
+
+
+@router.post(
+    "/analysis/{symbol}/analyst-chat",
+    summary="AI Market Analyst Chat (chỉ phân tích)",
+    description=(
+        "Phase 16.3.5 context-aware analyst chat. Server builds canonical "
+        "TechnicalMarketSnapshot + ExternalMarketContext + MarketSynthesis. "
+        "Không web search mỗi tin nhắn, không gửi lệnh, không đổi strategy."
+    ),
+)
+def post_analyst_chat(
+    symbol: str,
+    body: AnalystChatRequest,
+    service: Annotated[ReadService, Depends(get_read_service)],
+) -> dict[str, object]:
+    return _envelope(
+        service.post_analyst_chat(
+            symbol,
+            message=body.message,
+            session_id=body.session_id,
         )
     )
 
