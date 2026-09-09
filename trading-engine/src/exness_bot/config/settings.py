@@ -200,6 +200,49 @@ class Settings(BaseSettings):
         le=300,
     )
 
+    # --- Phase 16.3.2 External Intelligence (read-only; default OFF) ---
+    external_intelligence_enabled: bool = Field(
+        default=False, alias="EXTERNAL_INTELLIGENCE_ENABLED"
+    )
+    external_intelligence_provider: str = Field(
+        default="gemini_google", alias="EXTERNAL_INTELLIGENCE_PROVIDER"
+    )
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+    external_intelligence_model: str = Field(
+        default="gemini-2.5-flash",
+        alias="EXTERNAL_INTELLIGENCE_MODEL",
+    )
+    external_intelligence_cache_ttl_seconds: int = Field(
+        default=600,
+        alias="EXTERNAL_INTELLIGENCE_CACHE_TTL_SECONDS",
+        ge=60,
+        le=86_400,
+    )
+
+    # --- Phase 16.3.3 AI Market Synthesis (read-only; default OFF) ---
+    ai_market_synthesis_enabled: bool = Field(
+        default=False, alias="AI_MARKET_SYNTHESIS_ENABLED"
+    )
+    ai_market_synthesis_provider: str = Field(
+        default="gemini", alias="AI_MARKET_SYNTHESIS_PROVIDER"
+    )
+    ai_market_synthesis_model: str = Field(
+        default="gemini-2.5-flash",
+        alias="AI_MARKET_SYNTHESIS_MODEL",
+    )
+    ai_market_synthesis_cache_ttl_seconds: int = Field(
+        default=600,
+        alias="AI_MARKET_SYNTHESIS_CACHE_TTL_SECONDS",
+        ge=60,
+        le=86_400,
+    )
+    ai_market_synthesis_timeout_seconds: int = Field(
+        default=30,
+        alias="AI_MARKET_SYNTHESIS_TIMEOUT_SECONDS",
+        ge=5,
+        le=120,
+    )
+
     # --- Live Candle Engine (Phase 11.1) ---
     candle_engine_enabled: bool = Field(default=False, alias="CANDLE_ENGINE_ENABLED")
     candle_timeframe: str = Field(default="M15", alias="CANDLE_TIMEFRAME")
@@ -270,6 +313,8 @@ class Settings(BaseSettings):
         "live_kill_switch",
         "live_demo_approval",
         "dry_run",
+        "external_intelligence_enabled",
+        "ai_market_synthesis_enabled",
         mode="before",
     )
     @classmethod

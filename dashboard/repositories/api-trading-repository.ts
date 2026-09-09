@@ -17,11 +17,13 @@ import {
   tradeAnalysisSchema,
   multiTimeframeAnalysisSchema,
   executionCandidateStatusSchema,
+  marketSynthesisSchema,
 } from "@/domain/schemas";
 import { buildBacktestQueryString, buildTradeQueryString } from "@/domain/api/params";
 import type { ApiClient } from "@/lib/api/client";
 import { API_V1 } from "@/lib/api/paths";
 import { ApiError } from "@/lib/api/errors";
+import type { MarketSynthesisQuery } from "./trading-repository";
 
 export class ApiTradingRepository implements TradingRepository {
   constructor(private readonly client: ApiClient) {}
@@ -128,5 +130,16 @@ export class ApiTradingRepository implements TradingRepository {
       API_V1.executionCandidate(symbol),
       executionCandidateStatusSchema,
     );
+  }
+
+  getMarketSynthesis(symbol = "XAUUSD", query: MarketSynthesisQuery = {}) {
+    const params = new URLSearchParams();
+    if (query.forceRefresh) {
+      params.set("forceRefresh", "true");
+    }
+    const qs = params.toString();
+    return this.client.get(API_V1.marketSynthesis(symbol), marketSynthesisSchema, {
+      query: qs ? `?${qs}` : "",
+    });
   }
 }

@@ -17,6 +17,7 @@ import {
   mockTradeAnalysis,
   mockMultiTimeframeAnalysis,
   mockExecutionCandidateStatus,
+  mockMarketSynthesis,
   simulateDelay,
 } from "@/mocks/data";
 import { mockBacktestReports } from "@/mocks/backtest-data";
@@ -179,5 +180,10 @@ export class MockTradingRepository implements TradingRepository {
   async getExecutionCandidateStatus() {
     await simulateDelay(80);
     return mockExecutionCandidateStatus;
+  }
+
+  async getMarketSynthesis() {
+    await simulateDelay(100);
+    return mockMarketSynthesis;
   }
 }

@@ -26,6 +26,8 @@ export const tradingKeys = {
     [...tradingKeys.all, "mtf-analysis", symbol] as const,
   executionCandidate: (symbol = "XAUUSD") =>
     [...tradingKeys.all, "execution-candidate", symbol] as const,
+  marketSynthesis: (symbol = "XAUUSD") =>
+    [...tradingKeys.all, "market-synthesis", symbol] as const,
   accounts: () => [...tradingKeys.all, "accounts"] as const,
   paper: () => [...tradingKeys.all, "paper"] as const,
 };

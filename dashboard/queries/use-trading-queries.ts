@@ -73,6 +73,16 @@ export const useExecutionCandidateStatus = (symbol = "XAUUSD") =>
     refetchInterval: 5_000,
   });
 
+/** Phase 16.3.4 — không forceRefresh khi poll thường (nhận cache backend). */
+export const useMarketSynthesis = (symbol: string) =>
+  useQuery({
+    queryKey: tradingKeys.marketSynthesis(symbol),
+    queryFn: () => tradingRepository.getMarketSynthesis(symbol),
+    enabled: Boolean(symbol),
+    staleTime: 45_000,
+    refetchInterval: 60_000,
+  });
+
 export const useSessionContext = () =>
   useQuery({
     queryKey: tradingKeys.session(),

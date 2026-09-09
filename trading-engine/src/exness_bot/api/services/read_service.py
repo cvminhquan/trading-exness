@@ -715,6 +715,36 @@ class ReadService:
             return snapshot.to_compact_context()
         return snapshot.to_dict()
 
+    def get_external_market_context(
+        self,
+        symbol: str | None = None,
+        *,
+        force_refresh: bool = False,
+        compact: bool = False,
+    ) -> dict[str, object]:
+        """Phase 16.3.2 grounded external context — never executes."""
+        from exness_bot.market_analysis.external_context import ExternalContextService
+
+        service = ExternalContextService(self._settings, data_source=self._provider)
+        return service.get_context(
+            symbol, force_refresh=force_refresh, compact=compact
+        )
+
+    def get_market_synthesis(
+        self,
+        symbol: str | None = None,
+        *,
+        force_refresh: bool = False,
+        compact: bool = False,
+    ) -> dict[str, object]:
+        """Phase 16.3.3 hybrid market synthesis — never executes / no web search."""
+        from exness_bot.market_analysis.synthesis import MarketSynthesisService
+
+        service = MarketSynthesisService(self._settings, data_source=self._provider)
+        return service.get_synthesis(
+            symbol, force_refresh=force_refresh, compact=compact
+        )
+
     def get_execution_candidate_status(
         self, symbol: str | None = None
     ) -> ExecutionCandidateStatusDTO:

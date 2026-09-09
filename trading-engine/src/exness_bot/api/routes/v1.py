@@ -239,6 +239,60 @@ def get_technical_market_snapshot(
 
 
 @router.get(
+    "/analysis/{symbol}/external-context",
+    summary="External Market Context (chỉ đọc)",
+    description=(
+        "Phase 16.3.2 grounded external intelligence (Gemini + Google Search). "
+        "Không thay đổi strategy/execution. Default disabled khi "
+        "EXTERNAL_INTELLIGENCE_ENABLED=false. "
+        "?view=compact | ?force_refresh=true"
+    ),
+)
+def get_external_market_context(
+    symbol: str,
+    service: Annotated[ReadService, Depends(get_read_service)],
+    view: Annotated[str | None, Query()] = None,
+    force_refresh: Annotated[
+        bool,
+        Query(alias="forceRefresh", description="Bỏ qua cache (analysis-only)"),
+    ] = False,
+) -> dict[str, object]:
+    compact = (view or "").strip().lower() == "compact"
+    return _envelope(
+        service.get_external_market_context(
+            symbol, force_refresh=force_refresh, compact=compact
+        )
+    )
+
+
+@router.get(
+    "/analysis/{symbol}/market-synthesis",
+    summary="AI Market Synthesis (chỉ đọc)",
+    description=(
+        "Phase 16.3.3 hybrid synthesis: TechnicalMarketSnapshot + "
+        "ExternalMarketContext. Deterministic state luôn có; AI narrative "
+        "optional (AI_MARKET_SYNTHESIS_ENABLED). Không web search, không gửi lệnh. "
+        "?view=compact | ?forceRefresh=true"
+    ),
+)
+def get_market_synthesis(
+    symbol: str,
+    service: Annotated[ReadService, Depends(get_read_service)],
+    view: Annotated[str | None, Query()] = None,
+    force_refresh: Annotated[
+        bool,
+        Query(alias="forceRefresh", description="Bỏ qua cache (analysis-only)"),
+    ] = False,
+) -> dict[str, object]:
+    compact = (view or "").strip().lower() == "compact"
+    return _envelope(
+        service.get_market_synthesis(
+            symbol, force_refresh=force_refresh, compact=compact
+        )
+    )
+
+
+@router.get(
     "/analysis/{symbol}",
     summary="Phân tích thị trường theo symbol (chỉ đọc)",
     response_model=DataEnvelope[TradeAnalysisDTO],

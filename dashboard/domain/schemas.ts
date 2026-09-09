@@ -782,3 +782,291 @@ export const executionCandidateStatusSchema = z.object({
   generatedAt: z.string(),
 });
 export type ExecutionCandidateStatus = z.infer<typeof executionCandidateStatusSchema>;
+
+/** Phase 16.3.4 — MarketSynthesis (backend snake_case → camelCase). */
+const unknownString = z.string().catch("UNKNOWN");
+
+const marketDriverSchema = z
+  .object({
+    driver: z.string(),
+    direction_for_gold: z.string().optional(),
+    directionForGold: z.string().optional(),
+    summary: z.string().optional().default(""),
+    evidence_strength: z.string().optional(),
+    evidenceStrength: z.string().optional(),
+    source_ids: z.array(z.string()).optional(),
+    sourceIds: z.array(z.string()).optional(),
+  })
+  .transform((d) => ({
+    driver: d.driver,
+    directionForGold: d.directionForGold ?? d.direction_for_gold ?? "UNKNOWN",
+    summary: d.summary ?? "",
+    evidenceStrength: d.evidenceStrength ?? d.evidence_strength ?? "INSUFFICIENT",
+    sourceIds: d.sourceIds ?? d.source_ids ?? [],
+  }));
+
+const importantEventSchema = z
+  .object({
+    event_name: z.string().optional(),
+    eventName: z.string().optional(),
+    event_type: z.string().optional(),
+    eventType: z.string().optional(),
+    importance: z.string().optional().default("UNKNOWN"),
+    status: z.string().optional().default("UNKNOWN"),
+    scheduled_at: z.string().nullable().optional(),
+    scheduledAt: z.string().nullable().optional(),
+    time_until_event_seconds: z.number().nullable().optional(),
+    timeUntilEventSeconds: z.number().nullable().optional(),
+    note: z.string().nullable().optional(),
+    source_ids: z.array(z.string()).optional(),
+    sourceIds: z.array(z.string()).optional(),
+  })
+  .transform((e) => ({
+    eventName: e.eventName ?? e.event_name ?? "UNKNOWN",
+    eventType: e.eventType ?? e.event_type ?? "OTHER",
+    importance: e.importance ?? "UNKNOWN",
+    status: e.status ?? "UNKNOWN",
+    scheduledAt: e.scheduledAt ?? e.scheduled_at ?? null,
+    timeUntilEventSeconds:
+      e.timeUntilEventSeconds ?? e.time_until_event_seconds ?? null,
+    note: e.note ?? null,
+    sourceIds: e.sourceIds ?? e.source_ids ?? [],
+  }));
+
+const sourceRefSchema = z
+  .object({
+    source_id: z.string().optional(),
+    sourceId: z.string().optional(),
+    title: z.string().optional().default(""),
+    domain: z.string().optional().default(""),
+    url: z.string().optional().default(""),
+    published_at: z.string().nullable().optional(),
+    publishedAt: z.string().nullable().optional(),
+    retrieved_at: z.string().nullable().optional(),
+    retrievedAt: z.string().nullable().optional(),
+    freshness: z.string().nullable().optional(),
+    source_type: z.string().nullable().optional(),
+    sourceType: z.string().nullable().optional(),
+  })
+  .transform((s) => ({
+    sourceId: s.sourceId ?? s.source_id ?? "",
+    title: s.title ?? "",
+    domain: s.domain ?? "",
+    url: s.url ?? "",
+    publishedAt: s.publishedAt ?? s.published_at ?? null,
+    retrievedAt: s.retrievedAt ?? s.retrieved_at ?? null,
+    freshness: s.freshness ?? null,
+    sourceType: s.sourceType ?? s.source_type ?? null,
+  }));
+
+export const marketSynthesisSchema = z
+  .object({
+    schema_version: z.string().optional(),
+    schemaVersion: z.string().optional(),
+    symbol: z.string(),
+    generated_at: z.string().optional(),
+    generatedAt: z.string().optional(),
+    status: unknownString,
+    technical_view: z.record(z.string(), z.unknown()).optional(),
+    technicalView: z.record(z.string(), z.unknown()).optional(),
+    external_view: z.record(z.string(), z.unknown()).optional(),
+    externalView: z.record(z.string(), z.unknown()).optional(),
+    synthesis: z
+      .object({
+        state: z.string().optional(),
+        summary: z.string().optional().default(""),
+        technical_explanation: z.string().optional(),
+        technicalExplanation: z.string().optional(),
+        external_explanation: z.string().optional(),
+        externalExplanation: z.string().optional(),
+        alignment_explanation: z.string().optional(),
+        alignmentExplanation: z.string().optional(),
+        risk_explanation: z.string().optional(),
+        riskExplanation: z.string().optional(),
+        uncertainties: z.array(z.string()).optional().default([]),
+        what_to_watch: z.array(z.string()).optional(),
+        whatToWatch: z.array(z.string()).optional(),
+      })
+      .optional(),
+    synthesis_state: z.string().optional(),
+    synthesisState: z.string().optional(),
+    sources: z.array(sourceRefSchema).optional().default([]),
+    facts: z.array(z.record(z.string(), z.unknown())).optional().default([]),
+    ai_metadata: z.record(z.string(), z.unknown()).optional(),
+    aiMetadata: z.record(z.string(), z.unknown()).optional(),
+    cache: z.record(z.string(), z.unknown()).optional(),
+    freshness: z.unknown().optional(),
+    note: z.string().optional(),
+  })
+  .transform((raw) => {
+    const technicalView = (raw.technicalView ??
+      raw.technical_view ??
+      {}) as Record<string, unknown>;
+    const externalView = (raw.externalView ??
+      raw.external_view ??
+      {}) as Record<string, unknown>;
+    const synRaw = raw.synthesis;
+    const syn = {
+      state: synRaw?.state,
+      summary: synRaw?.summary ?? "",
+      technicalExplanation: synRaw?.technicalExplanation,
+      technical_explanation: synRaw?.technical_explanation,
+      externalExplanation: synRaw?.externalExplanation,
+      external_explanation: synRaw?.external_explanation,
+      alignmentExplanation: synRaw?.alignmentExplanation,
+      alignment_explanation: synRaw?.alignment_explanation,
+      riskExplanation: synRaw?.riskExplanation,
+      risk_explanation: synRaw?.risk_explanation,
+      uncertainties: synRaw?.uncertainties ?? [],
+      whatToWatch: synRaw?.whatToWatch,
+      what_to_watch: synRaw?.what_to_watch,
+    };
+    const aiRaw = (raw.aiMetadata ?? raw.ai_metadata ?? {}) as Record<
+      string,
+      unknown
+    >;
+
+    const topDriversRaw =
+      externalView.top_drivers ??
+      externalView.topDrivers ??
+      externalView.market_drivers ??
+      [];
+    const eventsRaw =
+      externalView.important_events ?? externalView.importantEvents ?? [];
+
+    const drivers = z.array(marketDriverSchema).catch([]).parse(topDriversRaw);
+    const events = z.array(importantEventSchema).catch([]).parse(eventsRaw);
+
+    return {
+      schemaVersion: raw.schemaVersion ?? raw.schema_version ?? "1.0",
+      symbol: raw.symbol,
+      generatedAt: raw.generatedAt ?? raw.generated_at ?? "",
+      status: String(raw.status || "UNAVAILABLE").toUpperCase(),
+      technicalView: {
+        primaryTimeframe: String(
+          technicalView.primary_timeframe ??
+            technicalView.primaryTimeframe ??
+            "M15",
+        ),
+        primaryBias: String(
+          technicalView.primary_bias ?? technicalView.primaryBias ?? "UNKNOWN",
+        ).toUpperCase(),
+        botSignal: String(
+          technicalView.bot_signal ?? technicalView.botSignal ?? "WAIT",
+        ).toUpperCase(),
+        botStrategy: String(
+          technicalView.bot_strategy ??
+            technicalView.botStrategy ??
+            "mtf_technical_v1",
+        ),
+        setupState: (technicalView.setup_state ??
+          technicalView.setupState ??
+          null) as string | null,
+        executionStatus: (technicalView.execution_status ??
+          technicalView.executionStatus ??
+          null) as string | null,
+        mtfAlignment: String(
+          technicalView.mtf_alignment ??
+            technicalView.mtfAlignment ??
+            "UNKNOWN",
+        ).toUpperCase(),
+        timeframes: (technicalView.timeframes ?? {}) as Record<
+          string,
+          { trend?: string; structure?: string }
+        >,
+        nearestSupport: technicalView.nearest_support ?? technicalView.nearestSupport,
+        nearestResistance:
+          technicalView.nearest_resistance ?? technicalView.nearestResistance,
+        wickRejection: (technicalView.wick_rejection ??
+          technicalView.wickRejection ??
+          null) as string | null,
+        currentPrice: (technicalView.current_price ??
+          technicalView.currentPrice ??
+          null) as number | null,
+      },
+      externalView: {
+        status: String(
+          externalView.status ?? "UNAVAILABLE",
+        ).toUpperCase(),
+        externalBias: String(
+          externalView.external_bias ??
+            externalView.externalBias ??
+            "INSUFFICIENT_EVIDENCE",
+        ).toUpperCase(),
+        evidenceStrength: String(
+          externalView.evidence_strength ??
+            externalView.evidenceStrength ??
+            "INSUFFICIENT",
+        ).toUpperCase(),
+        alignmentWithTechnical: String(
+          externalView.alignment_with_technical ??
+            externalView.alignmentWithTechnical ??
+            "INSUFFICIENT_DATA",
+        ).toUpperCase(),
+        eventRisk: String(
+          externalView.event_risk ?? externalView.eventRisk ?? "UNKNOWN",
+        ).toUpperCase(),
+        topDrivers: drivers,
+        importantEvents: events,
+        supportingFactors: (externalView.supporting_factors ??
+          externalView.supportingFactors ??
+          []) as string[],
+        conflictingFactors: (externalView.conflicting_factors ??
+          externalView.conflictingFactors ??
+          []) as string[],
+        sourceCount: Number(
+          externalView.source_count ?? externalView.sourceCount ?? 0,
+        ),
+        freshness: String(
+          externalView.freshness ?? "UNDATED",
+        ).toUpperCase(),
+      },
+      synthesis: {
+        state: String(
+          syn.state ??
+            raw.synthesisState ??
+            raw.synthesis_state ??
+            "INSUFFICIENT_CONTEXT",
+        ).toUpperCase(),
+        summary: syn.summary ?? "",
+        technicalExplanation:
+          syn.technicalExplanation ?? syn.technical_explanation ?? "",
+        externalExplanation:
+          syn.externalExplanation ?? syn.external_explanation ?? "",
+        alignmentExplanation:
+          syn.alignmentExplanation ?? syn.alignment_explanation ?? "",
+        riskExplanation: syn.riskExplanation ?? syn.risk_explanation ?? "",
+        uncertainties: syn.uncertainties ?? [],
+        whatToWatch: syn.whatToWatch ?? syn.what_to_watch ?? [],
+      },
+      sources: raw.sources ?? [],
+      aiMetadata: {
+        enabled: Boolean(aiRaw.enabled),
+        provider: (aiRaw.provider as string | null) ?? null,
+        model: (aiRaw.model as string | null) ?? null,
+        used: Boolean(aiRaw.used),
+        fallbackUsed: Boolean(aiRaw.fallback_used ?? aiRaw.fallbackUsed),
+        latencyMs: (aiRaw.latency_ms ?? aiRaw.latencyMs ?? null) as
+          | number
+          | null,
+        errorType: (aiRaw.error_type ?? aiRaw.errorType ?? null) as
+          | string
+          | null,
+      },
+      cache: {
+        hit: Boolean((raw.cache as Record<string, unknown> | undefined)?.hit),
+        ageSeconds: ((raw.cache as Record<string, unknown> | undefined)
+          ?.age_seconds ??
+          (raw.cache as Record<string, unknown> | undefined)?.ageSeconds ??
+          null) as number | null,
+      },
+      freshness: raw.freshness ?? null,
+      note: raw.note ?? null,
+    };
+  });
+
+export type MarketSynthesis = z.infer<typeof marketSynthesisSchema>;
+export type MarketDriver = MarketSynthesis["externalView"]["topDrivers"][number];
+export type MarketContextSource = MarketSynthesis["sources"][number];
+export type ImportantMarketEvent =
+  MarketSynthesis["externalView"]["importantEvents"][number];

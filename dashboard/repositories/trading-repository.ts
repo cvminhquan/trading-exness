@@ -18,8 +18,13 @@ import type {
   TradeAnalysis,
   MultiTimeframeAnalysis,
   ExecutionCandidateStatus,
+  MarketSynthesis,
 } from "@/domain";
 import type { BacktestListParams, TradeListParams } from "@/domain/api/params";
+
+export type MarketSynthesisQuery = {
+  forceRefresh?: boolean;
+};
 
 export interface TradingRepository {
   getBotStatus(): Promise<BotStatus>;
@@ -42,4 +47,8 @@ export interface TradingRepository {
   getTradeAnalysis(symbol?: string): Promise<TradeAnalysis>;
   getMultiTimeframeAnalysis(symbol?: string): Promise<MultiTimeframeAnalysis>;
   getExecutionCandidateStatus(symbol?: string): Promise<ExecutionCandidateStatus>;
+  getMarketSynthesis(
+    symbol?: string,
+    query?: MarketSynthesisQuery,
+  ): Promise<MarketSynthesis>;
 }

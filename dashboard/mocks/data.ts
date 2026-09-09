@@ -17,7 +17,9 @@ import type {
   TradeAnalysis,
   MultiTimeframeAnalysis,
   ExecutionCandidateStatus,
+  MarketSynthesis,
 } from "@/domain";
+import { marketSynthesisSchema } from "@/domain/schemas";
 
 const now = new Date();
 const iso = (offsetHours: number): string =>
@@ -329,6 +331,125 @@ export const mockExecutionCandidateStatus: ExecutionCandidateStatus = {
   confidenceMeaning: "EVIDENCE_ALIGNMENT",
   generatedAt: iso(0),
 };
+
+/** Mock conflict scenario: M15 bearish vs external bullish for gold. */
+export const mockMarketSynthesis: MarketSynthesis = marketSynthesisSchema.parse({
+  schema_version: "1.0",
+  symbol: "XAUUSD",
+  generated_at: iso(0),
+  status: "AVAILABLE",
+  technical_view: {
+    primary_timeframe: "M15",
+    primary_bias: "BEARISH",
+    bot_signal: "SHORT",
+    bot_strategy: "mtf_technical_v1",
+    setup_state: "WAITING_FOR_ENTRY",
+    execution_status: "NOT_READY",
+    mtf_alignment: "MIXED",
+    timeframes: {
+      M15: { trend: "BEARISH", structure: "BEARISH" },
+      H1: { trend: "BEARISH", structure: "BEARISH" },
+      H4: { trend: "BULLISH", structure: "BULLISH" },
+      D1: { trend: "BULLISH", structure: "BULLISH" },
+    },
+    nearest_support: { price: 4350 },
+    nearest_resistance: { price: 4400 },
+    wick_rejection: "NO_CLEAR_REJECTION",
+    current_price: 4380,
+  },
+  external_view: {
+    status: "AVAILABLE",
+    external_bias: "BULLISH_FOR_GOLD",
+    evidence_strength: "MODERATE",
+    alignment_with_technical: "CONFLICT",
+    event_risk: "HIGH",
+    top_drivers: [
+      {
+        driver: "GEOPOLITICS",
+        direction_for_gold: "BULLISH",
+        summary: "Safe-haven demand supports gold.",
+        evidence_strength: "MODERATE",
+        source_ids: ["src_1"],
+      },
+      {
+        driver: "USD",
+        direction_for_gold: "BEARISH",
+        summary: "USD firmness weighs on gold.",
+        evidence_strength: "WEAK",
+        source_ids: ["src_2"],
+      },
+    ],
+    important_events: [
+      {
+        event_name: "US CPI",
+        event_type: "INFLATION",
+        importance: "HIGH",
+        status: "UPCOMING",
+        scheduled_at: null,
+        note: "Exact timestamp not verified from grounding",
+        source_ids: ["src_1"],
+      },
+    ],
+    supporting_factors: ["Safe-haven demand"],
+    conflicting_factors: ["Stronger USD"],
+    source_count: 2,
+    freshness: "RECENT",
+  },
+  synthesis: {
+    state: "TECHNICAL_EXTERNAL_CONFLICT",
+    summary:
+      "XAUUSD: M15 technical direction is BEARISH, while external context is BULLISH_FOR_GOLD, creating a conflict. Higher timeframes: H1 BEARISH, H4 BULLISH, D1 BULLISH. Event risk is HIGH.",
+    technical_explanation:
+      "Primary M15 bias is BEARISH. Production bot signal is SHORT (mtf_technical_v1). MTF alignment is MIXED.",
+    external_explanation:
+      "External bias is BULLISH_FOR_GOLD with evidence strength MODERATE.",
+    alignment_explanation:
+      "M15 is BEARISH, but external context leans BULLISH_FOR_GOLD, so external evidence currently conflicts with the primary technical timeframe.",
+    risk_explanation:
+      "Event risk is high because a material macro/market event is flagged as important. This does not predict the outcome.",
+    uncertainties: [
+      "H4 disagrees with M15",
+      "External evidence conflicts with M15",
+    ],
+    what_to_watch: [
+      "Watch whether M15 structure remains consistent with the current BEARISH bias.",
+      "Watch upcoming or ongoing macro events flagged in external context.",
+    ],
+  },
+  sources: [
+    {
+      source_id: "src_1",
+      title: "Geopolitical risks support safe-haven gold demand",
+      domain: "apnews.com",
+      url: "https://apnews.com/article/gold-geopolitics-example",
+      published_at: iso(2),
+      retrieved_at: iso(0),
+      freshness: "RECENT",
+      source_type: "MAJOR_NEWS",
+    },
+    {
+      source_id: "src_2",
+      title: "Dollar firms on rate expectations",
+      domain: "reuters.com",
+      url: "https://www.reuters.com/markets/dollar-example",
+      published_at: null,
+      retrieved_at: iso(0),
+      freshness: "UNDATED",
+      source_type: "MAJOR_NEWS",
+    },
+  ],
+  ai_metadata: {
+    enabled: false,
+    provider: "deterministic",
+    model: "none",
+    used: false,
+    fallback_used: true,
+    latency_ms: null,
+    error_type: null,
+  },
+  cache: { hit: false, age_seconds: 0 },
+  note: "MarketSynthesis is human-facing analysis only. It does not generate or approve trades.",
+});
 
 export const mockDailyRealizedPnl: DailyRealizedPnl[] = [
   { date: "2026-09-01", realizedPnl: 0.11 },

@@ -642,3 +642,104 @@ export const PAPER_REASON_LABELS = {
 
 export const formatExitReason = (reason: keyof typeof EXIT_REASON_LABELS): string =>
   EXIT_REASON_LABELS[reason] ?? reason;
+
+/** Phase 16.3.4 — Market Context (presentation only). */
+export const MARKET_CONTEXT = {
+  title: "Bối cảnh thị trường",
+  subtitle:
+    "Giải thích kỹ thuật + ngữ cảnh bên ngoài — chỉ đọc, không phải khuyến nghị khớp lệnh.",
+  refresh: "Làm mới ngữ cảnh",
+  refreshing: "Đang làm mới…",
+  technical: "Kỹ thuật",
+  external: "Bên ngoài",
+  relation: "Quan hệ",
+  primary: "PRIMARY",
+  confirmation: "CONFIRMATION",
+  context: "CONTEXT",
+  macro: "MACRO",
+  botSignal: "Tín hiệu bot",
+  synthesisState: "Trạng thái tổng hợp",
+  drivers: "Động lực thị trường",
+  eventRisk: "Rủi ro sự kiện",
+  aiTitle: "Tổng hợp AI",
+  aiSubtitle:
+    "Giải thích do hệ thống tạo dựa trên snapshot kỹ thuật và ngữ cảnh bên ngoài có nguồn.",
+  deterministicLabel: "Phân tích deterministic",
+  fallbackLabel: "Phân tích dự phòng",
+  details: "Chi tiết giải thích",
+  uncertainties: "Điểm chưa chắc chắn",
+  whatToWatch: "Cần theo dõi",
+  sources: "Nguồn",
+  noDrivers: "Chưa có động lực được báo cáo.",
+  noEvents: "Chưa có sự kiện quan trọng.",
+  noSources: "Chưa có nguồn trích dẫn.",
+  externalUnavailable:
+    "Ngữ cảnh thị trường bên ngoài hiện không khả dụng. Phân tích kỹ thuật vẫn hiển thị.",
+  externalDisabled: "Ngữ cảnh bên ngoài đang tắt. Phân tích kỹ thuật vẫn khả dụng.",
+  unavailable: "Không thể tải bối cảnh thị trường.",
+  updated: "Cập nhật",
+  readOnlyNote: "Chỉ đọc — không đặt lệnh",
+} as const;
+
+export const MARKET_CONTEXT_STATUS_LABELS: Record<string, string> = {
+  AVAILABLE: "Khả dụng",
+  PARTIAL: "Một phần",
+  TECHNICAL_ONLY: "Chỉ kỹ thuật",
+  EXTERNAL_ONLY: "Chỉ bên ngoài",
+  STALE: "Cũ",
+  UNAVAILABLE: "Không khả dụng",
+};
+
+export const MARKET_CONTEXT_STATE_LABELS: Record<string, string> = {
+  TECHNICAL_EXTERNAL_ALIGNED: "Kỹ thuật & bên ngoài đồng thuận",
+  TECHNICAL_EXTERNAL_CONFLICT: "Kỹ thuật / bên ngoài xung đột",
+  TECHNICAL_DOMINANT_EXTERNAL_MIXED: "Kỹ thuật chủ đạo — bên ngoài hỗn hợp",
+  EXTERNAL_SUPPORT_WEAK: "Hỗ trợ bên ngoài yếu",
+  EXTERNAL_CONFLICT_WEAK: "Xung đột bên ngoài yếu",
+  TECHNICAL_NEUTRAL_EXTERNAL_DIRECTIONAL: "Kỹ thuật trung lập — bên ngoài có hướng",
+  TECHNICAL_DIRECTIONAL_EXTERNAL_NEUTRAL: "Kỹ thuật có hướng — bên ngoài trung lập",
+  HIGH_EVENT_RISK: "Rủi ro sự kiện cao",
+  INSUFFICIENT_CONTEXT: "Thiếu ngữ cảnh",
+};
+
+export const MARKET_BIAS_LABELS: Record<string, string> = {
+  BULLISH: "Tăng",
+  BEARISH: "Giảm",
+  NEUTRAL: "Trung lập",
+  UNKNOWN: "Chưa rõ",
+  MIXED: "Hỗn hợp",
+  BULLISH_FOR_GOLD: "Tăng cho vàng",
+  BEARISH_FOR_GOLD: "Giảm cho vàng",
+  INSUFFICIENT_EVIDENCE: "Thiếu bằng chứng",
+};
+
+export const MARKET_ALIGNMENT_LABELS: Record<string, string> = {
+  SUPPORT: "Hỗ trợ",
+  CONFLICT: "Xung đột",
+  NEUTRAL: "Trung lập",
+  MIXED: "Hỗn hợp",
+  INSUFFICIENT_DATA: "Thiếu dữ liệu",
+};
+
+export const MARKET_EVENT_RISK_LABELS: Record<string, string> = {
+  HIGH: "Cao",
+  MEDIUM: "Trung bình",
+  LOW: "Thấp",
+  UNKNOWN: "Chưa rõ",
+};
+
+export const MARKET_DIRECTION_FOR_GOLD_LABELS: Record<string, string> = {
+  BULLISH: "Tăng cho vàng",
+  BEARISH: "Giảm cho vàng",
+  NEUTRAL: "Trung lập",
+  MIXED: "Hỗn hợp",
+  UNKNOWN: "Chưa rõ",
+};
+
+export const MARKET_EVIDENCE_LABELS: Record<string, string> = {
+  STRONG: "Mạnh",
+  MODERATE: "Trung bình",
+  WEAK: "Yếu",
+  INSUFFICIENT: "Không đủ",
+};
+

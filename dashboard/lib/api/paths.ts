@@ -12,6 +12,8 @@ export const API_V1 = {
     `/api/v1/analysis/${encodeURIComponent(symbol)}/multi-timeframe`,
   executionCandidate: (symbol: string) =>
     `/api/v1/analysis/${encodeURIComponent(symbol)}/execution-candidate`,
+  marketSynthesis: (symbol: string) =>
+    `/api/v1/analysis/${encodeURIComponent(symbol)}/market-synthesis`,
   positions: "/api/v1/positions",
   trades: "/api/v1/trades",
   strategy: "/api/v1/strategy",

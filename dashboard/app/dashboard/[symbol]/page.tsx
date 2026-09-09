@@ -10,6 +10,7 @@ import { PositionTable } from "@/components/positions/PositionTable";
 import { QueryState } from "@/components/shared/States";
 import { OverviewSkeleton, TableSkeleton } from "@/components/shared/Skeletons";
 import { TradeAnalysisSection } from "@/components/trading-analysis/TradeAnalysisSection";
+import { MarketContextSection } from "@/components/market-context/MarketContextSection";
 import { EMPTY, METRICS, SECTION_LABELS } from "@/lib/i18n/vi";
 import {
   DASHBOARD_RESERVED_SEGMENTS,
@@ -84,6 +85,8 @@ export default function DashboardSymbolPage({ params }: PageProps) {
           />
         ) : null}
       </QueryState>
+
+      <MarketContextSection symbol={symbol} />
 
       <div className="grid gap-4 xl:grid-cols-12">
         <section
