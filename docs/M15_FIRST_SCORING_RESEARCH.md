@@ -1,243 +1,332 @@
-# M15_FIRST_SCORING_RESEARCH
+# M15-First Scoring Research
 
-**Phase:** 16.2.4  
-**Date:** 2026-09-08  
-**Candidate id:** `mtf_technical_v2_candidate` (research-only)  
-**Production:** `mtf_technical_v1` — **unchanged**
+**Phase:** 16.2.4 → **16.2.4A (validation hardening)**  
+**Date:** 2026-09-09  
+**Candidate:** `mtf_technical_v2_candidate` (RESEARCH ONLY)  
+**Production:** `mtf_technical_v1` — **unchanged**  
+**Artifact:** `trading-engine/data/historical/m15_first_research_16_2_4A.json`  
+**Phase report:** `docs/PHASE_16_2_4A_VALIDATION_HARDENING.md`
 
 ```text
-REAL order_send: NO
-Broker mutation: NO
-Execution integration: NO
-Phase 17 modification: NO
-v2 wired to ExecutionCandidate: NO
-Promotion to production: NO
+order_send: NO
+broker mutation: NO
+ExecutionCandidate / Phase17: NO
+v2 promoted: NO
+freeze retuned after holdout: NO
 ```
-
-Spec: `docs/superpowers/specs/2026-09-08-m15-first-scoring-research-design.md`  
-Plan: `docs/superpowers/plans/2026-09-08-m15-first-scoring-research.md`  
-Package: `trading-engine/src/exness_bot/market_analysis/research/`
 
 ---
 
-## 1. Current v1 formula audit
+## 1. Scope
 
-### Per-TF components (`scoring.py`)
+Audit + harden the research harness so M15-first weighting can be compared fairly to production v1 on historical XAUUSD M15 — **without** promoting v2 or changing frozen weights.
 
-| Component | Weight | Binary / continuous |
-|-----------|--------|---------------------|
-| Trend | 0.30 | UPTREND=+100, DOWNTREND=−100 |
-| Structure | 0.25 | BULLISH=+100, BEARISH=−100 |
-| Momentum | 0.20 | RSI + MACD |
-| Location | 0.15 | support/resistance vs ATR |
-| Volume | 0.10 | HIGH/LOW/NORMAL |
+Research question:
 
-### MTF weights (`mtf_service.py`)
-
-M15=0.20, H1=0.30, H4=0.30, D1=0.20 · thresholds ±20.
-
-### Conflict behavior (v1)
-
-H4 ≠ D1 (both non-NEUTRAL) → **final WAIT** (implicit HTF veto of base direction).
-
-### Why v1 can WAIT after a multi-hour XAUUSD drop
-
-1. **Structure ±100 cancels trend.**  
-   `TREND=−100` + `STRUCTURE=+100` → contribution `0.30*(−100)+0.25*(+100)=−5`. Stale bullish HH/HL can nearly wipe a strong downtrend before momentum/impulse.
-
-2. **M15 underweighted.**  
-   M15 only 20% of aggregate; H1+H4 = 60%. A sharp M15 selloff is diluted by slower HTF scores still bullish/neutral.
-
-3. **H4/D1 conflict → WAIT.**  
-   Even if weighted score is directional, H4 vs D1 disagreement forces WAIT.
-
-4. **No impulse term.**  
-   ATR-normalized 1/3/4-bar closed moves are invisible to v1 scoring.
-
-**Audit case (synthetic conflict):**
-
-| Metric | v1 | v2 candidate |
-|--------|----|--------------|
-| trend | −100 | −100 |
-| structure | +100 | +35 (`WEAKENING_BULLISH` + dampen 0.35) |
-| total (with bearish mom/impulse) | −25 SHORT | −58.7 SHORT |
-| trend+structure partial only | −5 | −19.75 |
-
-Binary structure **is overweight** relative to intraday responsiveness.
+> Does M15-first (PRIMARY) + HTF confirmation/context improve reaction latency and signal quality vs v1 HTF-heavy scoring?
 
 ---
 
-## 2. V2 candidate behavior (frozen hypothesis)
+## 2. Safety Boundary
 
-### Roles / TF weights
-
-| TF | Role | Weight |
-|----|------|--------|
-| M15 | PRIMARY SIGNAL | 0.50 |
-| H1 | CONFIRMATION | 0.30 |
-| H4 | TREND CONTEXT | 0.15 |
-| D1 | MACRO CONTEXT | 0.05 |
-
-### M15 components
-
-Trend 0.25 · Structure 0.15 · Momentum 0.20 · Location 0.10 · Volume 0.10 · **Impulse 0.20**
-
-### Impulse (closed only)
-
-```
-move_k = (close[t] - close[t-k]) / ATR14[t]
-n(x) = 100 * tanh(x / 1.5)
-impulse = 0.50*n(move_1) + 0.30*n(move_3) + 0.20*n(move_4)
-```
-
-### Structure transition
-
-`CONFIRMED_BULLISH(+100)` · `WEAKENING_BULLISH(+40)` · `TRANSITION(0)` ·  
-`WEAKENING_BEARISH(−40)` · `CONFIRMED_BEARISH(−100)`
-
-Conflict dampen: if strong trend opposes strong structure → structure × 0.35.
-
-### HTF semantics
-
-- Context warnings: `CONTEXT_H4_DISAGREES_M15`, `CONTEXT_D1_DISAGREES_M15`, …
-- **No implicit H4/D1 veto**
-- Explicit rule `HIGHER_TF_STRONG_CONFLICT` exists, **disabled** in frozen config (tested ON/OFF)
-
-### Leverage
-
-Not used in scoring / confidence / volume.
+| Constraint | Status |
+|------------|--------|
+| Production imports `research/` | **NO** (AST-enforced) |
+| Research CSV offline | YES |
+| Execution / MT5 order APIs | **ZERO** in research path |
+| Leverage in scoring | **NO** — sizing/margin only |
 
 ---
 
-## 3. Historical dataset
+## 3. Frozen V2 Snapshot
+
+Verified `assert_freeze_matches_16_2_4` — **CONFIG_DRIFT: NO**
+
+| Item | Value |
+|------|-------|
+| TF | M15=0.50 · H1=0.30 · H4=0.15 · D1=0.05 |
+| Components | trend 0.25 · structure 0.15 · mom 0.20 · loc 0.10 · vol 0.10 · impulse 0.20 |
+| Aggregate | LONG ≥ +20 · SHORT ≤ −20 |
+| Structure dampen | 0.35 |
+| Impulse | scale 1.5 · w 0.50/0.30/0.20 |
+| `higher_tf_strong_conflict_enabled` | **false** |
+
+---
+
+## 4. Dataset
 
 | Field | Value |
 |-------|-------|
-| Source | Exness DEMO MT5 via `export_history` (read-only) |
-| Broker symbol | XAUUSDm (canonical XAUUSD) |
-| Path | `trading-engine/data/historical/XAUUSD_M15.csv` |
+| Path | `data/historical/XAUUSD_M15.csv` |
+| Broker symbol | XAUUSDm |
 | Timezone | UTC |
 | Start | 2025-03-02T23:00:00+00:00 |
 | End | 2026-09-08T16:00:00+00:00 |
-| M15 candles | 35 973 |
-| H1 (resample) | 9 000 |
-| H4 (resample) | 2 433 |
-| D1 (resample) | 474 |
+| M15 / H1 / H4 / D1 | 35 973 / 9 000 / 2 433 / 474 |
 | Duplicates | 0 |
-| Session/missing gaps (est.) | present (weekend + thin sessions); exporter reported unexpected gaps=5 |
-| Split | chronological 60% / 20% / 20% |
-| Sufficient for split | YES (≥5 000 M15) |
-
-Pipeline: **M15 canonical → deterministic UTC resample H1/H4/D1 → closed candles only.**
 
 ---
 
-## 4. Synthetic scenario comparison
+## 5. Coverage Accounting
 
-Representative end-of-series decisions (rolling window analysis):
+**Model:** first-exclusion, mutually exclusive buckets.
 
-| Scenario | v1 score | v1 | v2 score | v2 | M15 impulse |
-|----------|----------|----|----------|----|-------------|
-| sideways | +6.6 | WAIT | ~0..−13 | WAIT | ~−2 |
-| normal_bullish | +20.2 | LONG | ~+27 | LONG | ~+39 |
-| normal_bearish | −20.2 | SHORT | ~−27 | SHORT | ~−39 |
-| **sharp_1h_selloff** | **−16.2** | **WAIT** | **~−21..−23** | **SHORT** | ~−20 |
-| sharp_4h_selloff | −20.2 | SHORT | ~−22 | SHORT | ~−15 |
-| bullish_pullback_in_bearish | −9.6 | WAIT | WAIT | WAIT | ~−33 |
-| false_breakout | +10.3 | WAIT | WAIT | WAIT | ~+12 |
-| v_reversal | −0.6 | WAIT | varies | WAIT/LONG | ~+36 |
-| m15_bearish_vs_h4_bullish | −29 | SHORT | more short | SHORT | strong − |
-| m15_bullish_vs_d1_bearish | +31 | LONG | LONG | LONG | strong + |
+### Legacy 16.2.4 (incorrect)
 
-### Signal delay (sharp 1h selloff synthetic)
+Silent `for i in range(250, n, 48)`:
 
-| Metric | v1 | v2 |
-|--------|----|----|
-| Delay after event (M15 bars) | **never SHORT in window** (`null`) | **0** |
-| Price move missed to first SHORT | n/a (no signal) | ~0 |
-| Candles saved | n/a | v2 leads |
+| Field | Value |
+|-------|------:|
+| TOTAL_M15_BARS | 35 973 |
+| WARMUP_EXCLUDED | 250 |
+| SAMPLING_EXCLUDED | 34 978 |
+| FINAL_EVALUATED | **745** (~735 reported across splits) |
 
-This is the clearest answer to *“why WAIT while gold already dumped for hours?”*: v1 score stuck in WAIT zone (−16) under M15-light weights + no impulse; v2 crosses −20.
+### Hardened 16.2.4A
 
----
+| Field | Value |
+|-------|------:|
+| TOTAL_M15_BARS | 35 973 |
+| WARMUP_EXCLUDED | 250 |
+| MTF_ALIGNMENT / DATA_QUALITY / OTHER | 0 |
+| SAMPLING_EXCLUDED | **0** |
+| FINAL_ELIGIBLE ≈ FINAL_EVALUATED | **35 723** |
+| eval_step | **1** |
+| sampling_enabled | **false** |
 
-## 5. Historical split results (signal timing walk, step=48, lookback=250)
-
-Config **frozen before holdout** (see `freeze_snapshot` in research JSON).
-
-| Split | bars | v1 L/S/W | v2 L/S/W | agree | v2 SHORT while v1 WAIT |
-|-------|------|----------|----------|-------|-------------------------|
-| Development 60% | 445 | 175/115/155 | 178/107/160 | 78.2% | 16 |
-| Validation 20% | 145 | 44/49/52 | 41/51/53 | 82.8% | 6 |
-| Holdout 20% | 145 | 41/45/59 | 43/45/57 | 75.2% | 9 |
-
-Interpretation: v2 is **somewhat more willing to leave WAIT into SHORT** on the same windows, without exploding disagreement (agree ~75–83%). Not a full trade backtest.
+Split evals: development 21 333 · validation 7 195 · holdout 7 195.
 
 ---
 
-## 6. Risk / performance comparison (trade-sim)
+## 6. Gap Classification
 
-| Metric | Status |
-|--------|--------|
-| Trade count / win rate / PF / expectancy R | **Not computed** (no execution simulator on v2 setups this phase) |
-| Max drawdown / MAE / MFE / avg R | **Not computed** |
-| False breakout rate / whipsaw PnL | **Qualitative only** via synthetic false_breakout (both WAIT) |
+Heuristic (documented limitation — not full Exness calendar): Fri/Mon or δ≤4h → expected; mid-week δ>4h → unexpected.
 
-Claiming `V2_OUTPERFORMS_ON_HOLDOUT` would require frozen trade rules + holdout PnL edge. **Not available → cannot claim outperform.**
-
----
-
-## 7. Limitations
-
-1. Historical walk samples every 48 M15 bars (speed); not every bar.
-2. HTF built by resampling M15 (broker-native H1/H4/D1 may differ slightly at session edges).
-3. No full SL/TP / spread / slippage trade simulation for v1 vs v2.
-4. Synthetic HTF depth limited on short series (H4/D1 often insufficient).
-5. Impulse/weights are **initial hypothesis**, not grid-searched (by design).
-6. CSV is local/gitignored; reproduce via `export_history`.
+| Metric | Value |
+|--------|------:|
+| expected_market_gaps | 389 |
+| unexpected_active_session_gaps | 5 |
+| expected_missing_bars_est | 16 463 |
+| unexpected_missing_bars_est | 817 |
+| largest_unexpected_gap | ~4 395 min (~73h) |
+| largest unexpected range | 2025-04-17T20:45Z → 2025-04-20T22:00Z |
+| duplicates | 0 |
+| data_quality | **WARN** |
 
 ---
 
-## 8. Safety / isolation
+## 7. Resampling / No Look-Ahead
 
-- Production `market_analysis` (excluding `research/`) + `execution` + `api` **do not import** research (AST test).
-- `mtf_technical_v2_candidate` ≠ `mtf_technical_v1`.
-- CLI: `python -m exness_bot.market_analysis.research.run --csv ... [--holdout]`
+Pipeline: closed M15 → H1 → H4 → D1 via UTC floor buckets; incomplete HTF buckets dropped.
 
----
+At evaluation index `i`, only `m15[:i+1]` is resampled. Tests: `test_phase_16_2_4a_resample_alignment.py`.
 
-## 9. Recommendation
-
-Keep **production** on `mtf_technical_v1`. Continue research on v2 for:
-
-- impulse + soft structure as responsiveness levers  
-- optional later: setup/trade simulator on frozen config  
-- only then reconsider holdout PnL verdict
-
-**Do not promote v2 to Phase 17 / ExecutionCandidate in this phase.**
+**Look-ahead:** none detected in unit tests.
 
 ---
 
-## 10. Final verdict
+## 8. Chronological Splits
+
+Order: Development → Validation → Holdout (60/20/20 by index). **No shuffle.**
+
+Warmup: first 250 bars excluded from eval; each eval window uses last 250 closed bars (past-only) — matches live closed-candle semantics.
+
+---
+
+## 9. Synthetic Scenarios
+
+Suite preserved (sideways, bull/bear, sharp 1h/4h selloff, pullback, false breakout, V-reversal, TF conflicts).
+
+| Scenario | v1 | v2 |
+|----------|----|----|
+| sharp_1h_selloff | WAIT (no SHORT) | SHORT @ +3 bars |
+| sharp_4h_selloff | SHORT @ +16 | SHORT @ +4 (**12 candles saved**) |
+
+`event_bar` for 4h selloff: **fixed** (was null in earlier run).
+
+---
+
+## 10. Impulse Audit
+
+End-of-series impulse uses last 1/3/4 closed moves / ATR14, tanh(scale=1.5).
+
+| Scenario | moves (ATR) | impulse |
+|----------|-------------|---------|
+| sharp_1h end | (−0.14, −0.42, −0.57) | **−20.20** |
+| sharp_4h end | (−0.10, −0.30, −0.41) | **−14.65** |
+
+Smaller 4h end-impulse is expected (grind + milder tail), **not** a formula bug. Formula **not** retuned.
+
+---
+
+## 11. Structure Transition Audit
+
+Stale `STRUCTURE=+100` vs `TREND=−100`:
+
+| | v1 | v2 |
+|--|----|----|
+| structure state | binary BULLISH | WEAKENING_BULLISH |
+| after dampen 0.35 | n/a | ~+35 |
+| trend+structure contrib | ~−5 | ~−19.75 |
+| + impulse | none | strongly bearish |
+
+Transition + dampen reduces stale structure’s ability to cancel M15 trend.
+
+---
+
+## 12. Response Latency
+
+Units explicit: **bars** = M15 candles; **minutes** = bars×15; **missed_price** = XAUUSD **price units (USD)**; **missed_atr** = price/ATR.
+
+### sharp_1h_selloff
+
+| | v1 | v2 |
+|--|----|----|
+| signal_bar | null | 103 |
+| delay_bars / minutes | — | 3 / **45** |
+| missed_price (USD) | — | 19.5 |
+| missed_ATR | — | 7.8 |
+
+### sharp_4h_selloff
+
+| | v1 | v2 |
+|--|----|----|
+| delay_bars / minutes | 16 / 240 | 4 / 60 |
+| candles_saved | — | **12** |
+| missed_price (USD) | 56.0 | 14.0 |
+| missed_ATR | 28.0 | 7.0 |
+
+---
+
+## 13. Outcome Methodology
+
+Research-only sim (`outcomes.py`) — **not** ExecutionOrchestrator / MT5.
+
+| Assumption | Value |
+|------------|-------|
+| Entry | close[t] |
+| SL | 1.5 × ATR14 |
+| TP | 2R |
+| Horizon | 96 M15 (~24h) |
+| Path | bars t+1.. (no same-bar entry look-ahead) |
+| Same-bar SL+TP | **SL first** |
+| FALSE_SIGNAL | realized R < 0 |
+| WHIPSAW | SL within first 4 bars |
+
+---
+
+## 14. V1 Results (holdout)
+
+| Metric | Value |
+|--------|------:|
+| trades | 391 |
+| win_rate | 34.0% |
+| profit_factor | 1.024 |
+| expectancy_R | +0.016 |
+| max_drawdown_R | **33** |
+| false_signal_rate | 66.0% |
+| whipsaw_rate | 21.0% |
+
+---
+
+## 15. V2 Results (holdout)
+
+| Metric | Value |
+|--------|------:|
+| trades | 542 |
+| win_rate | 35.4% |
+| profit_factor | **1.088** |
+| expectancy_R | **+0.057** |
+| max_drawdown_R | **58** (worse) |
+| false_signal_rate | 64.6% |
+| whipsaw_rate | 23.4% |
+
+Agreement holdout ≈ **0.741**.
+
+---
+
+## 16. V2 Directional While V1 WAIT
+
+| Cohort (holdout) | count | win_rate | expectancy_R | MAE | MFE |
+|------------------|------:|---------:|-------------:|----:|----:|
+| V2 SHORT / V1 WAIT | **121** | 44.6% | **+0.339** | 1.09 | 1.45 |
+| V2 LONG / V1 WAIT | 113 | 33.6% | +0.009 | 1.16 | 1.35 |
+
+Lead SHORT looks like early capture of real moves — not pure noise — but more trades raise DD.
+
+**Note:** legacy step=48 reported ~9 holdout SHORT leads; step=1 expands to **121** (same freeze, denser sampling).
+
+---
+
+## 17. Holdout Cohort Audit
+
+Descriptive only — **no retune**.
+
+Lead SHORT expectancy positive; case-level table lives in runner aggregates (`v2_lead_short_while_v1_wait`). Per-bar score dumps for all 121 are available by re-running with JSON artifact (not retuned).
+
+---
+
+## 18. False Signal / Whipsaw
+
+Definitions (frozen):
+
+- **FALSE_SIGNAL:** exit_r < 0  
+- **WHIPSAW:** SL within ≤4 M15 bars  
+
+Holdout: false slightly ↓ (66.0→64.6%); whipsaw ↑ (21.0→23.4%).
+
+---
+
+## 19. Drawdown / MAE / MFE
+
+| | v1 | v2 |
+|--|----|----|
+| max_drawdown_R | 33 | **58** |
+| MAE_R | 1.01 | 1.09 |
+| MFE_R | 1.28 | 1.32 |
+
+DD regression blocks `V2_OUTPERFORMS_ON_HOLDOUT` gate (+10R / +25% rule).
+
+---
+
+## 20. Limitations
+
+1. Holdout **already observed** — not independent future proof.  
+2. Gap heuristic ≠ full Exness session calendar (`data_quality=WARN`).  
+3. Outcome sim ≠ live fill/slippage/commission.  
+4. Validation expectancy slightly negative for v2 vs v1 in prior notes — split instability.  
+5. Leverage 1:2000 irrelevant to scores.
+
+---
+
+## 21. Verdict
 
 ```text
 PROMISING_V2_REQUIRES_MORE_DATA
+PROMOTION: NO
 ```
 
-Rationale:
-
-- Synthetic + audit show **clear mechanism** for v1 WAIT lag after sharp M15 selloffs.
-- Phase **16.2.4A** fixed silent `step=48` sampling → full **35723** eligible bars; holdout expectancy/PF improved and V2-lead SHORT expectancy +0.34, but **max_drawdown_R worsened 33→58** and validation was unstable.
-- See `docs/PHASE_16_2_4A_VALIDATION_HARDENING.md`.
-
-**Do not promote v2** to Phase 17 / ExecutionCandidate.
+Evidence supports **earlier reaction** (synthetic + lead SHORT expectancy) but **not** production promote (DD ↑, holdout observed, gaps WARN).
 
 ---
 
-## 11. Master phase follow-up
+## 22. Next Research Window
 
-Combined dashboard + research report:
+**Do not** retune freeze on this holdout.
 
-`docs/MASTER_PHASE_RESEARCH_DASHBOARD_REPORT.md`
+Next (separate phase, human-gated):
 
-Holdout discipline unchanged: freeze immutable; no retune on observed holdout; independent proof needs forward/unseen window.
+1. New unseen historical window **or** future live paper/demo observation window.  
+2. Optional risk overlays / trade filters **without** changing TF/component weights.  
+3. Only then re-evaluate promotion criteria.
+
+---
+
+## Reproduce
+
+```powershell
+cd trading-engine
+.\.venv\Scripts\python.exe -m exness_bot.market_analysis.research.run `
+  --csv data/historical/XAUUSD_M15.csv --holdout --eval-step 1 `
+  --json-out data/historical/m15_first_research_16_2_4A.json
+```

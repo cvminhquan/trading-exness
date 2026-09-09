@@ -215,6 +215,30 @@ def get_multi_timeframe_analysis(
 
 
 @router.get(
+    "/analysis/{symbol}/technical-snapshot",
+    summary="Technical Market Snapshot (chỉ đọc)",
+    description=(
+        "Phase 16.3.1 deterministic technical truth: M15/H1/H4/D1 closed candles, "
+        "trend segment, swings, S/R, wick morphology, MTF alignment, bot analysis. "
+        "Không LLM, không Google, không gửi lệnh. "
+        "Dùng ?view=compact cho compact AI context."
+    ),
+)
+def get_technical_market_snapshot(
+    symbol: str,
+    service: Annotated[ReadService, Depends(get_read_service)],
+    view: Annotated[
+        str | None,
+        Query(description="full (mặc định) hoặc compact"),
+    ] = None,
+) -> dict[str, object]:
+    compact = (view or "").strip().lower() == "compact"
+    return _envelope(
+        service.get_technical_market_snapshot(symbol, compact=compact)
+    )
+
+
+@router.get(
     "/analysis/{symbol}",
     summary="Phân tích thị trường theo symbol (chỉ đọc)",
     response_model=DataEnvelope[TradeAnalysisDTO],

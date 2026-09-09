@@ -704,6 +704,17 @@ class ReadService:
         result = service.analyze(symbol)
         return self._map_mtf_analysis(result)
 
+    def get_technical_market_snapshot(
+        self, symbol: str | None = None, *, compact: bool = False
+    ) -> dict[str, object]:
+        """Phase 16.3.1 technical snapshot — never executes, no research/V2."""
+        from exness_bot.market_analysis.technical_snapshot import TechnicalSnapshotBuilder
+
+        snapshot = TechnicalSnapshotBuilder(self._settings, self._provider).build(symbol)
+        if compact:
+            return snapshot.to_compact_context()
+        return snapshot.to_dict()
+
     def get_execution_candidate_status(
         self, symbol: str | None = None
     ) -> ExecutionCandidateStatusDTO:

@@ -16,6 +16,8 @@
 | 17.2.3 | MTF decision diagnostics | **PASS** |
 | 17.2.4 | Read-only watcher alerts | **PASS** |
 | 17.2.5 | Dashboard Trade Analysis UX redesign | **PASS** |
+| 17.2.5C | Densify / contrast / terminal hierarchy | **PASS** |
+| 17.2.5D | Bright modern visual redesign (mockup) | **PASS** |
 
 ```text
 REAL MT5 order_send executed by agent: NO
@@ -234,6 +236,13 @@ Alerts (directional / ENTRY_ZONE / READY) are informational only. See `docs/PHAS
 ## 17.2.5 Dashboard Trade Analysis UX
 
 Hierarchy: Hero → Setup/Risk → Reasons → MTF (collapsed). READ-ONLY. Chi tiết: `docs/PHASE_17_2_5_DASHBOARD_TRADE_ANALYSIS_UX.md`.
+
+## 17.2.5C / 17.2.5D Visual redesign
+
+- **17.2.5C:** densify / contrast / terminal hierarchy — `docs/PHASE_17_2_5C_VISUAL_REDESIGN.md`
+- **17.2.5D:** bright modern mockup (Financial Blue, SymbolTabs sparkline + Thêm, Realized PnL 7/30, AccountSwitcher pill + loading) — `docs/PHASE_17_2_5D_REPORT.md`
+
+UI-only. Không đổi strategy / ExecutionCandidate / `order_send`.
 
 ---
 

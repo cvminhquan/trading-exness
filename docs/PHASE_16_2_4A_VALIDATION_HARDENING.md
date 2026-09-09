@@ -1,172 +1,120 @@
-# PHASE 16.2.4A — M15-FIRST RESEARCH VALIDATION HARDENING
+# PHASE 16.2.4A — RESEARCH VALIDATION HARDENING
 
-**Verdict:** `PROMISING_V2_REQUIRES_MORE_DATA`  
+**STATUS:** PASS  
+**RESEARCH VERDICT:** `PROMISING_V2_REQUIRES_MORE_DATA`  
+**PROMOTION:** NO  
 **Freeze:** UNCHANGED (`assert_freeze_matches_16_2_4`)  
-**Promotion:** NO  
-**Artifact:** `trading-engine/data/historical/m15_first_research_16_2_4A.json`
+**Artifact:** `trading-engine/data/historical/m15_first_research_16_2_4A.json`  
+**Research writeup:** `docs/M15_FIRST_SCORING_RESEARCH.md`
 
 ```text
+mtf_technical_v1 modified: NO
+v2 frozen config modified: NO
+v2 promoted: NO
+ExecutionCandidate modified: NO
+Phase17 modified: NO
 order_send: NO
 broker mutation: NO
-ExecutionCandidate: NO
-Phase17: NO
-mtf_technical_v1: NO
-v2 weights/formula retune: NO
 ```
 
 ---
 
-## 1. Coverage audit (35973 → 735 explained)
+## Final answers (A–S)
 
-### Phase 16.2.4 (legacy, incorrect)
-
-Silent `step=48` after warmup=250:
-
-| Field | Value |
-|-------|------:|
-| TOTAL_M15_BARS | 35973 |
-| WARMUP_EXCLUDED | 250 |
-| SAMPLING_EXCLUDED | ~34978 |
-| FINAL_EVALUATED (legacy) | ~745 (reported ~735 across splits) |
-| MTF_ALIGNMENT / DATA_QUALITY / OTHER | 0 |
-
-**Sampling rule (legacy):** `for i in range(250, n, 48)` — undocumented speed hack.
-
-### Phase 16.2.4A (fixed)
-
-| Field | Value |
-|-------|------:|
-| TOTAL_M15_BARS | 35973 |
-| WARMUP_EXCLUDED | 250 |
-| MTF_ALIGNMENT_EXCLUDED | 0 |
-| DATA_QUALITY_EXCLUDED | 0 |
-| SAMPLING_EXCLUDED | **0** |
-| OTHER_EXCLUDED | 0 |
-| FINAL_EVALUATED | **35723** |
-| eval_step | **1** |
-
-Split evals: development 21333 · validation 7195 · holdout 7195.
+| # | Question | Answer |
+|---|----------|--------|
+| **A** | Why 35 973 → ~735 evals? | Legacy silent `step=48` after warmup 250 → **745** evals (~735 reported). Not a data bug. |
+| **B** | Eligible after harden? | **35 723** (`step=1`, sampling=0) |
+| **C** | Gaps expected vs unexpected? | **389** expected · **5** unexpected · quality **WARN** |
+| **D** | Resample look-ahead free? | **YES** (prefix resample + unit tests) |
+| **E** | V2 improves 1h selloff? | **YES** — v1 WAIT; v2 SHORT @ +3 bars / 45 min |
+| **F** | V2 improves 4h selloff? | **YES** — 16→4 bars; **12 candles / 180 min saved** |
+| **G** | Bars saved? | Synthetic 4h: **12**; 1h: n/a (v1 never signaled) |
+| **H** | Minutes saved? | Synthetic 4h: **180**; 1h path: v2 at 45 vs v1 ∞ |
+| **I** | Price/ATR saved? | 4h missed ATR 28→7 (**~21 ATR**); missed price USD 56→14 |
+| **J** | False signals ↑? | Holdout **slightly ↓** 66.0%→64.6% |
+| **K** | Whipsaws ↑? | Holdout **mildly ↑** 21.0%→23.4% |
+| **L** | PF v1 vs v2? | Holdout **1.024 vs 1.088** |
+| **M** | Expectancy R? | Holdout **+0.016 vs +0.057** |
+| **N** | Max DD R? | Holdout **33 vs 58** (v2 worse — gate fail) |
+| **O** | V2 dir / V1 WAIT? | SHORT lead **121**, expectancy **+0.339**; LONG lead 113, ~flat |
+| **P** | Prior ~9 SHORT cases? | Artifact of step=48; step=1 → **121** SHORT leads (descriptive) |
+| **Q** | Support M15-first? | **Promising latency + lead SHORT**, not promote-ready |
+| **R** | Missing evidence? | Unseen future/window; DD control; calendar-grade gaps; live fills |
+| **S** | Next validation? | New unseen window **without** freeze retune; optional filters only |
 
 ---
 
-## 2. Gap classification
+## Coverage (summary)
 
-| Metric | Value |
-|--------|------:|
-| expected_market_gaps | 389 |
-| unexpected_active_session_gaps | 5 |
-| expected_missing_bars_est | 16463 |
-| unexpected_missing_bars_est | 817 |
-| largest_unexpected_gap_minutes | 4395 (~73h) |
-| largest unexpected | 2025-04-17T20:45Z → 2025-04-20T22:00Z |
-| duplicates | 0 |
-| data_quality | **WARN** |
+| | Legacy 16.2.4 | 16.2.4A |
+|--|--------------:|--------:|
+| TOTAL_M15 | 35973 | 35973 |
+| WARMUP | 250 | 250 |
+| SAMPLING_EXCLUDED | 34978 | **0** |
+| FINAL_EVALUATED | 745 | **35723** |
+| eval_step | 48 | **1** |
 
-Weekend/session closures counted as expected — not corruption.
+Accounting model: **first-exclusion** mutually exclusive buckets.
 
 ---
 
-## 3. Response delay (synthetic)
+## Data quality
 
-### sharp_1h_selloff
+expected_gaps=389 · unexpected=5 · largest_unexpected≈4395 min · duplicates=0 · **WARN**
 
-| Field | v1 | v2 |
-|-------|----|----|
-| event_bar | 100 | 100 |
-| signal_bar | null (no SHORT) | 103 |
-| delay_bars | null | 3 |
-| delay_minutes | null | 45 |
-| missed_price | null | 19.5 |
-| missed_atr | null | 7.8 |
-| candles_saved | n/a (v1 never signaled) | — |
-
-### sharp_4h_selloff (event detection fixed)
-
-| Field | v1 | v2 |
-|-------|----|----|
-| event_bar | 99 | 99 |
-| signal_bar | 115 | 103 |
-| delay_bars | 16 | 4 |
-| delay_minutes | 240 | 60 |
-| missed_price | 56.0 | 14.0 |
-| missed_atr | 28.0 | 7.0 |
-| candles_saved | | **12** |
+Limitation: deterministic Fri/Mon + δ≤4h heuristic — not full Exness calendar.
 
 ---
 
-## 4. Impulse audit (−20.20 vs −14.65)
+## No-look-ahead / synthetic latency
 
-End-of-series impulse uses only last 1/3/4 bars / ATR (tanh scale 1.5).
-
-Both scenarios end with a **mild tail** after the dump. Measured at end:
-
-- 1h: moves (−0.14, −0.42, −0.57) ATR → impulse **−20.20**
-- 4h: moves (−0.10, −0.30, −0.41) ATR → impulse **−14.65**
-
-Smaller 4h end-impulse is **expected** (grind + milder tail), not a formula bug. Tests cover this.
+Resample closed-bucket only. 1h: v2 only. 4h: 12 M15 candles saved. Impulse −20.20 vs −14.65 explained by end-tail ATR path (not bug).
 
 ---
 
-## 5. Holdout signal outcomes (research trade sim)
+## Holdout metrics
 
-Assumptions: entry=close[t], SL=1.5·ATR, TP=2R, horizon=96 M15, SL-first, whipsaw≤4 bars. **No execution engine.**
+| | v1 | v2 |
+|--|---:|---:|
+| trades | 391 | 542 |
+| PF | 1.024 | 1.088 |
+| E[R] | +0.016 | +0.057 |
+| DD_R | 33 | **58** |
+| false | 66.0% | 64.6% |
+| whipsaw | 21.0% | 23.4% |
 
-| Metric | v1 holdout | v2 holdout |
-|--------|------------|------------|
-| trade_count | 391 | 542 |
-| win_rate | 34.0% | 35.4% |
-| profit_factor | 1.024 | 1.088 |
-| expectancy_R | +0.016 | **+0.057** |
-| max_drawdown_R | **33** | **58** |
-| false_signal_rate | 66.0% | 64.6% |
-| whipsaw_rate | 21.0% | 23.4% |
-| MAE_R / MFE_R | 1.01 / 1.28 | 1.09 / 1.32 |
-
-Validation caveat: v2 expectancy −0.006 vs v1 +0.026 (not stable across splits).
+Verdict gate rejects `V2_OUTPERFORMS_ON_HOLDOUT` because DD worsens beyond +10R / +25%.
 
 ---
 
-## 6. V2 SHORT while V1 WAIT (holdout)
+## Tests added / used
 
-| | count | wins | losses | win_rate | expectancy_R | MAE | MFE |
-|--|------:|-----:|-------:|---------:|-------------:|----:|----:|
-| lead SHORT | **121** | 54 | 67 | 44.6% | **+0.339** | 1.09 | 1.45 |
-| lead LONG | 113 | 38 | 75 | 33.6% | +0.009 | 1.16 | 1.35 |
-
-Lead SHORT looks like **early capture of real moves**, not pure noise — but overall DD still rises with more trades.
+- `tests/unit/test_phase_16_2_4a_hardening.py` — freeze, coverage, gaps, outcomes, verdict gate  
+- `tests/unit/test_phase_16_2_4a_resample_alignment.py`  
+- `tests/unit/test_phase_16_2_4_m15_first_research.py`
 
 ---
 
-## 7. Interpretation answers
+## Files
 
-**A. Latency reduced?** YES (synthetic 4h: 16→4 bars; 1h: v1 never SHORT, v2 at +3).
-
-**B. How much?** 4h: **12 candles / 180 minutes / ~21 ATR saved** (28→7 missed ATR). 1h: v2 only path (45 min / 7.8 ATR missed vs infinite for v1).
-
-**C. False/whipsaw up?** Mildly: false ↓ slightly, whipsaw 21%→23%, **DD R 33→58 (worse)**.
-
-**D. Holdout 121 V2 SHORT / V1 WAIT?** expectancy_R **+0.34**, win_rate 44.6% — promising early shorts.
-
-**E. Enough evidence M15-first better?** **Not yet for production promote.** Latency + holdout expectancy help, but DD regression + validation negativity + gaps WARN block `V2_OUTPERFORMS_ON_HOLDOUT`.
+| Path | Role |
+|------|------|
+| `market_analysis/research/*` | Harness (pre-existing + hardened) |
+| `tests/unit/test_phase_16_2_4a_hardening.py` | New unit coverage |
+| `docs/M15_FIRST_SCORING_RESEARCH.md` | Full 22-section research |
+| `docs/PHASE_16_2_4A_VALIDATION_HARDENING.md` | This report |
+| `docs/superpowers/plans/2026-09-09-phase-16-2-4a-research-validation-hardening.md` | Plan |
 
 ---
 
-## 8. Verdict
-
-```text
-PROMISING_V2_REQUIRES_MORE_DATA
-```
-
-Gate note: an earlier auto-pass on expectancy/PF alone was **rejected** after adding drawdown discipline (`max_drawdown_R` must not worsen >+10R or +25%). Holdout DD 33→58 fails that bar.
-
-Next research (not this phase): risk overlays / trade filters — **without** retuning frozen score weights on holdout.
-
----
-
-## 9. Reproduce
+## Reproduce
 
 ```powershell
+cd trading-engine
 .\.venv\Scripts\python.exe -m exness_bot.market_analysis.research.run `
   --csv data/historical/XAUUSD_M15.csv --holdout --eval-step 1 `
   --json-out data/historical/m15_first_research_16_2_4A.json
 ```
+
+**Stop:** do not start 16.2.4B / retune / promote without human review.

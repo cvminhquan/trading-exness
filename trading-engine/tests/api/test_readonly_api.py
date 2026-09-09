@@ -320,6 +320,37 @@ class TestReadOnlySecurity:
         assert response.status_code in {404, 405}
 
 
+class TestTechnicalSnapshot:
+    def test_technical_snapshot_ok(self, api_client: TestClient) -> None:
+        response = api_client.get("/api/v1/analysis/XAUUSD/technical-snapshot")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert data["schema_version"] == "1.0"
+        assert data["symbol"] == "XAUUSD"
+        assert data["primary_timeframe"] == "M15"
+        assert set(data["timeframes"]) == {"M15", "H1", "H4", "D1"}
+        assert data["timeframes"]["M15"]["role"] == "PRIMARY"
+        assert data["bot_analysis"]["production_strategy"] == "mtf_technical_v1"
+        assert "freshness" in data
+        assert isinstance(data["facts"], list)
+
+    def test_technical_snapshot_compact(self, api_client: TestClient) -> None:
+        response = api_client.get(
+            "/api/v1/analysis/XAUUSD/technical-snapshot?view=compact"
+        )
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert "facts" in data
+        assert "ema20" in data["timeframes"]["M15"]
+        assert "support_levels" not in data["timeframes"]["M15"]
+
+    def test_technical_snapshot_no_post(self, api_client: TestClient) -> None:
+        assert api_client.post("/api/v1/analysis/XAUUSD/technical-snapshot").status_code in {
+            405,
+            422,
+        }
+
+
 class TestValidation:
     def test_invalid_page_size(self, api_client: TestClient) -> None:
         response = api_client.get("/api/v1/trades?pageSize=0")
