@@ -18,10 +18,10 @@ export const TradePlanSection = ({ analysis }: TradePlanSectionProps) => {
   if (!hasSetup || !setup) {
     return (
       <section aria-label={L.setupTitle}>
-        <h3 className="text-[13px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+        <h3 className="text-[11px] font-bold tracking-[0.08em] text-[var(--muted)] uppercase">
           {L.setupTitle}
         </h3>
-        <p className="mt-2 text-[14px] text-[var(--foreground-secondary)]">
+        <p className="mt-2 text-[13px] text-[var(--foreground-secondary)]">
           {L.noDirectionalSetup}
         </p>
       </section>
@@ -45,11 +45,11 @@ export const TradePlanSection = ({ analysis }: TradePlanSectionProps) => {
 
   return (
     <section aria-label={L.setupTitle}>
-      <h3 className="text-[13px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+      <h3 className="text-[11px] font-bold tracking-[0.08em] text-[var(--muted)] uppercase">
         {L.setupTitle}
       </h3>
 
-      <div className="mt-3 space-y-3">
+      <div className="mt-3.5 space-y-3.5">
         <PlanRow
           label={L.entryZone}
           value={
@@ -66,7 +66,7 @@ export const TradePlanSection = ({ analysis }: TradePlanSectionProps) => {
             value={sl == null ? L.dash : formatNumber(sl, 2)}
           />
           {slDistancePts != null ? (
-            <p className="mt-0.5 text-right text-[12px] text-[var(--muted)]">
+            <p className="mt-0.5 text-right text-[11px] font-medium text-[var(--muted)]">
               {L.slDistance}: {formatNumber(slDistancePts, 2)}
               {slDistancePct != null
                 ? ` (${formatNumber(slDistancePct, 2)}%)`
@@ -76,36 +76,36 @@ export const TradePlanSection = ({ analysis }: TradePlanSectionProps) => {
         </div>
 
         <div>
-          <p className="text-[12px] font-semibold tracking-wide text-[var(--muted)] uppercase">
+          <p className="text-[11px] font-bold tracking-[0.06em] text-[var(--muted)] uppercase">
             {L.takeProfit}
           </p>
           {tp1 ? (
-            <div className="mt-1.5 flex items-baseline justify-between gap-3 rounded-[var(--radius-tab)] bg-[var(--surface-subtle)] px-3 py-2">
+            <div className="mt-2 flex items-center justify-between gap-3 rounded-[var(--radius-control)] border border-[var(--positive)]/20 bg-[var(--positive-subtle)] px-3 py-2.5">
               <div>
                 <p className="text-[12px] font-bold tracking-wide text-[var(--foreground)] uppercase">
                   TP1
                 </p>
-                <p className="text-[11px] font-semibold tracking-wide text-[var(--positive)] uppercase">
+                <span className="mt-0.5 inline-flex rounded-full bg-[var(--positive)]/15 px-1.5 py-px text-[10px] font-bold tracking-wide text-[var(--positive)] uppercase">
                   {L.executionTarget}
-                </p>
+                </span>
               </div>
-              <p className="text-[16px] font-semibold tabular-nums text-[var(--foreground)]">
+              <p className="text-[17px] font-bold tabular-nums text-[var(--foreground)]">
                 {formatNumber(tp1.price, 2)}
               </p>
             </div>
           ) : (
-            <p className="mt-1 text-[14px] text-[var(--muted)]">{L.dash}</p>
+            <p className="mt-1.5 text-[13px] text-[var(--muted)]">{L.dash}</p>
           )}
           {otherTps.map((tp) => (
             <div
               key={tp.level}
-              className="mt-1.5 flex items-baseline justify-between gap-3 px-1"
+              className="mt-2 flex items-baseline justify-between gap-3 border-b border-[var(--border)]/70 px-1 pb-2 last:border-0"
             >
               <div>
                 <p className="text-[12px] font-semibold text-[var(--foreground-secondary)]">
                   TP{tp.level}
                 </p>
-                <p className="text-[11px] text-[var(--muted)]">
+                <p className="text-[10px] font-medium tracking-wide text-[var(--muted)] uppercase">
                   {L.analysisTargetOnly}
                 </p>
               </div>
@@ -118,9 +118,8 @@ export const TradePlanSection = ({ analysis }: TradePlanSectionProps) => {
 
         <PlanRow
           label={L.rrTp1}
-          value={
-            tp1?.rr == null ? L.dash : `1 : ${formatNumber(tp1.rr, 1)}`
-          }
+          value={tp1?.rr == null ? L.dash : `1 : ${formatNumber(tp1.rr, 1)}`}
+          emphasize
         />
 
         <PlanRow
@@ -144,14 +143,14 @@ const PlanRow = ({
   value: string;
   emphasize?: boolean;
 }) => (
-  <div className="flex min-w-0 items-start justify-between gap-3">
-    <p className="shrink-0 pt-0.5 text-[12px] font-medium text-[var(--muted)]">
+  <div className="flex min-w-0 items-baseline justify-between gap-3">
+    <p className="shrink-0 text-[12px] font-medium text-[var(--muted)]">
       {label}
     </p>
     <p
       className={cn(
-        "min-w-0 text-right break-words tabular-nums text-[var(--foreground)]",
-        emphasize ? "text-[15px] font-semibold" : "text-[14px] font-semibold",
+        "min-w-0 text-right break-words tabular-nums tracking-tight text-[var(--foreground)]",
+        emphasize ? "text-[15px] font-bold" : "text-[14px] font-semibold",
       )}
     >
       {value}

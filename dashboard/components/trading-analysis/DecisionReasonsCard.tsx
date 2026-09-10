@@ -68,9 +68,8 @@ export const DecisionReasonsCard = ({
     >
       <h3
         className={cn(
-          "flex items-center gap-1.5 font-semibold tracking-wide uppercase",
-          embedded ? "text-[12px]" : "text-[15px]",
-          "text-[var(--foreground)]",
+          "flex items-center gap-1.5 font-bold tracking-[0.06em] uppercase",
+          embedded ? "text-[11px] text-[var(--muted)]" : "text-[15px] text-[var(--foreground)]",
         )}
       >
         {isBlocked ? (
@@ -82,14 +81,14 @@ export const DecisionReasonsCard = ({
         <p
           className={cn(
             "text-[var(--foreground-secondary)]",
-            embedded ? "mt-0.5 text-[12px] leading-snug" : "mt-1 text-[13px]",
+            embedded ? "mt-1 text-[12px] leading-snug" : "mt-1 text-[13px]",
           )}
         >
           {summary}
         </p>
       ) : null}
       {items.length === 0 ? (
-        <p className="mt-1.5 text-[12px] text-[var(--muted)]">
+        <p className="mt-2 text-[12px] text-[var(--muted)]">
           {L.noDecisionReasons}
         </p>
       ) : (
@@ -97,15 +96,13 @@ export const DecisionReasonsCard = ({
           className={cn(
             "text-[var(--foreground-secondary)]",
             embedded
-              ? "mt-1.5 space-y-0.5 text-[12px] leading-snug"
+              ? "mt-2 space-y-1.5 text-[12px] leading-relaxed"
               : "mt-2 space-y-1 text-[13px]",
           )}
         >
           {visibleItems.map((item) => (
-            <li key={item.code} className="flex gap-1.5">
-              <span className="text-[var(--muted)]" aria-hidden>
-                •
-              </span>
+            <li key={item.code} className="flex gap-2">
+              <span className="mt-1.5 size-1 shrink-0 rounded-full bg-[var(--muted)]" aria-hidden />
               <span className="min-w-0">{item.label}</span>
             </li>
           ))}
