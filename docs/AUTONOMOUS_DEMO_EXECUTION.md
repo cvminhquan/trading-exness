@@ -78,16 +78,27 @@ Persisted before side effect. Same candle never double-submits across restart/re
 - Persist **IN_FLIGHT before** broker side effect.
 - **UNKNOWN never auto-resubmits.**
 
+## Config precedence
+
+`status`, `preflight`, `once`, and `run` all load flags through canonical
+`Settings` (`load_auto_demo_settings` / `hot_read_safety_settings`).
+
+For safety-critical keys
+(`AUTO_DEMO_EXECUTION_ENABLED`, `TRADING_ENV`, `LIVE_DEMO_APPROVAL`,
+`LIVE_KILL_SWITCH`, `DEMO_ACCOUNT_ALLOWLIST`, `EXECUTION_MODE`):
+
+1. **Process environment** (explicit shell / `$env:NAME`) — highest
+2. **Project `.env`** (cwd-relative, via `Settings`)
+3. **Field defaults** on `Settings`
+
+Do not parse these flags with a separate `os.getenv` bool helper.
+
 ## Hot-read safety
 
-Before each side effect, re-read from process env:
+Before each side effect, re-apply the safety keys above with that same
+precedence (process env overrides the startup `Settings` snapshot).
 
-- `LIVE_KILL_SWITCH`
-- `LIVE_DEMO_APPROVAL`
-- `AUTO_DEMO_EXECUTION_ENABLED`
-- `TRADING_ENV`
-
-Other settings are startup-frozen.
+Other settings remain startup-frozen on the base `Settings` instance.
 
 ## Boundaries
 

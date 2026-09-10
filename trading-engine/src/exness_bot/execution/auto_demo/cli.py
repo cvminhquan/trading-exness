@@ -11,12 +11,16 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from exness_bot.config.settings import Settings, get_settings
+from exness_bot.config.settings import Settings
 from exness_bot.controlled_demo.evidence import mask_login
 from exness_bot.domain.enums import Timeframe
 from exness_bot.execution.auto_demo.decision_store import SqliteAutoDemoDecisionStore
 from exness_bot.execution.auto_demo.factory import build_auto_demo_candidate_execution_service
-from exness_bot.execution.auto_demo.hot_read import hot_read_safety_settings
+from exness_bot.execution.auto_demo.hot_read import (
+    auto_demo_run_allowed,
+    hot_read_safety_settings,
+    load_auto_demo_settings,
+)
 from exness_bot.execution.auto_demo.loop import (
     AutoDemoCandidateBundle,
     AutonomousDemoExecutionLoop,
@@ -179,11 +183,9 @@ def _require_live_transport_human(settings: Settings) -> Any:
 
 def cmd_once(settings: Settings, *, dry: bool) -> int:
     print(AGENT_NOTE)
-    live = hot_read_safety_settings(settings)
-    if not live.auto_demo_execution_enabled and not dry:
+    if not auto_demo_run_allowed(settings) and not dry:
         print("AUTO_DEMO_EXECUTION_ENABLED=false — refusing mutate run.")
         return 2
-
     from exness_bot.broker.mt5.execution_transport import FakeMT5ExecutionTransport
     from exness_bot.data.factory import create_trading_data_provider
 
@@ -256,8 +258,7 @@ def cmd_once(settings: Settings, *, dry: bool) -> int:
 
 def cmd_run(settings: Settings, *, dry: bool) -> int:
     print(AGENT_NOTE)
-    live = hot_read_safety_settings(settings)
-    if not live.auto_demo_execution_enabled:
+    if not auto_demo_run_allowed(settings):
         print("AUTO_DEMO_EXECUTION_ENABLED=false — refusing run.")
         return 2
     if dry:
@@ -350,7 +351,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    settings = get_settings()
+    # Same canonical Settings loader for status / preflight / once / run.
+    settings = load_auto_demo_settings()
     if args.command == "status":
         return cmd_status(settings)
     if args.command == "preflight":
@@ -361,7 +363,6 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_run(settings, dry=bool(args.dry))
     parser.error(f"Unknown command: {args.command}")
     return 2
-
 
 if __name__ == "__main__":
     sys.exit(main())

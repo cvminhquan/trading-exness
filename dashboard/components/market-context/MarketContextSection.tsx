@@ -513,7 +513,6 @@ export const MarketContextSection = ({ symbol }: MarketContextSectionProps) => {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(false);
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -547,11 +546,8 @@ export const MarketContextSection = ({ symbol }: MarketContextSectionProps) => {
           />
         ) : null}
       </QueryState>
-      <MarketAnalystChat
-        symbol={symbol}
-        expanded={chatExpanded}
-        onToggle={() => setChatExpanded((v) => !v)}
-      />
+
+      <MarketAnalystChat symbol={symbol} />
     </div>
   );
 };

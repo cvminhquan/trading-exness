@@ -1,13 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
+import { MessageSquare, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { MarketAnalystChatResponse } from "@/domain";
 import { ANALYST_CHAT as L } from "@/lib/i18n/vi";
+import { ApiError } from "@/lib/api/errors";
 import { safeExternalHref } from "@/lib/market-context/display";
 import { cn } from "@/lib/utils";
 import { useMarketAnalystChat } from "@/queries/use-trading-queries";
-import { ApiError } from "@/lib/api/errors";
 
 type ChatTurn = {
   id: string;
@@ -18,8 +26,6 @@ type ChatTurn = {
 
 type MarketAnalystChatProps = {
   symbol: string;
-  expanded?: boolean;
-  onToggle?: () => void;
 };
 
 const ContextBadges = ({
@@ -28,12 +34,8 @@ const ContextBadges = ({
   used: MarketAnalystChatResponse["usedContext"];
 }) => (
   <div className="flex flex-wrap gap-1.5">
-    {used.technical ? (
-      <Badge variant="default">{L.badgeTechnical}</Badge>
-    ) : null}
-    {used.external ? (
-      <Badge variant="default">{L.badgeExternal}</Badge>
-    ) : null}
+    {used.technical ? <Badge variant="default">{L.badgeTechnical}</Badge> : null}
+    {used.external ? <Badge variant="default">{L.badgeExternal}</Badge> : null}
     {used.synthesis ? (
       <Badge variant="default">{L.badgeSynthesis}</Badge>
     ) : null}
@@ -83,23 +85,21 @@ const AnalystSources = ({
   );
 };
 
-export const MarketAnalystChat = ({
-  symbol,
-  expanded = false,
-  onToggle,
-}: MarketAnalystChatProps) => {
+/**
+ * Floating corner chat widget (Tawk.to-style) — analysis only, no execution.
+ */
+export const MarketAnalystChat = ({ symbol }: MarketAnalystChatProps) => {
+  const titleId = useId();
   const mutation = useMarketAnalystChat(symbol);
+  const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [localExpanded, setLocalExpanded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const prevSymbol = useRef(symbol);
   const turnSeq = useRef(0);
-
-  const isExpanded = onToggle ? expanded : localExpanded;
-  const handleToggle = onToggle ?? (() => setLocalExpanded((v) => !v));
 
   useEffect(() => {
     if (prevSymbol.current !== symbol) {
@@ -113,9 +113,17 @@ export const MarketAnalystChat = ({
 
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
+    if (!el || !open) return;
     el.scrollTop = el.scrollHeight;
-  }, [turns, mutation.isPending]);
+  }, [turns, mutation.isPending, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    panelRef.current?.focus();
+  }, [open]);
+
+  const handleClose = () => setOpen(false);
+  const handleToggle = () => setOpen((v) => !v);
 
   const handleSend = async (message: string) => {
     const trimmed = message.trim();
@@ -165,6 +173,13 @@ export const MarketAnalystChat = ({
     }
   };
 
+  const handleDialogKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      handleClose();
+    }
+  };
+
   const lastAssistant = [...turns].reverse().find((t) => t.role === "assistant");
   const chatEnabled = lastAssistant?.response?.chatEnabled;
   const showDisabledHint =
@@ -172,53 +187,64 @@ export const MarketAnalystChat = ({
     lastAssistant?.response?.warnings.includes("ai_chat_disabled");
 
   return (
-    <section
-      className="rounded-xl border border-[var(--border)] bg-[var(--surface)]"
-      aria-label={L.title}
+    <div
+      className="pointer-events-none fixed right-4 bottom-4 z-50 flex flex-col items-end gap-3 sm:right-5 sm:bottom-5"
+      aria-live="polite"
     >
-      <div className="flex flex-wrap items-start justify-between gap-2 px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[14px] font-semibold text-[var(--foreground)]">
-              {L.title}
-            </h3>
-            <span className="text-[12px] font-medium text-[var(--foreground-secondary)]">
-              {symbol}
-            </span>
-            {lastAssistant?.response?.providerMetadata.fallbackUsed ? (
-              <Badge variant="default">{L.fallbackBadge}</Badge>
-            ) : null}
-          </div>
-          <p className="mt-1 text-[12px] text-[var(--muted)]">{L.readOnly}</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleToggle}
-          aria-expanded={isExpanded}
-          aria-controls={`analyst-chat-body-${symbol}`}
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[13px] font-semibold text-[var(--foreground-secondary)] transition-colors hover:border-[var(--accent-muted)] hover:text-[var(--accent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+      {open ? (
+        <div
+          ref={panelRef}
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby={titleId}
+          tabIndex={-1}
+          onKeyDown={handleDialogKeyDown}
+          className={cn(
+            "pointer-events-auto flex w-[min(100vw-2rem,24rem)] flex-col overflow-hidden",
+            "h-[min(560px,70vh)] max-h-[70vh]",
+            "rounded-2xl border border-[var(--border)] bg-[var(--surface)] shadow-xl",
+            "outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
+          )}
         >
-          {isExpanded ? L.hideChat : L.showChat}
-        </button>
-      </div>
+          <div className="flex items-start justify-between gap-3 bg-[var(--accent)] px-4 py-3 text-white">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 id={titleId} className="text-[15px] font-semibold">
+                  {L.title}
+                </h3>
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-semibold">
+                  {symbol}
+                </span>
+                {lastAssistant?.response?.providerMetadata.fallbackUsed ? (
+                  <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px]">
+                    {L.fallbackBadge}
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-[12px] text-white/85">{L.readOnly}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              aria-label={L.closeChat}
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          </div>
 
-      {isExpanded ? (
-        <div id={`analyst-chat-body-${symbol}`}>
           {showDisabledHint ? (
             <p
-              className="border-y border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-2 text-[12px] text-[var(--foreground-secondary)]"
+              className="border-b border-[var(--border)] bg-[var(--surface-subtle)] px-4 py-2 text-[12px] text-[var(--foreground-secondary)]"
               role="status"
             >
               {L.disabled} {L.disabledHint}
             </p>
-          ) : (
-            <div className="border-t border-[var(--border)]" />
-          )}
+          ) : null}
 
           <div
             ref={scrollRef}
-            className="max-h-[280px] min-h-[140px] space-y-3 overflow-y-auto px-4 py-3"
-            aria-live="polite"
+            className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3"
           >
             {turns.length === 0 ? (
               <div className="space-y-3">
@@ -246,7 +272,7 @@ export const MarketAnalystChat = ({
               if (turn.role === "user") {
                 return (
                   <div key={turn.id} className="flex justify-end">
-                    <p className="max-w-[85%] rounded-lg bg-[var(--accent-subtle)] px-3 py-2 text-[13px] text-[var(--foreground)]">
+                    <p className="max-w-[85%] rounded-2xl rounded-br-md bg-[var(--accent)] px-3 py-2 text-[13px] text-white">
                       {turn.text}
                     </p>
                   </div>
@@ -271,7 +297,7 @@ export const MarketAnalystChat = ({
                     </p>
                   ) : null}
                   {resp ? <ContextBadges used={resp.usedContext} /> : null}
-                  <div className="whitespace-pre-wrap rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-[13px] leading-relaxed text-[var(--foreground)]">
+                  <div className="whitespace-pre-wrap rounded-2xl rounded-bl-md border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-[13px] leading-relaxed text-[var(--foreground)]">
                     {turn.text}
                   </div>
                   {resp ? <AnalystSources sources={resp.sources} /> : null}
@@ -297,7 +323,7 @@ export const MarketAnalystChat = ({
 
           <form
             onSubmit={handleSubmit}
-            className="sticky bottom-0 flex gap-2 border-t border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+            className="flex gap-2 border-t border-[var(--border)] bg-[var(--surface)] px-3 py-3"
           >
             <label className="sr-only" htmlFor={`analyst-chat-input-${symbol}`}>
               {L.placeholder}
@@ -311,7 +337,7 @@ export const MarketAnalystChat = ({
               disabled={mutation.isPending}
               maxLength={3000}
               className={cn(
-                "min-w-0 flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface-subtle)] px-3 py-2 text-[13px] text-[var(--foreground)]",
+                "min-w-0 flex-1 rounded-full border border-[var(--border)] bg-[var(--surface-subtle)] px-3.5 py-2 text-[13px] text-[var(--foreground)]",
                 "placeholder:text-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
                 "disabled:opacity-60",
               )}
@@ -320,7 +346,7 @@ export const MarketAnalystChat = ({
             <button
               type="submit"
               disabled={mutation.isPending || !input.trim()}
-              className="shrink-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-[13px] font-semibold text-[var(--accent)] transition-colors hover:border-[var(--accent-muted)] hover:bg-[var(--accent-subtle)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-60"
+              className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] disabled:opacity-60"
               aria-label={L.send}
             >
               {mutation.isPending ? L.sending : L.send}
@@ -328,6 +354,33 @@ export const MarketAnalystChat = ({
           </form>
         </div>
       ) : null}
-    </section>
+
+      <button
+        type="button"
+        onClick={handleToggle}
+        aria-expanded={open}
+        aria-label={open ? L.closeChat : L.openChatAria}
+        title={open ? L.closeChat : L.launcherLabel}
+        className={cn(
+          "pointer-events-auto relative inline-flex size-14 items-center justify-center rounded-full",
+          "bg-[var(--accent)] text-white shadow-lg",
+          "transition-transform hover:scale-105 hover:bg-[var(--accent-hover)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2",
+        )}
+      >
+        {open ? (
+          <X className="size-6" aria-hidden />
+        ) : (
+          <MessageSquare className="size-6" aria-hidden />
+        )}
+        {!open ? (
+          <span
+            className="absolute top-1 right-1 size-2.5 rounded-full bg-[var(--positive)] ring-2 ring-white"
+            aria-hidden
+            title="Online"
+          />
+        ) : null}
+      </button>
+    </div>
   );
 };

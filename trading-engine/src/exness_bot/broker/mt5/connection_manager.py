@@ -16,6 +16,7 @@ from exness_bot.broker.mt5.exceptions import (
 )
 from exness_bot.broker.mt5.read_only_client import MT5ReadOnlyClient
 from exness_bot.config.settings import Settings
+from exness_bot.util.masking import mask_login
 
 logger = structlog.get_logger(__name__)
 
@@ -69,7 +70,16 @@ class MT5ConnectionManager:
         """Lazy connect — safe to call from concurrent API requests."""
         with self._lock:
             if self._status.state == ConnectionState.CONNECTED:
-                return self._status
+                # Xác nhận phiên còn sống; nếu chết thì reconnect bên dưới.
+                terminal = self._client.terminal_info()
+                account = self._client.account_info()
+                if terminal is not None and account is not None:
+                    return self._status
+                self._safe_shutdown()
+                self._status = MT5ConnectionStatus(
+                    state=ConnectionState.DISCONNECTED,
+                    message="Mất kết nối MT5 — đang kết nối lại.",
+                )
 
             if sys.platform != "win32":
                 self._status = MT5ConnectionStatus(
@@ -86,9 +96,22 @@ class MT5ConnectionManager:
                 return self._status
 
             try:
+                # Luôn shutdown trước khi initialize lại để tránh IPC -6 / stale session.
+                self._safe_shutdown()
                 self._client.initialize()
-                self._client.login()
+                if self._client.has_login_credentials():
+                    self._client.login()
+                else:
+                    # Không có password trong .env: gắn phiên terminal MT5 đang mở.
+                    attached = self._client.account_info()
+                    if attached is None:
+                        raise MT5AuthenticationError(
+                            "MT5 đã initialize nhưng chưa có phiên đăng nhập. "
+                            "Mở MetaTrader 5 và đăng nhập, hoặc điền MT5_PASSWORD trong .env."
+                        )
                 account = self._client.account_info()
+                if account is None:
+                    raise MT5ConnectionError("Không đọc được account_info sau khi kết nối MT5.")
                 server = str(getattr(account, "server", self._settings.mt5_server))
                 login = int(getattr(account, "login", 0)) or self._settings.mt5_login
                 self._status = MT5ConnectionStatus(
@@ -96,7 +119,11 @@ class MT5ConnectionManager:
                     server=server,
                     login=login,
                 )
-                logger.info("mt5_connection_manager_connected", server=server, login=login)
+                logger.info(
+                    "mt5_connection_manager_connected",
+                    server=server,
+                    login_masked=mask_login(int(login)) if login else None,
+                )
                 return self._status
             except MT5UnavailableError as exc:
                 self._status = MT5ConnectionStatus(
@@ -126,6 +153,7 @@ class MT5ConnectionManager:
             terminal = self._client.terminal_info()
             account = self._client.account_info()
             if terminal is None or account is None:
+                self._safe_shutdown()
                 self._status = MT5ConnectionStatus(
                     state=ConnectionState.DISCONNECTED,
                     message="Mất kết nối MT5.",

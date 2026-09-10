@@ -110,6 +110,7 @@ class AccountRuntime:
                 # Still force reconnect so intended credentials are applied.
                 try:
                     self._apply_credentials(profile, reconnect=True)
+                    self._assert_session_matches(profile)
                 except (MT5AuthenticationError, MT5ConnectionError) as exc:
                     raise ApiAppError(
                         code="ACCOUNT_SWITCH_FAILED",
@@ -117,16 +118,21 @@ class AccountRuntime:
                         status_code=503,
                         details=str(exc),
                     ) from exc
+                except ApiAppError:
+                    raise
                 return self.snapshot()
 
             try:
                 self._apply_credentials(profile, reconnect=True)
-            except (MT5AuthenticationError, MT5ConnectionError) as exc:
+                self._assert_session_matches(profile)
+            except (MT5AuthenticationError, MT5ConnectionError, ApiAppError) as exc:
                 logger.warning("mt5_account_switch_failed", profile=profile.value, error=str(exc))
                 try:
                     self._apply_credentials(previous, reconnect=True)
                 except Exception as restore_exc:
                     logger.warning("mt5_account_restore_failed", error=str(restore_exc))
+                if isinstance(exc, ApiAppError):
+                    raise
                 raise ApiAppError(
                     code="ACCOUNT_SWITCH_FAILED",
                     message="Không thể chuyển tài khoản MT5. Đã giữ phiên đăng nhập trước đó.",
@@ -144,6 +150,39 @@ class AccountRuntime:
                 server=creds.server,
             )
             return self.snapshot()
+
+    def _assert_session_matches(self, profile: AccountProfile) -> None:
+        """Fail closed if MT5 session is missing or not the intended login."""
+        creds = self._settings.credentials_for(profile)
+        try:
+            snapshot = self._provider.get_snapshot()
+        except Exception as exc:
+            raise ApiAppError(
+                code="ACCOUNT_SWITCH_FAILED",
+                message="Không đọc được dữ liệu MT5 sau khi chuyển tài khoản.",
+                status_code=503,
+                details=str(exc),
+            ) from exc
+        account = getattr(snapshot, "account", None)
+        if account is None:
+            raise ApiAppError(
+                code="ACCOUNT_SWITCH_FAILED",
+                message=(
+                    "MT5 chưa trả về thông tin tài khoản sau khi chuyển. "
+                    "Kiểm tra terminal và thử lại."
+                ),
+                status_code=503,
+            )
+        login = getattr(account, "login", None)
+        if creds.login is not None and login is not None and int(login) != int(creds.login):
+            raise ApiAppError(
+                code="ACCOUNT_SWITCH_FAILED",
+                message=(
+                    f"Phiên MT5 đang ở login {login}, kỳ vọng {creds.login} "
+                    f"({profile.value})."
+                ),
+                status_code=503,
+            )
 
     def _reconcile_with_session_locked(self) -> tuple[_SessionIdentity | None, bool]:
         """Align stored profile with the MT5 session that is actually connected."""
@@ -196,7 +235,7 @@ class AccountRuntime:
     def _infer_profile_from_login(self, login: int) -> AccountProfile | None:
         for profile in (AccountProfile.DEMO, AccountProfile.LIVE):
             creds = self._settings.credentials_for(profile)
-            if creds.configured and creds.login == login:
+            if creds.login is not None and creds.login == login:
                 return profile
         return None
 

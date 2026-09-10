@@ -15,45 +15,63 @@ Modular, testable algorithmic trading engine for **Exness** via **MetaTrader 5**
 
 ## Quick Start
 
+### Windows (PowerShell) — khuyến nghị khi dùng MT5
+
+```powershell
+py -3.12 -m venv .venv
+# Không có 3.12: py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e ".[api,dev,mt5]"
+Copy-Item .env.example .env
+pytest
+ruff check src tests
+mypy src
+```
+
+Nếu bị chặn `Activate.ps1`:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+### Linux / macOS
+
 ```bash
-# Create virtual environment
 python3.12 -m venv .venv
 source .venv/bin/activate
-
-# Install with dev dependencies (Linux/macOS — MT5 optional)
-pip install -e ".[dev]"
-
-# Windows: include MT5 adapter dependencies
-# pip install -e ".[dev,mt5]"
-
-# Copy environment template
+pip install -e ".[api,dev]"
 cp .env.example .env
-
-# Run tests
 pytest
-
-# Lint & type check
 ruff check src tests
 mypy src
 ```
 
 ## Read-only HTTP API (Phase 10.5–10.6)
 
-Dashboard integration via FastAPI — **read-only**, không mutation endpoints.
+Dashboard tích hợp qua FastAPI — chủ yếu **đọc**, không phải CLI đặt lệnh tự do.
+
+```powershell
+# Cài dependency API (Windows)
+pip install -e ".[api,dev,mt5]"
+
+# Chạy API (sau khi đã Activate.ps1)
+exness-bot-api
+# hoặc: python -m exness_bot.api
+```
 
 ```bash
-# Install API dependencies
+# Linux/macOS — mock (không cần MT5 terminal)
 pip install -e ".[api,dev]"
-
-# Mock mode (Linux default)
 DATA_SOURCE=mock exness-bot-api
 
-# MT5 live read-only (Windows + terminal)
-DATA_SOURCE=mt5 MT5_ENABLED=true exness-bot-api
-
-# Health: http://127.0.0.1:8000/health
-# OpenAPI: http://127.0.0.1:8000/docs
+# Windows + MT5 terminal — đọc dữ liệu thật
+# DATA_SOURCE=mt5 và MT5_ENABLED=true trong .env
+exness-bot-api
 ```
+
+- Health: http://127.0.0.1:8000/health
+- OpenAPI: http://127.0.0.1:8000/docs
+
 
 Xem [docs/MT5_READ_ONLY.md](../docs/MT5_READ_ONLY.md) cho chi tiết MT5 adapter.
 

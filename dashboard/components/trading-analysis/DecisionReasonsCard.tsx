@@ -41,13 +41,7 @@ export const DecisionReasonsCard = ({
     (eligibility != null && !eligibility.eligible && hasSetup);
   const isWaitingEntry = setupState === "WAITING_FOR_ENTRY" && !isBlocked;
 
-  const headline = isBlocked
-    ? L.blocked
-    : analysis.finalSignal === "WAIT"
-      ? "WAIT"
-      : isWaitingEntry
-        ? L.waitingForEntry
-        : L.reasonsTitle;
+  const headline = L.reasonsTitle;
 
   const summary = isBlocked
     ? L.blockedSummary
@@ -55,7 +49,7 @@ export const DecisionReasonsCard = ({
       ? L.waitMessage
       : isWaitingEntry
         ? L.waitingForEntry
-        : L.reasonsTitle;
+        : null;
 
   return (
     <section
@@ -76,27 +70,28 @@ export const DecisionReasonsCard = ({
         className={cn(
           "flex items-center gap-1.5 font-semibold tracking-wide uppercase",
           embedded ? "text-[12px]" : "text-[15px]",
-          isBlocked && "text-[var(--negative)]",
-          isWaitingEntry && "text-[var(--warning)]",
-          !isBlocked && !isWaitingEntry && "text-[var(--foreground)]",
+          "text-[var(--foreground)]",
         )}
       >
         {isBlocked ? (
-          <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+          <AlertTriangle className="h-3.5 w-3.5 text-[var(--negative)]" aria-hidden />
         ) : null}
         {headline}
       </h3>
-      <p
-        className={cn(
-          "text-[var(--foreground-secondary)]",
-          embedded ? "mt-0.5 text-[12px] leading-snug" : "mt-1 text-[13px]",
-        )}
-      >
-        {summary}
-      </p>
-
+      {summary ? (
+        <p
+          className={cn(
+            "text-[var(--foreground-secondary)]",
+            embedded ? "mt-0.5 text-[12px] leading-snug" : "mt-1 text-[13px]",
+          )}
+        >
+          {summary}
+        </p>
+      ) : null}
       {items.length === 0 ? (
-        <p className="mt-1.5 text-[12px] text-[var(--muted)]">{L.dash}</p>
+        <p className="mt-1.5 text-[12px] text-[var(--muted)]">
+          {L.noDecisionReasons}
+        </p>
       ) : (
         <ul
           className={cn(

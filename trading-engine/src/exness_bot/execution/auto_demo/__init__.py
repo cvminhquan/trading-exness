@@ -13,7 +13,11 @@ from exness_bot.execution.auto_demo.decision_store import (
 )
 from exness_bot.execution.auto_demo.enablement import evaluate_auto_demo_enablement
 from exness_bot.execution.auto_demo.factory import build_auto_demo_candidate_execution_service
-from exness_bot.execution.auto_demo.hot_read import hot_read_safety_settings
+from exness_bot.execution.auto_demo.hot_read import (
+    auto_demo_run_allowed,
+    hot_read_safety_settings,
+    load_auto_demo_settings,
+)
 from exness_bot.execution.auto_demo.loop import (
     AutoDemoCandidateBundle,
     AutonomousDemoExecutionLoop,
@@ -37,11 +41,13 @@ __all__ = [
     "AutonomousDemoExecutionLoop",
     "ClosedM15Observation",
     "SqliteAutoDemoDecisionStore",
+    "auto_demo_run_allowed",
     "build_auto_demo_candidate_execution_service",
     "build_decision_id",
     "evaluate_auto_demo_enablement",
     "evaluate_auto_demo_risk_gates",
     "hot_read_safety_settings",
+    "load_auto_demo_settings",
     "run_auto_demo_preflight",
     "should_skip_existing",
 ]

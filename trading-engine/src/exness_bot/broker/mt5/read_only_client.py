@@ -14,6 +14,7 @@ from exness_bot.broker.mt5.exceptions import (
     MT5UnavailableError,
 )
 from exness_bot.config.settings import Settings
+from exness_bot.util.masking import mask_login
 
 logger = structlog.get_logger(__name__)
 
@@ -116,7 +117,21 @@ class MT5ReadOnlyClient:
     def _resolve_credentials(self) -> tuple[int | None, str, str]:
         if self._login_override is not None:
             return self._login_override
+        # Fallback: khi MT5_PASSWORD trống, dùng credential demo/live đã cấu hình.
+        if self._settings.mt5_password:
+            return (
+                self._settings.mt5_login,
+                self._settings.mt5_password,
+                self._settings.mt5_server,
+            )
+        demo = self._settings.demo_credentials()
+        if demo.configured:
+            return demo.login, demo.password, demo.server
         return self._settings.mt5_login, self._settings.mt5_password, self._settings.mt5_server
+
+    def has_login_credentials(self) -> bool:
+        login, password, _server = self._resolve_credentials()
+        return login is not None and bool(password)
 
     def initialize(self) -> None:
         """Attach to MT5. Pass login in the same initialize() call.
@@ -159,7 +174,11 @@ class MT5ReadOnlyClient:
             raise MT5AuthenticationError(msg, mt5_error=(code, description))
 
         self._logged_in = True
-        logger.info("mt5_readonly_logged_in", login=login, server=server)
+        logger.info(
+            "mt5_readonly_logged_in",
+            login_masked=mask_login(int(login)),
+            server=server,
+        )
 
     def shutdown(self) -> None:
         if self._initialized:
