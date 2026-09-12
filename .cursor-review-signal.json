@@ -1,0 +1,7 @@
+{
+  "event": "bridge_initialized",
+  "repo": "cvminhquan/trading-exness",
+  "source": ".cursor/collab/current-task.md",
+  "status": "READY",
+  "note": "Dedicated signal branch for ChatGPT review wake-up. No production code is changed here."
+}
