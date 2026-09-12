@@ -30,7 +30,7 @@ Do **not** create a second execution architecture.
 | `AUTO_DEMO_EXECUTION_ENABLED` | `false` |
 | `LIVE_KILL_SWITCH` | `true` |
 | `LIVE_DEMO_APPROVAL` | `false` |
-| `EXECUTION_MODE` | `paper` |
+| `EXECUTION_MODE` | `paper` (operator convention; **not** an auto_demo enablement gate) |
 | `ALLOW_LEGACY_RUN` | `false` |
 
 Autonomous execution requires **all** of:
@@ -41,6 +41,20 @@ Autonomous execution requires **all** of:
 - `LIVE_KILL_SWITCH=false`
 - login in `DEMO_ACCOUNT_ALLOWLIST`
 - broker `trade_mode=demo` (unknown → **BLOCK**)
+
+`EXECUTION_MODE` is hot-read onto `Settings` for consistency with Phase-11 paper
+runtime naming, but **does not** enable or disable auto_demo submissions.
+DEMO mutation is controlled only by the flags above + account DEMO identity.
+
+## Intent durability
+
+Orchestrator intents persist to:
+
+`trading-engine/.auto_demo_execution_state.json`
+
+(Missing file → fresh; corrupt / invalid schema → **fail closed**.)
+
+Decision idempotency remains in the auto_demo SQLite decision store (unchanged).
 
 ## Operator commands
 
@@ -92,6 +106,9 @@ For safety-critical keys
 3. **Field defaults** on `Settings`
 
 Do not parse these flags with a separate `os.getenv` bool helper.
+
+Note: `EXECUTION_MODE` is included in hot-read for Settings consistency only.
+It is **not** an auto_demo enablement gate (see Safe defaults).
 
 ## Hot-read safety
 

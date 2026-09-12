@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
@@ -234,6 +234,7 @@ class SqliteSetupLifecycleStore:
 
     def upsert(self, setup: CanonicalTradeSetup) -> None:
         payload = serialize_setup(setup)
+        now_ts = datetime.now(tz=UTC)
         with self._lock, self._connect() as conn:
             conn.execute(
                 """
@@ -253,7 +254,7 @@ class SqliteSetupLifecycleStore:
                     payload,
                     setup.state.value,
                     setup.analysis_fingerprint,
-                    _to_iso(setup.created_at),
+                    _to_iso(now_ts),
                 ),
             )
             conn.commit()

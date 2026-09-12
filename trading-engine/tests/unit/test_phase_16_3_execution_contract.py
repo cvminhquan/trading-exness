@@ -497,11 +497,24 @@ def test_lifecycle_persists_same_setup_id() -> None:
     assert first.setup_id == second.setup_id
 
 
-def test_supersede_on_new_candle_setup() -> None:
+def test_new_candle_preserves_active_setup() -> None:
     store = InMemorySetupLifecycleStore()
     a1 = _analysis(price=2360.0)
     a2 = _analysis(price=2360.0)
-    a2.timeframes["M15"].candle_timestamp = _NOW - timedelta(minutes=5)
+    a2.timeframes["M15"].candle_timestamp = _NOW - timedelta(minutes=15)
+    svc = _service(a1, _FakeData(price=2360.0), store=store)
+    first = svc.evaluate_from_analysis(a1, now=_NOW)
+    second = svc.evaluate_from_analysis(a2, now=_NOW)
+    assert first.setup_id == second.setup_id
+    current = store.get(first.setup_id or "")
+    assert current is not None
+    assert current.state == SetupLifecycleState.WAITING_FOR_ENTRY
+
+
+def test_supersede_on_material_direction_change() -> None:
+    store = InMemorySetupLifecycleStore()
+    a1 = _analysis(final="LONG", price=2360.0)
+    a2 = _analysis(final="SHORT", price=2360.0)
     svc = _service(a1, _FakeData(price=2360.0), store=store)
     first = svc.evaluate_from_analysis(a1, now=_NOW)
     second = svc.evaluate_from_analysis(a2, now=_NOW)

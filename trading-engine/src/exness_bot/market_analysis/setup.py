@@ -106,12 +106,24 @@ def build_trade_setup(
     if final_signal == "LONG":
         anchor = primary.nearest_support
         if anchor is None:
-            anchor = current_price - atr * 0.5
-            entry_reason = "PULLBACK_ESTIMATED_FROM_ATR"
-            setup_type = SetupType.PULLBACK
-        else:
-            entry_reason = "PULLBACK_TO_SUPPORT"
-            setup_type = SetupType.PULLBACK
+            return TradeSetup(
+                setup_type=SetupType.NONE,
+                state=SetupState.NO_SETUP,
+                entry_type="NONE",
+                entry_price=None,
+                entry_zone_low=None,
+                entry_zone_high=None,
+                entry_reason="NO_SUPPORT_LEVEL",
+                stop_loss=None,
+                sl_reason="N/A",
+                sl_distance=None,
+                sl_distance_atr=None,
+                warnings=[
+                    reason("NO_SUPPORT_LEVEL", False, "No nearest support level for LONG setup")
+                ],
+            )
+        entry_reason = "PULLBACK_TO_SUPPORT"
+        setup_type = SetupType.PULLBACK
         entry = float(anchor)
         zone_low = entry - half
         zone_high = entry + half
@@ -173,12 +185,28 @@ def build_trade_setup(
     else:  # SHORT
         anchor = primary.nearest_resistance
         if anchor is None:
-            anchor = current_price + atr * 0.5
-            entry_reason = "PULLBACK_ESTIMATED_FROM_ATR"
-            setup_type = SetupType.PULLBACK
-        else:
-            entry_reason = "PULLBACK_TO_RESISTANCE"
-            setup_type = SetupType.PULLBACK
+            return TradeSetup(
+                setup_type=SetupType.NONE,
+                state=SetupState.NO_SETUP,
+                entry_type="NONE",
+                entry_price=None,
+                entry_zone_low=None,
+                entry_zone_high=None,
+                entry_reason="NO_RESISTANCE_LEVEL",
+                stop_loss=None,
+                sl_reason="N/A",
+                sl_distance=None,
+                sl_distance_atr=None,
+                warnings=[
+                    reason(
+                        "NO_RESISTANCE_LEVEL",
+                        False,
+                        "No nearest resistance level for SHORT setup",
+                    )
+                ],
+            )
+        entry_reason = "PULLBACK_TO_RESISTANCE"
+        setup_type = SetupType.PULLBACK
         entry = float(anchor)
         zone_low = entry - half
         zone_high = entry + half

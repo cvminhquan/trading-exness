@@ -18,6 +18,7 @@ from exness_bot.market_analysis.contract.identity import (
 from exness_bot.market_analysis.contract.lifecycle import (
     compute_expires_at,
     derive_state_from_price,
+    is_terminal,
     materially_different,
     with_state,
 )
@@ -312,39 +313,60 @@ class ExecutionContractService:
         *,
         now: datetime,
     ) -> CanonicalTradeSetup | None:
-        # WAIT / no proposal → expire/supersede any active setup
-        if proposed is None:
-            if active is not None:
+        # Step 1: Update active setup state from live price and active's FROZEN geometry
+        if active is not None:
+            current_price = analysis.current_price
+            if current_price is not None:
+                updated_state = derive_state_from_price(
+                    direction=active.direction,
+                    current_price=current_price,
+                    entry_zone_low=active.entry_zone_low,
+                    entry_zone_high=active.entry_zone_high,
+                    stop_loss=active.stop_loss,
+                    now=now,
+                    expires_at=active.expires_at,
+                    current_state=active.state,
+                )
+                if updated_state != active.state:
+                    active = with_state(active, updated_state)
+                    self._store.upsert(active)
+
+        # Step 2: If active setup reached a terminal state (INVALIDATED, EXPIRED, SUPERSEDED),
+        # return active so caller observes the terminal state on this cycle.
+        if active is not None and is_terminal(active.state):
+            return active
+
+        # Step 3: Active setup is still alive (WAITING_FOR_ENTRY or ENTRY_ZONE)
+        if active is not None:
+            # 3a. Production signal became WAIT / no proposed setup:
+            # Production signal no longer valid (LONG/SHORT -> WAIT) expires active setup
+            if proposed is None:
                 terminal = with_state(active, SetupLifecycleState.EXPIRED)
                 self._store.upsert(terminal)
+                return None
+
+            # 3b. Material change (e.g. direction change LONG -> SHORT or SHORT -> LONG):
+            if materially_different(active, proposed):
+                superseded = with_state(active, SetupLifecycleState.SUPERSEDED)
+                self._store.upsert(superseded)
+                self._store.upsert(proposed)
+                return proposed
+
+            # 3c. Same direction, no material change:
+            # Preserve active setup with frozen geometry; new M15 does not supersede.
+            return active
+
+        # Step 4: No active setup (active is None)
+        if proposed is None:
             return None
 
-        if active is None:
-            self._store.upsert(proposed)
-            return proposed
+        # If a setup with the same setup_id was already persisted and is terminal,
+        # it must never be resurrected during the same candle lifetime.
+        existing = self._store.get(proposed.setup_id)
+        if existing is not None and is_terminal(existing.state):
+            return existing
 
-        if active.setup_id == proposed.setup_id:
-            # Same logical setup — refresh price-derived state / keep created_at
-            refreshed = CanonicalTradeSetup(
-                **{
-                    **proposed.__dict__,
-                    "created_at": active.created_at,
-                    "state": proposed.state,
-                }
-            )
-            if now >= refreshed.expires_at:
-                refreshed = with_state(refreshed, SetupLifecycleState.EXPIRED)
-            self._store.upsert(refreshed)
-            return refreshed
-
-        if materially_different(active, proposed):
-            superseded = with_state(active, SetupLifecycleState.SUPERSEDED)
-            self._store.upsert(superseded)
-            self._store.upsert(proposed)
-            return proposed
-
-        # Same fingerprint unlikely with different id — treat as supersede
-        self._store.upsert(with_state(active, SetupLifecycleState.SUPERSEDED))
+        # Accept proposed setup as new active setup
         self._store.upsert(proposed)
         return proposed
 

@@ -25,6 +25,7 @@ from exness_bot.market_analysis.contract.store import (
     SetupLifecycleStore,
     SqliteSetupLifecycleStore,
 )
+from exness_bot.paper_execution.errors import CorruptStateError, UnsupportedSchemaError
 from exness_bot.paper_execution.executor import PaperExecutor
 from exness_bot.paper_execution.intent_store import SnapshotIntentStore
 from exness_bot.paper_execution.models import PaperSnapshot
@@ -33,6 +34,15 @@ from exness_bot.paper_execution.state import FilePaperStateStore
 ClockFn = Callable[[], datetime]
 SnapshotProvider = Callable[[], GatedExecutionSnapshot]
 SettingsProvider = Callable[[], Settings]
+
+# trading-engine/.auto_demo_execution_state.json — durable orchestrator intents
+ENGINE_ROOT = Path(__file__).resolve().parents[4]
+DEFAULT_AUTO_DEMO_STATE_PATH = ENGINE_ROOT / ".auto_demo_execution_state.json"
+
+
+def resolve_auto_demo_state_path(state_path: Path | None = None) -> Path:
+    """Always resolve a durable JSON path (never in-memory-only for auto_demo)."""
+    return state_path if state_path is not None else DEFAULT_AUTO_DEMO_STATE_PATH
 
 
 def build_auto_demo_candidate_execution_service(
@@ -51,6 +61,8 @@ def build_auto_demo_candidate_execution_service(
     - Never wraps OneShotExecutionTransport (multi-candle loop).
     - Uses evaluate_auto_demo_enablement (not one-shot enablement).
     - Does NOT construct LiveMT5ExecutionTransport (caller injects Fake or Live).
+    - Intent lifecycle is always file-durable (DEFAULT_AUTO_DEMO_STATE_PATH).
+    - Corrupt / unsupported schema → fail closed (no silent fresh snapshot).
     """
     if settings.allow_legacy_run:
         msg = "ALLOW_LEGACY_RUN=true — auto-demo factory refuses."
@@ -58,6 +70,7 @@ def build_auto_demo_candidate_execution_service(
 
     clock_fn = clock or (lambda: datetime.now(tz=UTC))
     sp = settings_provider or (lambda: hot_read_safety_settings(settings))
+    durable_path = resolve_auto_demo_state_path(state_path)
 
     durable = setup_store or require_durable_setup_store(settings)
     if not isinstance(durable, SqliteSetupLifecycleStore):
@@ -65,13 +78,12 @@ def build_auto_demo_candidate_execution_service(
 
     config = BacktestConfig.from_settings(settings)
     paper = PaperExecutor(
-        _load_or_fresh_snapshot(state_path, config),
+        _load_durable_snapshot(durable_path),
         config=config,
     )
 
     def persist() -> None:
-        if state_path is not None:
-            FilePaperStateStore(state_path).save(paper.snapshot)
+        FilePaperStateStore(durable_path).save(paper.snapshot)
 
     intent_store = SnapshotIntentStore(paper, persist=persist)
 
@@ -103,13 +115,18 @@ def build_auto_demo_candidate_execution_service(
     return service, gated, intent_store
 
 
-def _load_or_fresh_snapshot(
-    path: Path | None, config: BacktestConfig
-) -> PaperSnapshot:
-    del config
-    if path is None or not path.is_file():
+def _load_durable_snapshot(path: Path) -> PaperSnapshot:
+    """
+    Missing file → fresh snapshot (first run).
+    Existing corrupt / invalid / unsupported schema → raise (fail closed).
+    """
+    if not path.is_file():
         return PaperSnapshot.initial(10_000.0)
     try:
         return FilePaperStateStore(path).load()
-    except Exception:
-        return PaperSnapshot.initial(10_000.0)
+    except (CorruptStateError, UnsupportedSchemaError):
+        raise
+    except Exception as exc:
+        raise CorruptStateError(
+            f"Failed to load auto-demo intent state (fail closed): {path}"
+        ) from exc

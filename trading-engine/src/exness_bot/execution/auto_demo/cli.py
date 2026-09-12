@@ -15,7 +15,10 @@ from exness_bot.config.settings import Settings
 from exness_bot.controlled_demo.evidence import mask_login
 from exness_bot.domain.enums import Timeframe
 from exness_bot.execution.auto_demo.decision_store import SqliteAutoDemoDecisionStore
-from exness_bot.execution.auto_demo.factory import build_auto_demo_candidate_execution_service
+from exness_bot.execution.auto_demo.factory import (
+    build_auto_demo_candidate_execution_service,
+    resolve_auto_demo_state_path,
+)
 from exness_bot.execution.auto_demo.hot_read import (
     auto_demo_run_allowed,
     hot_read_safety_settings,
@@ -26,14 +29,15 @@ from exness_bot.execution.auto_demo.loop import (
     AutonomousDemoExecutionLoop,
     ClosedM15Observation,
 )
+from exness_bot.execution.auto_demo.runtime_snapshot import make_auto_demo_snapshot_provider
 from exness_bot.execution.auto_demo.status import build_auto_demo_status
 from exness_bot.execution.integration.candidate_status import (
     build_candidate_status_from_mtf_provider,
 )
 from exness_bot.execution.integration.factory import require_durable_setup_store
 from exness_bot.execution.integration.service import CandidateExecutionContext
-from exness_bot.execution.mt5.snapshot import GatedExecutionSnapshot
 from exness_bot.market_data.candles import closed_candles_only
+from exness_bot.paper_execution.intent_store import SnapshotIntentStore
 
 AGENT_NOTE = (
     "AI/Cursor agents must NEVER enable AUTO_DEMO_EXECUTION_ENABLED "
@@ -181,47 +185,72 @@ def _require_live_transport_human(settings: Settings) -> Any:
     return LiveMT5ExecutionTransport(client=client)
 
 
-def cmd_once(settings: Settings, *, dry: bool) -> int:
-    print(AGENT_NOTE)
-    if not auto_demo_run_allowed(settings) and not dry:
-        print("AUTO_DEMO_EXECUTION_ENABLED=false — refusing mutate run.")
-        return 2
+def _intent_loader(store_holder: dict[str, SnapshotIntentStore]) -> Callable[[], Any]:
+    """Expose unresolved UNKNOWN only — never live IN_FLIGHT.
+
+    Orchestrator persists IN_FLIGHT *before* gated submit. Passing that row
+    into ``_gate_intent_store`` would false-block the active submission.
+    UnresolvedIntentGuard already blocks *new* plans when IN_FLIGHT exists.
+    """
+
+    def load() -> Any:
+        store = store_holder.get("store")
+        if store is None:
+            return ()
+        return tuple(store.list_unknown())
+
+    return load
+
+
+def _build_mutate_stack(
+    settings: Settings,
+    *,
+    dry: bool,
+) -> tuple[Any, Any, SqliteAutoDemoDecisionStore, Any, Path]:
+    """Shared once/run wiring — durable intent path + verified runtime snapshot."""
     from exness_bot.broker.mt5.execution_transport import FakeMT5ExecutionTransport
     from exness_bot.data.factory import create_trading_data_provider
 
     provider = create_trading_data_provider(settings)
     setup_store = require_durable_setup_store(settings)
-    store = _decision_store(settings)
+    decision_store = _decision_store(settings)
+    transport: Any = (
+        FakeMT5ExecutionTransport() if dry else _require_live_transport_human(settings)
+    )
+    state_path = resolve_auto_demo_state_path()
+    store_holder: dict[str, SnapshotIntentStore] = {}
 
-    if dry:
-        transport: Any = FakeMT5ExecutionTransport()
-    else:
-        transport = _require_live_transport_human(settings)
+    def safety() -> Settings:
+        return hot_read_safety_settings(settings)
 
-    def snapshot_provider() -> GatedExecutionSnapshot:
-        snap = provider.get_snapshot()
-        account = snap.account
-        login = None if account is None else account.login
-        server = None if account is None else account.server
-        mode = "demo" if account is None else account.trade_mode
-        return GatedExecutionSnapshot(
-            account_trade_mode=mode or "demo",
-            trade_allowed=True,
-            broker_login=login,
-            broker_server=server,
-            quote_fresh=True,
-            quote_age_seconds=0.0,
-            terminal_trade_allowed=True,
-            prior_submission_count=0,
-        )
-
-    service, _gated, _intent = build_auto_demo_candidate_execution_service(
+    snapshot_provider = make_auto_demo_snapshot_provider(
+        provider,
+        settings,
+        intent_loader=_intent_loader(store_holder),
+        settings_provider=safety,
+    )
+    service, _gated, intent_store = build_auto_demo_candidate_execution_service(
         settings,
         transport=transport,
         snapshot_provider=snapshot_provider,
         setup_store=setup_store,
-        settings_provider=lambda: hot_read_safety_settings(settings),
+        state_path=state_path,
+        settings_provider=safety,
     )
+    store_holder["store"] = intent_store
+    return provider, setup_store, decision_store, service, state_path
+
+
+def cmd_once(settings: Settings, *, dry: bool) -> int:
+    print(AGENT_NOTE)
+    if not auto_demo_run_allowed(settings) and not dry:
+        print("AUTO_DEMO_EXECUTION_ENABLED=false — refusing mutate run.")
+        return 2
+
+    provider, setup_store, store, service, state_path = _build_mutate_stack(
+        settings, dry=dry
+    )
+    print(f"intent_state_path={state_path}")
 
     symbol = settings.symbol
     loop = AutonomousDemoExecutionLoop(
@@ -246,6 +275,7 @@ def cmd_once(settings: Settings, *, dry: bool) -> int:
                 "decision_id": record.decision_id,
                 "state": record.state,
                 "blocked_reasons": record.blocked_reasons,
+                "intent_state_path": str(state_path),
                 "account_login_masked": (
                     None if account is None else mask_login(account.login)
                 ),
@@ -266,35 +296,10 @@ def cmd_run(settings: Settings, *, dry: bool) -> int:
     else:
         print("LIVE transport path — DEMO account only. Ctrl+C to stop.")
 
-    from exness_bot.broker.mt5.execution_transport import FakeMT5ExecutionTransport
-    from exness_bot.data.factory import create_trading_data_provider
-
-    provider = create_trading_data_provider(settings)
-    setup_store = require_durable_setup_store(settings)
-    store = _decision_store(settings)
-    transport = FakeMT5ExecutionTransport() if dry else _require_live_transport_human(settings)
-
-    def snapshot_provider() -> GatedExecutionSnapshot:
-        snap = provider.get_snapshot()
-        account = snap.account
-        return GatedExecutionSnapshot(
-            account_trade_mode=(None if account is None else account.trade_mode) or "demo",
-            trade_allowed=True,
-            broker_login=None if account is None else account.login,
-            broker_server=None if account is None else account.server,
-            quote_fresh=True,
-            quote_age_seconds=0.0,
-            terminal_trade_allowed=True,
-            prior_submission_count=0,
-        )
-
-    service, _gated, _intent = build_auto_demo_candidate_execution_service(
-        settings,
-        transport=transport,
-        snapshot_provider=snapshot_provider,
-        setup_store=setup_store,
-        settings_provider=lambda: hot_read_safety_settings(settings),
+    provider, setup_store, store, service, state_path = _build_mutate_stack(
+        settings, dry=dry
     )
+    print(f"intent_state_path={state_path}")
     symbol = settings.symbol
     stop = {"flag": False}
 

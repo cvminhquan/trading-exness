@@ -43,6 +43,7 @@ def evaluate_auto_demo_enablement(context: DemoPreflightContext) -> DemoEnableme
     - LIVE_DEMO_APPROVAL is sticky (not consumed per order)
     - No ONE_SHOT_GUARD (multi-candle loop allowed)
     - Still DEMO-only: TRADING_ENV=demo, allowlist, trade_mode=demo
+    - EXECUTION_MODE is NOT gated here (intentional — see hot_read.py)
     """
     settings = context.settings
     now = context.evaluated_at or datetime.now(tz=UTC)

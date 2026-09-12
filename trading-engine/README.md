@@ -50,30 +50,37 @@ mypy src
 
 Dashboard tích hợp qua FastAPI — chủ yếu **đọc**, không phải CLI đặt lệnh tự do.
 
-```powershell
-# Cài dependency API (Windows)
-pip install -e ".[api,dev,mt5]"
+### Chạy hàng ngày (Windows + MT5)
 
-# Chạy API (sau khi đã Activate.ps1)
+```powershell
+cd trading-engine
+.\.venv\Scripts\Activate.ps1
+$env:MT5_ENABLED="true"
+$env:DATA_SOURCE="mt5"
 exness-bot-api
 # hoặc: python -m exness_bot.api
 ```
 
-```bash
-# Linux/macOS — mock (không cần MT5 terminal)
-pip install -e ".[api,dev]"
-DATA_SOURCE=mock exness-bot-api
+### Mock (không MT5)
 
-# Windows + MT5 terminal — đọc dữ liệu thật
-# DATA_SOURCE=mt5 và MT5_ENABLED=true trong .env
+```powershell
+.\.venv\Scripts\Activate.ps1
+$env:DATA_SOURCE="mock"
+$env:MT5_ENABLED="false"
 exness-bot-api
+```
+
+### Cài dependency API (lần đầu)
+
+```powershell
+pip install -e ".[api,dev,mt5]"
 ```
 
 - Health: http://127.0.0.1:8000/health
 - OpenAPI: http://127.0.0.1:8000/docs
+- Status: http://127.0.0.1:8000/api/v1/status
 
-
-Xem [docs/MT5_READ_ONLY.md](../docs/MT5_READ_ONLY.md) cho chi tiết MT5 adapter.
+Xem thêm lệnh đầy đủ ở [README gốc](../README.md#chạy-backend-be--mỗi-lần-mở-dự-án) và [docs/MT5_READ_ONLY.md](../docs/MT5_READ_ONLY.md).
 
 Configure Dashboard:
 

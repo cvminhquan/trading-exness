@@ -41,6 +41,7 @@ credentials.json
 .candle_engine_state.json
 .signal_engine_state.json
 .paper_execution_state.json
+.auto_demo_execution_state.json
 .demo_smoke_state.json
 .demo_smoke_ledger.json
 

@@ -12,7 +12,11 @@ from exness_bot.execution.auto_demo.decision_store import (
     should_skip_existing,
 )
 from exness_bot.execution.auto_demo.enablement import evaluate_auto_demo_enablement
-from exness_bot.execution.auto_demo.factory import build_auto_demo_candidate_execution_service
+from exness_bot.execution.auto_demo.factory import (
+    DEFAULT_AUTO_DEMO_STATE_PATH,
+    build_auto_demo_candidate_execution_service,
+    resolve_auto_demo_state_path,
+)
 from exness_bot.execution.auto_demo.hot_read import (
     auto_demo_run_allowed,
     hot_read_safety_settings,
@@ -33,6 +37,7 @@ from exness_bot.execution.auto_demo.risk_gates import (
 )
 
 __all__ = [
+    "DEFAULT_AUTO_DEMO_STATE_PATH",
     "AutoDemoCandidateBundle",
     "AutoDemoDecisionRecord",
     "AutoDemoDecisionState",
@@ -48,6 +53,7 @@ __all__ = [
     "evaluate_auto_demo_risk_gates",
     "hot_read_safety_settings",
     "load_auto_demo_settings",
+    "resolve_auto_demo_state_path",
     "run_auto_demo_preflight",
     "should_skip_existing",
 ]

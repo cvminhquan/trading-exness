@@ -17,10 +17,11 @@ class GatedExecutionSnapshot:
     """
 
     account_trade_mode: str
-    trade_allowed: bool
+    # None = unverified — enablement must fail closed (never invent True/DEMO).
+    trade_allowed: bool | None
     broker_login: int | None
     broker_server: str | None
-    quote_fresh: bool
+    quote_fresh: bool | None
     quote_age_seconds: float
     terminal_trade_allowed: bool | None = None
     approval: OneShotApproval | None = None
