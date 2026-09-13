@@ -15,7 +15,8 @@ from exness_bot.domain.models import AccountInfo, SymbolInfo, Tick
 @dataclass(frozen=True)
 class DemoIdentitySnapshot:
     account: AccountInfo
-    trade_allowed: bool
+    # None = chưa xác minh — không được mặc định True để authorize submission.
+    trade_allowed: bool | None
     currency: str
     server: str
     login: int
@@ -27,7 +28,7 @@ class DemoIdentitySnapshot:
 @dataclass(frozen=True)
 class DemoMarketSnapshot:
     symbol: SymbolInfo
-    tick: Tick
+    tick: Tick | None
     freshness: QuoteFreshness
     age_seconds: float
     spread_points: float
@@ -76,7 +77,9 @@ class ReadOnlyMt5DemoProbe:
             msg = "MT5 account_info unavailable"
             raise RuntimeError(msg)
         account = map_account_info(raw)
-        trade_allowed = bool(getattr(raw, "trade_allowed", True))
+        # Thiếu field không được thành True. None = chưa xác minh.
+        raw_allowed = getattr(raw, "trade_allowed", None)
+        trade_allowed: bool | None = None if raw_allowed is None else bool(raw_allowed)
         terminal_connected: bool | None = None
         terminal_trade_allowed: bool | None = None
         try:
@@ -86,8 +89,9 @@ class ReadOnlyMt5DemoProbe:
         if terminal is not None:
             terminal_connected = bool(getattr(terminal, "connected", True))
             terminal_trade_allowed = bool(getattr(terminal, "trade_allowed", False))
-            # Prefer terminal trade_allowed when available
-            trade_allowed = trade_allowed and terminal_trade_allowed
+            # Chỉ AND khi account field có mặt — không biến None thành True.
+            if trade_allowed is not None:
+                trade_allowed = trade_allowed and terminal_trade_allowed
         return DemoIdentitySnapshot(
             account=account,
             trade_allowed=trade_allowed,

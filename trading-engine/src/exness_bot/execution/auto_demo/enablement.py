@@ -32,6 +32,7 @@ class AutoDemoGateName(StrEnum):
     """Extra gate label surfaced in blocking_reasons (DemoGateName has no slot)."""
 
     AUTO_DEMO_ENABLED = "auto_demo_enabled"
+    EXECUTION_MODE = "execution_mode"
 
 
 def evaluate_auto_demo_enablement(context: DemoPreflightContext) -> DemoEnablementResult:
@@ -43,8 +44,10 @@ def evaluate_auto_demo_enablement(context: DemoPreflightContext) -> DemoEnableme
     - LIVE_DEMO_APPROVAL is sticky (not consumed per order)
     - No ONE_SHOT_GUARD (multi-candle loop allowed)
     - Still DEMO-only: TRADING_ENV=demo, allowlist, trade_mode=demo
-    - EXECUTION_MODE is NOT gated here (intentional — see hot_read.py)
+    - EXECUTION_MODE=live is fail-closed (must not claim live while DEMO path runs)
     """
+    from exness_bot.config.settings import ExecutionMode
+
     settings = context.settings
     now = context.evaluated_at or datetime.now(tz=UTC)
     gates: list[DemoGateResult] = []
@@ -62,6 +65,26 @@ def evaluate_auto_demo_enablement(context: DemoPreflightContext) -> DemoEnableme
             gate=AutoDemoGateName.AUTO_DEMO_ENABLED.value,
             status="PASS",
             reason="AUTO_DEMO_EXECUTION_ENABLED=true.",
+        )
+
+    mode = settings.execution_mode
+    mode_value = mode.value if hasattr(mode, "value") else str(mode)
+    if mode == ExecutionMode.LIVE or str(mode_value).strip().lower() == "live":
+        extra_reasons.append(
+            f"{AutoDemoGateName.EXECUTION_MODE.value}: "
+            "EXECUTION_MODE=live forbidden on autonomous DEMO path — fail closed."
+        )
+    elif str(mode_value).strip().lower() != "paper":
+        extra_reasons.append(
+            f"{AutoDemoGateName.EXECUTION_MODE.value}: "
+            f"EXECUTION_MODE={mode_value!r} unsupported for autonomous DEMO — fail closed."
+        )
+    else:
+        logger.info(
+            "auto_demo_preflight",
+            gate=AutoDemoGateName.EXECUTION_MODE.value,
+            status="PASS",
+            reason="EXECUTION_MODE=paper.",
         )
 
     env = (settings.trading_env or "").strip().lower()
@@ -165,7 +188,7 @@ def evaluate_auto_demo_enablement(context: DemoPreflightContext) -> DemoEnableme
     )
 
     gate_ok = all(g.allowed for g in gates)
-    allowed = gate_ok and auto_on
+    allowed = gate_ok and auto_on and not extra_reasons
     blocking = tuple(
         [
             *extra_reasons,

@@ -824,7 +824,7 @@ def build_preview_diagnostics_lines(
     )
     exec_px = (
         None
-        if no_trade_geometry
+        if no_trade_geometry or market.tick is None
         else executable_price(side=side, tick=market.tick)
     )
 

@@ -109,9 +109,14 @@ def precheck_candidate_execution(
     if tick is None:
         reasons.append("QUOTE_UNAVAILABLE")
     else:
-        age = (now - tick.timestamp).total_seconds()
-        if age > quote_max_age_seconds:
-            reasons.append("STALE_QUOTE")
+        from exness_bot.execution.integration.demo_revalidate import quote_is_finite
+
+        if not quote_is_finite(tick):
+            reasons.append("QUOTE_NON_FINITE")
+        else:
+            age = (now - tick.timestamp).total_seconds()
+            if age > quote_max_age_seconds:
+                reasons.append("STALE_QUOTE")
 
     if snapshot is None:
         reasons.append("ACCOUNT_UNAVAILABLE")

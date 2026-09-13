@@ -607,12 +607,38 @@ def test_resolve_auto_demo_state_path_default_is_durable() -> None:
     assert path.is_absolute()
 
 
-def test_execution_mode_not_an_enablement_gate(tmp_path: Path) -> None:
-    """EXECUTION_MODE=live must not alone block/allow auto_demo (intentional)."""
+def test_execution_mode_live_fail_closed_on_auto_demo(tmp_path: Path) -> None:
+    """Phase 17.3.3: EXECUTION_MODE=live must block autonomous DEMO enablement."""
     from exness_bot.controlled_demo.enablement import DemoPreflightContext
     from exness_bot.execution.auto_demo.enablement import evaluate_auto_demo_enablement
 
     cfg = _settings(tmp_path, EXECUTION_MODE="live")
+    result = evaluate_auto_demo_enablement(
+        DemoPreflightContext(
+            settings=cfg,
+            symbol_info=make_xauusd_symbol(
+                bid=2340.9, ask=2341.1, spread=20, stops_level=10, freeze_level=0
+            ).model_copy(update={"trade_tick_size": 0.01, "trade_tick_value": 1.0}),
+            intents=(),
+            broker_login=12345678,
+            broker_server="Exness-MT5Trial",
+            account_trade_mode="demo",
+            trade_allowed=True,
+            terminal_trade_allowed=True,
+            quote_fresh=True,
+            quote_age_seconds=1.0,
+        )
+    )
+    assert result.allowed is False
+    assert any("EXECUTION_MODE" in r for r in result.blocking_reasons)
+    assert any("live" in r.lower() for r in result.blocking_reasons)
+
+
+def test_execution_mode_paper_still_allows_when_other_gates_pass(tmp_path: Path) -> None:
+    from exness_bot.controlled_demo.enablement import DemoPreflightContext
+    from exness_bot.execution.auto_demo.enablement import evaluate_auto_demo_enablement
+
+    cfg = _settings(tmp_path, EXECUTION_MODE="paper")
     result = evaluate_auto_demo_enablement(
         DemoPreflightContext(
             settings=cfg,

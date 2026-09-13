@@ -71,3 +71,9 @@ Thumbs.db
 
 # Docker
 docker/postgres/data/
+.cursor/review-service/state/
+.cursor/review-service/logs/
+.cursor/review-service/__pycache__/
+.cursor/collab/watcher.log
+.cursor/collab/review-request.json
+.cursor/collab/runner-state/

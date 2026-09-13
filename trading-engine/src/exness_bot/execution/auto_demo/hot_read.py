@@ -20,11 +20,10 @@ from exness_bot.config.settings import Settings, get_settings
 
 # Keys re-applied on every hot-read / enablement check.
 #
-# EXECUTION_MODE is intentionally hot-read for Settings consistency / operator
-# observability, but is NOT an auto_demo enablement gate. Autonomous DEMO is
-# gated by TRADING_ENV + AUTO_DEMO_* + LIVE_* + allowlist + account trade_mode
-# (see evaluate_auto_demo_enablement). Phase-11 EXECUTION_MODE=paper|live is a
-# separate paper-runtime switch and must not silently block/allow DEMO MT5.
+# EXECUTION_MODE is hot-read AND fail-closed on auto_demo enablement:
+# EXECUTION_MODE=live (or non-paper) blocks autonomous DEMO (Phase 17.3.3).
+# Autonomous DEMO still also requires TRADING_ENV=demo + AUTO_DEMO_* + LIVE_* +
+# allowlist + account trade_mode (see evaluate_auto_demo_enablement).
 _SAFETY_ENV_NAMES: Final[tuple[str, ...]] = (
     "LIVE_KILL_SWITCH",
     "LIVE_DEMO_APPROVAL",

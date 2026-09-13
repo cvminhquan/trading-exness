@@ -1,0 +1,17 @@
+---
+alwaysApply: true
+---
+# ChatGPT ↔ Cursor Collaboration Protocol
+
+Khi user yêu cầu `sync`, `continue task`, `implement current task` hoặc tương đương:
+
+1. Đọc `.cursor/collab/current-task.md` trước khi sửa code.
+2. Chỉ implement khi `Status: READY`.
+3. Không tự mở rộng scope ngoài task.
+4. Tôn trọng toàn bộ safety boundaries và non-goals trong task.
+5. Sau khi implement, chạy test/lint/typecheck được yêu cầu.
+6. Ghi kết quả vào `.cursor/collab/cursor-report.md`.
+7. Đổi `Status` trong `current-task.md` thành `IMPLEMENTED`.
+8. Dừng lại để ChatGPT review diff; không tự bắt đầu phase tiếp theo.
+
+Nếu `Status` không phải `READY`, không tự ý implement task cũ.

@@ -95,6 +95,7 @@ def _identity(*, trade_mode: str = "demo") -> DemoIdentitySnapshot:
         server=account.server,
         login=account.login,
         trade_mode=trade_mode,
+        terminal_trade_allowed=True,
     )
 
 

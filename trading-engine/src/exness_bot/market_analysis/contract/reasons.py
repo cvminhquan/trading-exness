@@ -17,6 +17,8 @@ BLOCKING_REASON_CODES: frozenset[str] = frozenset(
         "SETUP_INVALIDATED",
         "SETUP_SUPERSEDED",
         "PRICE_NOT_IN_ENTRY_ZONE",
+        "CURRENT_PRICE_OUTSIDE_ENTRY_ZONE",
+        "QUOTE_NON_FINITE",
         "FINAL_SIGNAL_WAIT",
         "NO_DIRECTIONAL_SETUP",
         "STALE_M15",

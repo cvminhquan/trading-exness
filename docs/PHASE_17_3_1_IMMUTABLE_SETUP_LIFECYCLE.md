@@ -189,3 +189,24 @@ Tất cả 16 kịch bản yêu cầu tại Part L đã được hiện thực �
 4. **Real `order_send` calls?** 0 (Không có bất kỳ lệnh gửi sàn nào).
 5. **LIVE trading enabled?** KHÔNG (NO). Chỉ hỗ trợ chế độ kiểm thử và DEMO có cổng kiểm soát nghiêm ngặt.
 6. **Sẵn sàng cho bước tiếp theo?** CÓ (YES). Logic setup hiện đã ổn định, đáng tin cậy và không còn hiện tượng đuổi giá.
+
+---
+
+## 10. POST-REVIEW HARDENING (2026-09-12)
+
+Sau review độc lập trực tiếp trên workspace, phát hiện một edge case P0:
+
+- `proposed is None` không đồng nghĩa với `final_signal == WAIT`.
+- Trước patch, một active LONG/SHORT vẫn hợp lệ có thể bị `EXPIRED` sớm nếu proposal mới tạm thời không build được.
+- Đã sửa reconciliation để chỉ kết thúc active setup khi chiến lược thực sự chuyển sang `WAIT`; nếu signal vẫn cùng hướng nhưng proposal mới không build được, active setup bất biến tiếp tục sống đến khi invalidated/expired/material direction change.
+
+Test bổ sung:
+- `test_10b_same_direction_missing_proposal_preserves_active_setup`
+- Harden lại test expiration để reload store sau lần evaluate tiếp theo thay vì assert trên object cũ.
+
+Bằng chứng sau patch:
+- Phase 17.3.1 + Phase 16.3 contract: **40 passed**.
+- `ruff check`: **PASS**.
+- `mypy -p exness_bot --strict`: **PASS, 332 source files**.
+
+Lưu ý workspace hiện tại khi chạy toàn bộ suite: **1238 passed, 5 skipped, 1 deselected, 8 failed**. Tám failure này nằm ngoài thay đổi Phase 17.3.1, chủ yếu do test settings bị ảnh hưởng bởi `.env` operator hiện tại và một assertion read-only API cũ không còn khớp route surface. Không dùng các failure này để hạ verdict của lifecycle patch, nhưng cần được tách xử lý trước khi tuyên bố toàn repo xanh 100%.

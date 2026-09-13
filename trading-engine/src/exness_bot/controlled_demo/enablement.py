@@ -315,7 +315,11 @@ def _gate_account_trade_mode(context: DemoPreflightContext) -> DemoGateResult:
 
 
 def _gate_terminal_trade_permission(context: DemoPreflightContext) -> DemoGateResult:
-    """Require trade_allowed from connected terminal/account — operator enables Algo Trading."""
+    """Fail closed unless account and terminal trade_allowed are both explicitly True.
+
+    None means unverified (missing account field or unreadable terminal_info).
+    True on only one side must not authorize submission.
+    """
     if context.trade_allowed is False:
         return DemoGateResult(
             DemoGateName.TERMINAL_TRADE_PERMISSION,
@@ -328,7 +332,7 @@ def _gate_terminal_trade_permission(context: DemoPreflightContext) -> DemoGateRe
             False,
             "terminal.trade_allowed=false — enable Algo Trading; NO order_send.",
         )
-    if context.trade_allowed is None and context.terminal_trade_allowed is None:
+    if context.trade_allowed is not True or context.terminal_trade_allowed is not True:
         return DemoGateResult(
             DemoGateName.TERMINAL_TRADE_PERMISSION,
             False,

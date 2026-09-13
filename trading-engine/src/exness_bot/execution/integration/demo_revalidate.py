@@ -1,10 +1,16 @@
-"""Pre-submit market revalidation for Phase 17.2 DEMO candidate path.
+"""Pre-submit market revalidation for DEMO candidate path (Phase 17.2 / 17.3.3).
 
-Does not call order_send. Mapping/sizing logic stays in Phase 17.1.
+Phân biệt:
+- ENTRY_ZONE_LATCHED: lifecycle fact (setup.state) — không đủ để gửi DEAL.
+- CURRENT_PRICE_IN_ENTRY_ZONE: pre-submit fact — Ask (LONG) / Bid (SHORT)
+  phải nằm trong frozen [entry_zone_low, entry_zone_high].
+
+Does not call order_send. Mapping/sizing logic stays unchanged.
 """
 
 from __future__ import annotations
 
+import math
 from datetime import datetime
 
 from exness_bot.broker.mt5.executor import normalize_price, normalize_volume
@@ -28,12 +34,49 @@ from exness_bot.market_analysis.contract.spread import (
 
 EXECUTED_TP_POLICY = "TP1_ONLY"
 
+# Deterministic blocking reason — current executable quote left frozen zone
+CURRENT_PRICE_OUTSIDE_ENTRY_ZONE = "CURRENT_PRICE_OUTSIDE_ENTRY_ZONE"
+QUOTE_NON_FINITE = "QUOTE_NON_FINITE"
+
 
 def executable_price(*, side: str, tick: Tick) -> float:
-    """BUY/LONG uses ASK; SELL/SHORT uses BID."""
+    """Market DEAL executable quote: BUY/LONG → Ask; SELL/SHORT → Bid (not MID)."""
     if side == "LONG":
         return float(tick.ask)
     return float(tick.bid)
+
+
+def quote_is_finite(tick: Tick) -> bool:
+    """Fail-closed: missing/NaN/Inf bid or ask is not tradable."""
+    try:
+        bid = float(tick.bid)
+        ask = float(tick.ask)
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(bid) and math.isfinite(ask) and ask >= bid
+
+
+def current_price_in_frozen_entry_zone(
+    *,
+    side: str,
+    tick: Tick,
+    entry_zone_low: float,
+    entry_zone_high: float,
+) -> bool:
+    """
+    CURRENT_PRICE_IN_ENTRY_ZONE pre-submit check.
+
+    Uses direction-aware executable quote against frozen geometry.
+    Does NOT consult latched lifecycle state.
+    """
+    if not quote_is_finite(tick):
+        return False
+    price = executable_price(side=side, tick=tick)
+    if not math.isfinite(price):
+        return False
+    lo = float(entry_zone_low)
+    hi = float(entry_zone_high)
+    return lo <= price <= hi
 
 
 def revalidate_candidate_market(
@@ -49,8 +92,13 @@ def revalidate_candidate_market(
     Fail-closed market rechecks immediately before orchestrator consume.
 
     Returns blocking reason codes (empty = ok).
+    Frozen setup geometry is read-only — never mutated here.
     """
     reasons: list[str] = []
+
+    if not quote_is_finite(tick):
+        reasons.append(QUOTE_NON_FINITE)
+        return list(dict.fromkeys(reasons))
 
     stops = validate_stops_metadata(quote)
     if not stops.ok:
@@ -68,6 +116,8 @@ def revalidate_candidate_market(
             reasons.append("SPREAD_TOO_WIDE")
 
     price = executable_price(side=candidate.side, tick=tick)
+
+    # Expiry / SL invalidation from live executable price (no latch reuse)
     derived = derive_state_from_price(
         direction=setup.direction,
         current_price=price,
@@ -81,10 +131,15 @@ def revalidate_candidate_market(
         reasons.append("SETUP_EXPIRED")
     elif derived == SetupLifecycleState.INVALIDATED:
         reasons.append("SETUP_INVALIDATED")
-    elif derived == SetupLifecycleState.WAITING_FOR_ENTRY:
-        reasons.append("PRICE_NOT_IN_ENTRY_ZONE")
-    elif derived != SetupLifecycleState.ENTRY_ZONE:
-        reasons.append("SETUP_STATE_NOT_ENTRY_ZONE")
+
+    # Explicit CURRENT_PRICE_IN_ENTRY_ZONE — independent of ENTRY_ZONE_LATCHED
+    if not current_price_in_frozen_entry_zone(
+        side=candidate.side,
+        tick=tick,
+        entry_zone_low=setup.entry_zone_low,
+        entry_zone_high=setup.entry_zone_high,
+    ):
+        reasons.append(CURRENT_PRICE_OUTSIDE_ENTRY_ZONE)
 
     if candidate.proposed_volume is None or candidate.proposed_volume <= 0:
         reasons.append("VOLUME_INVALID")
@@ -94,7 +149,6 @@ def revalidate_candidate_market(
             normalized = normalize_volume(float(candidate.proposed_volume), quote)
             if normalized is None:
                 reasons.append("VOLUME_INVALID")
-            # normalize_volume never increases to min — only float-step alignment
 
     if not candidate.take_profits:
         reasons.append("INVALID_TP")

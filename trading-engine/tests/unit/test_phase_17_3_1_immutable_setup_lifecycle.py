@@ -416,7 +416,10 @@ def test_6_expiration_reached_and_latched() -> None:
 
     # Cannot reactivate even if queried later
     _ = svc.evaluate_from_analysis(a_init, now=_ts(130))
-    assert is_terminal(persisted.state)
+    persisted_after = store.get(setup_id)
+    assert persisted_after is not None
+    assert persisted_after.state == SetupLifecycleState.EXPIRED
+    assert is_terminal(persisted_after.state)
 
 
 # ==============================================================================
@@ -583,6 +586,31 @@ def test_10_no_sr_short_fails_closed() -> None:
     assert setup.entry_zone_high is None
     assert setup.stop_loss is None
     assert setup.entry_reason == "NO_RESISTANCE_LEVEL"
+
+
+# ==============================================================================
+# TEST 10B: SAME DIRECTION + NO NEW PROPOSAL MUST PRESERVE ACTIVE SETUP
+# ==============================================================================
+def test_10b_same_direction_missing_proposal_preserves_active_setup() -> None:
+    store = InMemorySetupLifecycleStore()
+    initial = _make_analysis(final="LONG", price=2525.0)
+    data = _FakeData(price=2525.0)
+    svc = _build_service(initial, data, store)
+
+    first = svc.evaluate_from_analysis(initial, now=_ts(1))
+    setup_id = first.setup_id
+    assert setup_id is not None
+
+    degraded = _make_analysis(final="LONG", price=2526.0)
+    degraded.setup = None
+    status = svc.evaluate_from_analysis(degraded, now=_ts(16))
+
+    assert status.setup_id == setup_id
+    assert status.setup_state == SetupLifecycleState.WAITING_FOR_ENTRY.value
+    persisted = store.get(setup_id)
+    assert persisted is not None
+    assert persisted.state == SetupLifecycleState.WAITING_FOR_ENTRY
+    assert persisted.entry_price == 2521.83
 
 
 # ==============================================================================

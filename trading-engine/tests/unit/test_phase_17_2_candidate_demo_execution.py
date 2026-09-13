@@ -383,7 +383,7 @@ def test_unknown_no_resubmit(tmp_path: Path) -> None:
         ({"settings_kw": {"LIVE_DEMO_APPROVAL": False}}, None),
         ({"settings_kw": {"TRADING_ENV": "research"}}, None),
         ({"identity": "live"}, None),
-        ({"price_out": True}, "PRICE_NOT_IN_ENTRY_ZONE"),
+        ({"price_out": True}, "CURRENT_PRICE_OUTSIDE_ENTRY_ZONE"),
         ({"spread": True}, "SPREAD_TOO_WIDE"),
         ({"stale_tf": "M15"}, "STALE_M15"),
         ({"risk": False}, "RISK_NOT_ACCEPTABLE"),

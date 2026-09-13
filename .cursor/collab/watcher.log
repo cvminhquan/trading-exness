@@ -1,0 +1,92 @@
+[2026-09-12 16:18:27] watcher_started interval=300s
+[2026-09-12 17:24:31] watcher_started interval=300s pr=1 branch=automation/review-signal
+[2026-09-12 17:46:04] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-12 18:15:51] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-13 18:00:46] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-14 00:35:35] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-14 00:35:35] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:36:05] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:36:35] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:37:05] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:37:35] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:38:05] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:38:35] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:39:05] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:39:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:40:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:40:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:41:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:41:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:42:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:42:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:43:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:43:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:44:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:44:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:45:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:45:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:46:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:46:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:47:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:47:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:48:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:48:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:49:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:49:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:50:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:50:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:51:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:51:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:52:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:52:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:53:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:53:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:54:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:54:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:55:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:55:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:56:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:56:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:57:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:57:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:58:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:58:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:59:06] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 00:59:36] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:00:10] watcher_error Unable to connect to the remote server
+[2026-09-14 01:00:43] watcher_error Unable to connect to the remote server
+[2026-09-14 01:03:03] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-14 01:03:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:03:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:04:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:04:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:05:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:05:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:06:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:06:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:07:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:07:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:08:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:08:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:09:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:09:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:10:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:10:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:11:04] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:11:34] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:12:05] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:12:35] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:13:05] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:13:35] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:14:05] watcher_error The remote server returned an error: (401) Unauthorized.
+[2026-09-14 01:15:17] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-14 01:15:17] review_webhook accepted=True duplicate= sha256=6B499F807284FB462A3AD7FAD54115775636D796E6DCDB28B692E27C6A2398B5
+[2026-09-14 01:42:45] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-14 01:42:46] review_webhook accepted=False duplicate=True sha256=6B499F807284FB462A3AD7FAD54115775636D796E6DCDB28B692E27C6A2398B5
+[2026-09-14 01:47:55] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-14 01:47:56] review_webhook accepted=True duplicate= sha256=6B499F807284FB462A3AD7FAD54115775636D796E6DCDB28B692E27C6A2398B5
+[2026-09-14 01:57:15] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-14 01:57:15] review_webhook accepted=True duplicate= sha256=6B499F807284FB462A3AD7FAD54115775636D796E6DCDB28B692E27C6A2398B5
+[2026-09-14 02:15:11] watcher_started interval=30s webhook=http://127.0.0.1:8765/webhook/review
+[2026-09-14 02:15:12] review_webhook accepted=True duplicate= sha256=6B499F807284FB462A3AD7FAD54115775636D796E6DCDB28B692E27C6A2398B5
+[2026-09-14 02:30:42] review_webhook accepted=True duplicate= sha256=CD879B4CE4EB005D973C01BF7DAE1EFE60C241EFB77214A282481723F941B8BA

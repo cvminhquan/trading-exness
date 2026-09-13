@@ -344,7 +344,7 @@ def build_watch_snapshot(
         setup.direction if setup is not None else "LONG"
     )
     exec_px: float | None = None
-    if market is not None and setup is not None:
+    if market is not None and setup is not None and market.tick is not None:
         exec_px = _executable_price(side=side, tick=market.tick)
 
     proposed_volume: float | None = None

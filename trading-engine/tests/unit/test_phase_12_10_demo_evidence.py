@@ -170,6 +170,7 @@ class TestDeterministicDemoIntent:
             symbol_info=symbol,
             account_trade_mode="demo",
             trade_allowed=True,
+            terminal_trade_allowed=True,
             broker_login=12345678,
             broker_server="Exness-MT5Trial",
             quote_fresh=True,

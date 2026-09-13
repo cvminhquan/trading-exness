@@ -338,21 +338,25 @@ class ExecutionContractService:
 
         # Step 3: Active setup is still alive (WAITING_FOR_ENTRY or ENTRY_ZONE)
         if active is not None:
-            # 3a. Production signal became WAIT / no proposed setup:
-            # Production signal no longer valid (LONG/SHORT -> WAIT) expires active setup
-            if proposed is None:
+            # 3a. A true strategy WAIT ends the active directional prediction.
+            if analysis.final_signal not in {"LONG", "SHORT"}:
                 terminal = with_state(active, SetupLifecycleState.EXPIRED)
                 self._store.upsert(terminal)
                 return None
 
-            # 3b. Material change (e.g. direction change LONG -> SHORT or SHORT -> LONG):
+            # 3b. Same directional signal but no newly buildable proposal is NOT enough
+            # to kill an immutable active setup. Keep waiting on the frozen geometry.
+            if proposed is None:
+                return active
+
+            # 3c. Material change (e.g. direction change LONG -> SHORT or SHORT -> LONG):
             if materially_different(active, proposed):
                 superseded = with_state(active, SetupLifecycleState.SUPERSEDED)
                 self._store.upsert(superseded)
                 self._store.upsert(proposed)
                 return proposed
 
-            # 3c. Same direction, no material change:
+            # 3d. Same direction, no material change:
             # Preserve active setup with frozen geometry; new M15 does not supersede.
             return active
 

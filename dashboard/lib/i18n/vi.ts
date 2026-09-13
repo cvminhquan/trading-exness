@@ -525,6 +525,9 @@ export const ANALYSIS_REASON_LABELS: Record<string, string> = {
   MOMENTUM_NEUTRAL: "Momentum chưa đủ rõ.",
   SPREAD_TOO_WIDE: "Spread hiện tại vượt giới hạn cho phép.",
   PRICE_NOT_IN_ENTRY_ZONE: "Giá chưa đi vào vùng entry.",
+  CURRENT_PRICE_OUTSIDE_ENTRY_ZONE:
+    "Giá khớp lệnh hiện tại đã ra ngoài vùng entry đóng băng.",
+  QUOTE_NON_FINITE: "Báo giá bid/ask không hợp lệ (thiếu hoặc không hữu hạn).",
   MIN_VOLUME_EXCEEDS_RISK_BUDGET: "Volume tối thiểu của broker vượt ngân sách rủi ro.",
   TREND_EVIDENCE_WEAK: "Bằng chứng xu hướng còn yếu.",
   H4_D1_CONFLICT: "H4 và D1 đang xung đột hướng.",
